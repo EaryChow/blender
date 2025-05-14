@@ -4,10 +4,10 @@ name: Windows Build (Blender)
 on:
   push:
     branches:
-      - feature/build-windows
+      try_custom_cmp_nodee/build-windows
   pull_request:
     branches:
-      - feature/build-windows
+      try_custom_cmp_node/build-windows
 
 jobs:
   build:

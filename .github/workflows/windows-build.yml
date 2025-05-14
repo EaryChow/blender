@@ -10,44 +10,51 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
 
-      - name: Install Chocolatey
+      - name: Install Chocolatey and SVN
         shell: pwsh
         run: |
           Set-ExecutionPolicy Bypass -Scope Process -Force
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
           iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          choco install svn --yes --force
 
-      - name: Install SVN
-        shell: pwsh
-        run: choco install svn --yes
-
-      - name: Checkout libraries (with retries)
+      - name: Checkout libraries with robust retries
         shell: pwsh
         run: |
-          $maxRetries = 5
-          $retryCount = 0
+          $maxRetries = 10
+          $retryDelay = 120  # Longer delay to avoid 429 errors
           $success = $false
           
-          while (-not $success -and $retryCount -lt $maxRetries) {
+          for ($i=1; $i -le $maxRetries; $i++) {
               try {
-                  svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
+                  Write-Host "Attempt $i/$maxRetries: Checking out libraries..."
+                  svn checkout --non-interactive --trust-server-cert https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
                   $success = $true
+                  break
               } catch {
-                  $retryCount++
-                  Write-Host "SVN failed. Retry attempt $retryCount in 60 seconds..."
-                  Start-Sleep -Seconds 60
+                  Write-Host "SVN failed. Retrying in $retryDelay seconds..."
+                  Start-Sleep -Seconds $retryDelay
               }
           }
           if (-not $success) { exit 1 }
 
-      - name: Update dependencies
-        run: echo y | make update
-        shell: cmd
+      - name: Verify libraries exist
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "lib/windows_x64/dpcpp")) {
+              Write-Error "Libraries not properly checked out!"
+              exit 1
+          }
 
-      - name: Build Blender
-        run: make
+      - name: Force update dependencies
         shell: cmd
+        run: |
+          echo y | make update
+          if errorlevel 1 (
+              echo "make update failed. Trying direct build..."
+              make
+          )

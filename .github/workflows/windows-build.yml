@@ -18,24 +18,24 @@ jobs:
         shell: pwsh
         run: |
           Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol =
+          [System.Net.ServicePointManager]::SecurityProtocol = `
             [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).
-            DownloadString('https://chocolatey.org/install.ps1'))
+          iex ((New-Object System.Net.WebClient).DownloadString(
+            'https://chocolatey.org/install.ps1'))
 
       - name: Install SVN
         shell: pwsh
         run: choco install svn --yes
 
-      - name: Checkout external libraries (as win64_vc17)
+      - name: Checkout external libraries
         shell: cmd
         run: |
-          rem Make sure lib directory exists
+          rem Ensure lib folder exists
           if not exist lib mkdir lib
           cd lib
           svn checkout ^
-            https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc14 ^
-            win64_vc17
+            https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 ^
+            win64_vc15
 
       - name: Update dependencies
         shell: cmd

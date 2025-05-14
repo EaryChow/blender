@@ -27,13 +27,15 @@ jobs:
         shell: pwsh
         run: choco install svn --yes
 
-      - name: Checkout Blender external libraries
+      - name: Checkout external libraries (as win64_vc17)
         shell: cmd
         run: |
+          rem Make sure lib directory exists
           if not exist lib mkdir lib
+          cd lib
           svn checkout ^
-            https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc17 ^
-            lib\win64_vc17
+            https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc14 ^
+            win64_vc17
 
       - name: Update dependencies
         shell: cmd

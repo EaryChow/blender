@@ -21,26 +21,31 @@ jobs:
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
           iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-      - name: Install SVN and dependencies
+      - name: Install SVN
         shell: pwsh
-        run: |
-          choco install svn --yes
-          choco install 7zip --yes  # Needed for library extraction
+        run: choco install svn --yes
 
-      - name: Download libraries via HTTPS (avoid SVN rate limits)
+      - name: Checkout libraries (with retries)
         shell: pwsh
         run: |
-          $libsUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/"
-          $tempZip = "blender_libs.zip"
+          $maxRetries = 5
+          $retryCount = 0
+          $success = $false
           
-          # Download files recursively using PowerShell (no SVN)
-          Invoke-WebRequest -Uri "$libsUrl" -OutFile $tempZip
-          7z x $tempZip -o"lib/windows_x64"
-          Remove-Item $tempZip
+          while (-not $success -and $retryCount -lt $maxRetries) {
+              try {
+                  svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
+                  $success = $true
+              } catch {
+                  $retryCount++
+                  Write-Host "SVN failed. Retry attempt $retryCount in 60 seconds..."
+                  Start-Sleep -Seconds 60
+              }
+          }
+          if (-not $success) { exit 1 }
 
-      - name: Force update dependencies (auto-confirm)
-        run: |
-          echo y | make update
+      - name: Update dependencies
+        run: echo y | make update
         shell: cmd
 
       - name: Build Blender

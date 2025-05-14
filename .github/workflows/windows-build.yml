@@ -1,53 +1,23 @@
-name: Windows Build (Blender)
+name: Build Blender on Windows
 
 on:
   push:
-    branches: try_custom_cmp_node
-  pull_request:
-    branches: try_custom_cmp_node
-  workflow_dispatch:
+    branches:
+      - try_custom_cmp_node
 
 jobs:
   build:
-    runs-on: windows-latest  # GitHub’s Windows VM with VS2022 :contentReference[oaicite:2]{index=2}
-
+    runs-on: windows-latest
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4  # Latest checkout action :contentReference[oaicite:3]{index=3}
-
-      - name: 🧰 Install build tools
-        run: choco install -y git cmake python visualstudio2022buildtools
-
-      - name: 🔧 Set up MSYS2
-        uses: msys2/setup-msys2@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          update: true               # Update MSYS2 core packages :contentReference[oaicite:4]{index=4}
-          install:                   # Install Unix tools needed by `make update`
-            - make                    # YAML list under "install:" :contentReference[oaicite:5]{index=5}
-            - mingw-w64-x86_64-toolchain
+          submodules: 'recursive'
 
-      - name: 🔄 Update Blender externals
-        shell: msys2 {0}             # Enter MSYS2 shell context :contentReference[oaicite:6]{index=6}
-        run: |
-          git submodule update --init --recursive
-          make update
+      - name: Update dependencies
+        run: make update
+        shell: cmd
 
-      - name: 🛠 Setup MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1   # Auto‑locates and runs vcvars64.bat :contentReference[oaicite:7]{index=7}
-        with:
-          arch: x64
-
-      - name: 🏗 Configure Blender build
-        run: |
-          mkdir build
-          cd build
-          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release ..
-
-      - name: 🔨 Build Blender
-        run: cmake --build build --config Release -- /m
-
-      - name: 📦 Upload artifacts
-        uses: actions/upload-artifact@v4  # Use v4 to avoid deprecation errors :contentReference[oaicite:8]{index=8}
-        with:
-          name: blender-windows
-          path: build/bin/Release
+      - name: Build Blender
+        run: make
+        shell: cmd

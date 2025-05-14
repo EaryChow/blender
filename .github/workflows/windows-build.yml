@@ -26,35 +26,27 @@ jobs:
         shell: pwsh
         run: |
           $maxRetries = 10
-          $retryDelay = 120  # Longer delay to avoid 429 errors
+          $retryDelay = 120
           $success = $false
           
           for ($i=1; $i -le $maxRetries; $i++) {
               try {
-                  Write-Host "Attempt $i/$maxRetries: Checking out libraries..."
+                  Write-Host "Attempt ${i}/${maxRetries}: Checking out libraries..."
                   svn checkout --non-interactive --trust-server-cert https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
+                  if ($LASTEXITCODE -ne 0) { throw "SVN failed" }
                   $success = $true
                   break
               } catch {
-                  Write-Host "SVN failed. Retrying in $retryDelay seconds..."
+                  Write-Host "SVN failed. Retrying in ${retryDelay} seconds..."
                   Start-Sleep -Seconds $retryDelay
               }
           }
           if (-not $success) { exit 1 }
 
-      - name: Verify libraries exist
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "lib/windows_x64/dpcpp")) {
-              Write-Error "Libraries not properly checked out!"
-              exit 1
-          }
-
       - name: Force update dependencies
         shell: cmd
-        run: |
-          echo y | make update
-          if errorlevel 1 (
-              echo "make update failed. Trying direct build..."
-              make
-          )
+        run: echo y | make update
+
+      - name: Build Blender
+        run: make
+        shell: cmd

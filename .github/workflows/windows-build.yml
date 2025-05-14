@@ -1,43 +1,60 @@
-name: Build Windows
+name: Windows Build
 
 on:
   push:
-    branches:
-      - try_custom_cmp_node
+    branches: [try_custom_cmp_node]
+  pull_request:
+    branches: [try_custom_cmp_node]
 
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      BLENDER_ROOT: ${{ github.workspace }}
+      BUILD_DIR: build_windows
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          ref: 'try_custom_cmp_node'
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
 
-      - name: Install Subversion (SVN)
-        run: choco install svn -y
+    - name: Setup Visual Studio 2022
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
 
-      - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1.13.0
-        with:
-          cmake-version: '3.20.x'
+    - name: Install build tools
+      run: |
+        choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install -y ninja
+        choco install -y svn
 
-      - name: Update libraries
-        run: echo y | .\make.bat update  # Automatically answer 'y' to download prompt
+    - name: Setup Python
+      run: |
+        $pythonUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/python"
+        svn checkout $pythonUrl "$env:BLENDER_ROOT\lib\windows_x86_64_vc15\python"
 
-      - name: Build Blender
-        run: .\make.bat
+    - name: Configure and build
+      shell: cmd
+      run: |
+        cd %BLENDER_ROOT%
+        make.bat ^
+          --debug ^
+          --use-ninja ^
+          --build-dir %BUILD_DIR% ^
+          --config Release ^
+          --install-libdir %BLENDER_ROOT%\lib\windows_x86_64_vc15 ^
+          --skip-deps ^
+          --no-build-python ^
+          full nobuild_creator
 
-      - name: Verify build
-        run: |
-          if not exist ..\build_windows_Full_x64_vc14_Release\bin\Release\blender.exe (
-            echo Blender executable not found
-            exit 1
-          )
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: blender-windows
-          path: ..\build_windows_Full_x64_vc14_Release\bin\Release\blender.exe
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: blender-build
+        path: |
+          ${{ env.BUILD_DIR }}\bin\Release\blender.exe
+          ${{ env.BUILD_DIR }}\bin\Release\*.dll
+        retention-days: 1

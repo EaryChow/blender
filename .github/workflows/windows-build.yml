@@ -5,34 +5,35 @@ on:
     branches: try_custom_cmp_node
   pull_request:
     branches: try_custom_cmp_node
-  workflow_dispatch:    # Manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-latest            # Windows VM with VS2022 installed :contentReference[oaicite:7]{index=7}
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4       # Latest checkout action 
 
       - name: 🧰 Install build tools
-        run: |
-          choco install -y git cmake python visualstudio2022buildtools
+        run: choco install -y git cmake python visualstudio2022buildtools  # Chocolatey packages 
+
+      - name: 🔧 Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install:
+            - make
+            - mingw-w64-x86_64-toolchain
 
       - name: 🔄 Update Blender externals
-        # Use MSYS2 so 'make update' works
         shell: msys2 {0}
         run: |
-          # Ensure submodules (some libs are in git)
           git submodule update --init --recursive
-
-          # Download all Windows precompiled libraries
           make update
 
       - name: 🛠 Setup MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+        uses: ilammy/msvc-dev-cmd@v1     # Auto-locates vcvars for VS2022 :contentReference[oaicite:10]{index=10}
 
       - name: 🏗 Configure Blender build
         run: |
@@ -44,7 +45,7 @@ jobs:
         run: cmake --build build --config Release -- /m
 
       - name: 📦 Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # v4 avoids deprecation errors 
         with:
           name: blender-windows
           path: build/bin/Release

@@ -9,31 +9,33 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest            # Windows VM with VS2022 installed :contentReference[oaicite:7]{index=7}
+    runs-on: windows-latest  # GitHub’s Windows VM with VS2022 :contentReference[oaicite:2]{index=2}
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4       # Latest checkout action 
+        uses: actions/checkout@v4  # Latest checkout action :contentReference[oaicite:3]{index=3}
 
       - name: 🧰 Install build tools
-        run: choco install -y git cmake python visualstudio2022buildtools  # Chocolatey packages 
+        run: choco install -y git cmake python visualstudio2022buildtools
 
       - name: 🔧 Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          update: true
-          install:
-            - make
+          update: true               # Update MSYS2 core packages :contentReference[oaicite:4]{index=4}
+          install:                   # Install Unix tools needed by `make update`
+            - make                    # YAML list under "install:" :contentReference[oaicite:5]{index=5}
             - mingw-w64-x86_64-toolchain
 
       - name: 🔄 Update Blender externals
-        shell: msys2 {0}
+        shell: msys2 {0}             # Enter MSYS2 shell context :contentReference[oaicite:6]{index=6}
         run: |
           git submodule update --init --recursive
           make update
 
       - name: 🛠 Setup MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1     # Auto-locates vcvars for VS2022 :contentReference[oaicite:10]{index=10}
+        uses: ilammy/msvc-dev-cmd@v1   # Auto‑locates and runs vcvars64.bat :contentReference[oaicite:7]{index=7}
+        with:
+          arch: x64
 
       - name: 🏗 Configure Blender build
         run: |
@@ -45,7 +47,7 @@ jobs:
         run: cmake --build build --config Release -- /m
 
       - name: 📦 Upload artifacts
-        uses: actions/upload-artifact@v4  # v4 avoids deprecation errors 
+        uses: actions/upload-artifact@v4  # Use v4 to avoid deprecation errors :contentReference[oaicite:8]{index=8}
         with:
           name: blender-windows
           path: build/bin/Release

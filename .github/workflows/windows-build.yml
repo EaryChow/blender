@@ -1,4 +1,4 @@
-name: Build Blender on Windows
+name: Build Windows
 
 on:
   push:
@@ -8,45 +8,33 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v2
         with:
-          submodules: recursive
+          ref: 'try_custom_cmp_node'
 
-      - name: Install Chocolatey and SVN
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-          choco install svn --yes --force
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v1.13.0
+        with:
+          cmake-version: '3.20.x'
 
-      - name: Checkout libraries with robust retries
-        shell: pwsh
-        run: |
-          $maxRetries = 10
-          $retryDelay = 120
-          $success = $false
-          
-          for ($i=1; $i -le $maxRetries; $i++) {
-              try {
-                  Write-Host "Attempt ${i}/${maxRetries}: Checking out libraries..."
-                  svn checkout --non-interactive --trust-server-cert https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
-                  if ($LASTEXITCODE -ne 0) { throw "SVN failed" }
-                  $success = $true
-                  break
-              } catch {
-                  Write-Host "SVN failed. Retrying in ${retryDelay} seconds..."
-                  Start-Sleep -Seconds $retryDelay
-              }
-          }
-          if (-not $success) { exit 1 }
-
-      - name: Force update dependencies
-        shell: cmd
-        run: echo y | make update
+      - name: Update libraries
+        run: .\make.bat update
 
       - name: Build Blender
-        run: make
-        shell: cmd
+        run: .\make.bat
+
+      - name: Verify build
+        run: |
+          if not exist ..\build_windows_Full_x64_vc14_Release\bin\Release\blender.exe (
+            echo Blender executable not found
+            exit 1
+          )
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: blender-windows
+          path: ..\build_windows_Full_x64_vc14_Release\bin\Release\blender.exe

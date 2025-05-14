@@ -19,19 +19,28 @@ jobs:
         run: |
           Set-ExecutionPolicy Bypass -Scope Process -Force
           [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-      - name: Install SVN
+      - name: Install SVN and dependencies
         shell: pwsh
-        run: choco install svn --yes
-
-      - name: Checkout libraries
-        run: svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15 lib/windows_x64
-        shell: cmd
-
-      - name: Update dependencies
         run: |
-          echo "y" | make update
+          choco install svn --yes
+          choco install 7zip --yes  # Needed for library extraction
+
+      - name: Download libraries via HTTPS (avoid SVN rate limits)
+        shell: pwsh
+        run: |
+          $libsUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/"
+          $tempZip = "blender_libs.zip"
+          
+          # Download files recursively using PowerShell (no SVN)
+          Invoke-WebRequest -Uri "$libsUrl" -OutFile $tempZip
+          7z x $tempZip -o"lib/windows_x64"
+          Remove-Item $tempZip
+
+      - name: Force update dependencies (auto-confirm)
+        run: |
+          echo y | make update
         shell: cmd
 
       - name: Build Blender

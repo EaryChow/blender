@@ -15,13 +15,16 @@ jobs:
         with:
           ref: 'try_custom_cmp_node'
 
+      - name: Install Subversion (SVN)
+        run: choco install svn -y
+
       - name: Set up CMake
         uses: jwlawson/actions-setup-cmake@v1.13.0
         with:
           cmake-version: '3.20.x'
 
       - name: Update libraries
-        run: .\make.bat update
+        run: echo y | .\make.bat update  # Automatically answer 'y' to download prompt
 
       - name: Build Blender
         run: .\make.bat

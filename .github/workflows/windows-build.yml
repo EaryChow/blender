@@ -1,0 +1,42 @@
+name: Windows Build (Blender)
+
+# Run on push or PR to your feature branch
+on:
+  push:
+    branches:
+      - feature/build-windows
+  pull_request:
+    branches:
+      - feature/build-windows
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🧰 Install dependencies with Chocolatey
+        run: |
+          choco install -y git cmake python visualstudio2022buildtools
+
+      - name: 🛠 Setup MSVC environment
+        run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+
+      - name: 🏗 Configure Blender build
+        run: |
+          mkdir build
+          cd build
+          cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release ..
+
+      - name: 🔨 Build Blender
+        run: |
+          cmake --build build --config Release -- /m
+
+      - name: 📦 Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: blender-windows
+          path: build/bin/Release

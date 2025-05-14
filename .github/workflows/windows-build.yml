@@ -24,7 +24,7 @@ jobs:
         run: choco install svn --yes
 
       - name: Checkout libraries
-        run: svn checkout https://svn.blender.org/svnroot/bf-blender/libraries-windows/trunk/lib-windows_x64/ ../lib/windows_x64
+        run: svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/ ../lib/windows_x64
         shell: cmd
 
       - name: Update dependencies

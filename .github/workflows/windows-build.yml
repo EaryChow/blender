@@ -9,59 +9,28 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          submodules: recursive
+          submodules: 'recursive'
 
       - name: Install Chocolatey
         shell: pwsh
         run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = `
-            [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).
-            DownloadString('https://chocolatey.org/install.ps1'))
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
       - name: Install SVN
         shell: pwsh
         run: choco install svn --yes
 
-      - name: Checkout external libraries (robust retry)
-        shell: pwsh
-        run: |
-          # Ensure lib folder exists
-          if (-not (Test-Path lib)) { New-Item lib -ItemType Directory | Out-Null }
-
-          # Define a retry function for svn
-          function Retry-SvnCheckout($url, $dest, $maxAttempts) {
-            for ($i = 1; $i -le $maxAttempts; $i++) {
-              Write-Host "Attempt $i of $maxAttempts: svn checkout $url → $dest"
-              svn checkout $url $dest
-              if ($LASTEXITCODE -eq 0) {
-                Write-Host "Checkout succeeded on attempt $i"
-                return
-              }
-              # On failure (e.g. HTTP 429), wait longer each time
-              $delay = 5 * $i
-              Write-Host "Checkout failed (exit code $LASTEXITCODE), retrying in $delay seconds..."
-              Start-Sleep -Seconds $delay
-            }
-            throw "svn checkout failed after $maxAttempts attempts."
-          }
-
-          # Run the retryable checkout
-          Set-Location lib
-          Retry-SvnCheckout `
-            "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/" `
-            "windows_x64" `
-            3
+      - name: Checkout libraries
+        run: svn checkout https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc17/ lib/windows_x64
+        shell: cmd
 
       - name: Update dependencies
-        shell: cmd
         run: make update
+        shell: cmd
 
       - name: Build Blender
-        shell: cmd
         run: make
+        shell: cmd

@@ -3,7 +3,7 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_custom_cmp_node
+      - try_github_actions
   workflow_dispatch:
 
 jobs:

@@ -507,7 +507,7 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {AGX_WORKING_LOG_LINEAR, "linear", 0, "Linear", ""},
     {AGX_WORKING_LOG_ACESCCT, "acescct", 0, "ACEScct", ""},
     {AGX_WORKING_LOG_ARRI_LOGC3, "arri_logc3", 0, "ARRI LogC3", ""},
-    {AGX_WORKING_LOG_ARRI_LOGC3, "arri_logc4", 0, "ARRI LogC4", ""},
+    {AGX_WORKING_LOG_ARRI_LOGC4, "arri_logc4", 0, "ARRI LogC4", ""},
     {AGX_WORKING_LOG_GENERIC_LOG2, "generic_log2", 0, "Generic Log2", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };

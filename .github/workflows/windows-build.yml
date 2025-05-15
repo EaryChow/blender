@@ -8,7 +8,6 @@ on:
 
 jobs:
   build-windows:
-    name: Build Blender on Windows
     runs-on: windows-latest
     env:
       BLENDER_VERSION: "4.5.0-alpha"
@@ -29,7 +28,7 @@ jobs:
       - name: Fetch precompiled Windows x64 libraries
         shell: powershell
         run: |
-          python build_files/utils/make_update.py --architecture="x64"
+          python build_files/utils/make_update.py --architecture="amd64"
 
       - name: Configure with Visual Studio 17 2022
         shell: bash

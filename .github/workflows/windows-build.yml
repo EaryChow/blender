@@ -53,8 +53,8 @@ jobs:
         run: |
           cd build_windows
           cpack -G ZIP
-          mv Blender-${{ env.BLENDER_VERSION }}-win64.zip \
-             $GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip
+          zipfile=$(ls *-windows64.zip)
+          mv "$zipfile" "$GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

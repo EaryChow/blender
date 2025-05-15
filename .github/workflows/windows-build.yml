@@ -19,18 +19,23 @@ jobs:
     - name: Install SVN
       run: choco install svn -y
 
-    - name: Setup environment
+    - name: Create library directory
       shell: pwsh
       run: |
-        New-Item -Path "lib\windows_x64" -ItemType Directory -Force
+        New-Item -Path "lib/windows_x64" -ItemType Directory -Force
         $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
     - name: Download libraries
-      shell: cmd
+      shell: pwsh
       run: |
-        echo Starting library download...
-        echo y | make.bat update
-        echo Libraries downloaded successfully!
+        $input = 'y'
+        $process = Start-Process -FilePath "make.bat" -ArgumentList "update" -NoNewWindow -PassThru -RedirectStandardInput input.txt
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) { exit 1 }
+
+    - name: Verify libraries
+      shell: cmd
+      run: dir lib\windows_x64
 
     - name: Build Blender
       shell: cmd

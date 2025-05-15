@@ -1,45 +1,19 @@
-name: Windows Build
+name: Build Blender on Windows
 
 on:
   push:
-    branches: [ "try_custom_cmp_node" ]
+    branches:
+      - try_custom_cmp_node
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        repository: EaryChow/blender
-        submodules: recursive
-        ref: try_custom_cmp_node
-
-    - name: Install SVN
-      run: choco install svn -y
-
-    - name: Setup environment
-      shell: pwsh
-      run: |
-        # Refresh PATH and create library directory
-        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-        Update-SessionEnvironment
-        New-Item -Path "lib\windows_x64" -ItemType Directory -Force
-
-    - name: Download libraries
-      shell: cmd
-      run: |
-        powershell -Command "Start-Process -Wait -NoNewWindow -FilePath 'make.bat' -ArgumentList 'update' -RedirectStandardInput 'input.txt'"
-      env:
-        BLENDER_LIBRARY_PATH: ${{ github.workspace }}/lib/windows_x64
-
-    - name: Build Blender
-      shell: cmd
-      run: make.bat
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: blender-build
-        path: build_windows_*\bin\Release\blender.exe
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Download libraries
+        shell: cmd
+        run: make update
+      - name: Build Blender
+        shell: cmd
+        run: make

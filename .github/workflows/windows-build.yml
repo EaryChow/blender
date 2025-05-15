@@ -31,7 +31,7 @@ jobs:
         shell: cmd
         run: |
           REM Populate lib/windows_x64 via Blender’s Windows update script
-          make.bat update  # must be run via make.bat, not 'make' :contentReference[oaicite:1]{index=1}
+          make.bat update
 
       - name: Configure with Visual Studio 17 2022
         shell: bash

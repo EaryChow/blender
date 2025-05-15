@@ -22,10 +22,10 @@ jobs:
     - name: Setup MSBuild environment
       uses: microsoft/setup-msbuild@v1
 
-    - name: Download libraries (make update)
+    - name: Download libraries
       shell: cmd
       run: |
-        # Answer 'y' to library download prompt and handle path for fork
+        echo Initializing library download...
         echo y | make update
 
     - name: Build Blender

@@ -33,7 +33,7 @@ jobs:
       shell: cmd
       run: |
         cd %BLENDER_ROOT%
-        make update
+        echo y | make update
 
     - name: Build Blender
       shell: cmd

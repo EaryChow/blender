@@ -11,7 +11,6 @@ jobs:
     runs-on: windows-latest
     env:
       BLENDER_ROOT: ${{ github.workspace }}
-      BUILD_DIR: build_windows
 
     steps:
     - name: Checkout code
@@ -20,67 +19,33 @@ jobs:
         submodules: recursive
         fetch-depth: 0
 
-    - name: Setup Visual Studio 2022
+    - name: Install Visual Studio 2022 Build Tools
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
 
-    - name: Install build tools
+    - name: Install Dependencies
+      shell: cmd
       run: |
-        choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-        choco install -y ninja
+        choco install -y git cmake --installargs 'ADD_CMAKE_TO_PATH=System'
 
-    - name: Download Python Libraries
-      run: |
-        $pythonUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/python?format=zip"
-        $destPath = "$env:BLENDER_ROOT\lib\windows_x86_64_vc15"
-        $zipPath = "$destPath\python.zip"
-        
-        # Create directory structure
-        New-Item -ItemType Directory -Path $destPath -Force
-        
-        # Download with retries and handle insecure redirect
-        $retryCount = 0
-        $maxRetries = 5
-        do {
-            try {
-                Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath `
-                    -AllowInsecureRedirect `
-                    -UserAgent "Blender-CI-Script" `
-                    -ErrorAction Stop
-                break
-            }
-            catch {
-                $retryCount++
-                if ($retryCount -ge $maxRetries) { throw }
-                Write-Host "Download failed, retry $retryCount in $(30 * $retryCount) seconds..."
-                Start-Sleep -Seconds (30 * $retryCount)
-            }
-        } while ($true)
-        
-        # Extract and clean up
-        Expand-Archive -Path $zipPath -DestinationPath $destPath
-        Remove-Item $zipPath
-
-    - name: Configure and build
+    - name: Download Libraries (make update)
       shell: cmd
       run: |
         cd %BLENDER_ROOT%
-        make.bat ^
-          --debug ^
-          --use-ninja ^
-          --build-dir %BUILD_DIR% ^
-          --config Release ^
-          --install-libdir %BLENDER_ROOT%\lib\windows_x86_64_vc15 ^
-          --skip-deps ^
-          --no-build-python ^
-          full nobuild_creator
+        make update
 
-    - name: Archive build artifacts
+    - name: Build Blender
+      shell: cmd
+      run: |
+        cd %BLENDER_ROOT%
+        make
+
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: blender-build
         path: |
-          ${{ env.BUILD_DIR }}\bin\Release\blender.exe
-          ${{ env.BUILD_DIR }}\bin\Release\*.dll
+          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\blender.exe
+          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\*.dll
         retention-days: 1

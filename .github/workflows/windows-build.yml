@@ -1,0 +1,59 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - try_github_actions
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      BLENDER_VERSION: "4.5.0-alpha"
+      BUILD_TYPE: "Release"
+
+    steps:
+      - name: Checkout repo & submodules
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Init & update submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Fetch precompiled Windows x64 libraries
+        shell: powershell
+        run: |
+          python build_files/utils/make_update.py --architecture="amd64"
+
+      - name: Configure with Visual Studio 17 2022
+        shell: bash
+        run: |
+          mkdir build_windows && cd build_windows
+          cmake .. \
+            -C ../build_files/buildbot/config/blender_windows.cmake \
+            -G "Visual Studio 17 2022" \
+            -A x64 \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        shell: bash
+        run: |
+          cd build_windows
+          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package build
+        shell: bash
+        run: |
+          cd build_windows/bin/${{ env.BUILD_TYPE }}
+          powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-windows-${{ env.BLENDER_VERSION }}
+          path: blender-windows-${{ env.BLENDER_VERSION }}.zip

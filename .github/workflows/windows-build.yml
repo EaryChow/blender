@@ -4,8 +4,8 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_custom_cmp_node  
-  workflow_dispatch:       
+      - try_custom_cmp_node  # your branch
+  workflow_dispatch:       # manual trigger
 
 jobs:
   build-windows:
@@ -23,32 +23,32 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Initialize and update submodules
+      - name: Init & update submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
 
-      - name: Configure CMake
+      - name: Configure with Blender's Windows CMake config
         shell: bash
         run: |
           mkdir -p build_windows
           cd build_windows
+          # Point CMake at the Blender-provided Windows setup file:
           cmake .. \
+            -C ../build_files/buildbot/config/blender_windows.cmake \
             -G Ninja \
             -A x64 \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -S . \
-            -B .
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build with Ninja
         shell: bash
         run: |
-          cmake --build build_windows --config ${{ env.BUILD_TYPE }} --parallel
+          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
 
       - name: Package build output
         shell: bash
         run: |
-          cd build_windows/bin/${{ env.BUILD_TYPE }}
+          cd bin/${{ env.BUILD_TYPE }}
           powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
 
       - name: Upload build artifact

@@ -34,7 +34,7 @@ jobs:
         call make
 
     - name: Upload Blender executable
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: blender-build
         path: blender/build_windows_*/bin/Release/blender.exe

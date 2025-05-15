@@ -25,7 +25,6 @@ jobs:
     - name: Setup build environment
       shell: pwsh
       run: |
-        # Create required library directory
         New-Item -Path "lib/windows_x64" -ItemType Directory -Force
         refreshenv
 

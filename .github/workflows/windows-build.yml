@@ -2,50 +2,36 @@ name: Windows Build
 
 on:
   push:
-    branches: [try_custom_cmp_node]
-  pull_request:
-    branches: [try_custom_cmp_node]
+    branches: [ "try_custom_cmp_node" ]
 
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      BLENDER_ROOT: ${{ github.workspace }}
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
-        fetch-depth: 0
+        ref: try_custom_cmp_node
 
-    - name: Install Visual Studio 2022 Build Tools
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
+    - name: Setup MSBuild environment
+      uses: microsoft/setup-msbuild@v1
 
-    - name: Install Dependencies
+    - name: Download libraries (make update)
       shell: cmd
       run: |
-        choco install -y git cmake svn --installargs 'ADD_CMAKE_TO_PATH=System'
-
-    - name: Download Libraries (make update)
-      shell: cmd
-      run: |
-        cd %BLENDER_ROOT%
+        cd blender
         echo y | make update
 
     - name: Build Blender
       shell: cmd
       run: |
-        cd %BLENDER_ROOT%
+        cd blender
         make
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
+    - name: Upload Blender executable
+      uses: actions/upload-artifact@v3
       with:
         name: blender-build
-        path: |
-          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\blender.exe
-          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\*.dll
-        retention-days: 1
+        path: build_windows_*/bin/Release/blender.exe

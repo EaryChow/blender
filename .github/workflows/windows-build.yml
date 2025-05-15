@@ -8,9 +8,6 @@ jobs:
   build:
     runs-on: windows-latest
 
-    env:
-      BLENDER_LIBRARY_PATH: ${{ github.workspace }}/lib/windows_x64
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -22,18 +19,23 @@ jobs:
     - name: Install SVN
       run: choco install svn -y
 
-    - name: Setup build environment
+    - name: Setup environment
       shell: pwsh
       run: |
-        New-Item -Path "lib/windows_x64" -ItemType Directory -Force
-        refreshenv
+        New-Item -Path "lib/windows_x64" -ItemType Directory -Forc
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        Update-SessionEnvironment
 
     - name: Download libraries
       shell: cmd
       run: |
         echo Starting library download...
-        powershell -Command "Write-Output 'y' | make update"
-        echo Library download completed!
+        powershell -Command "echo y | make update"
+        echo Libraries downloaded successfully!
+
+    - name: Verify libraries
+      shell: cmd
+      run: dir lib\windows_x64
 
     - name: Build Blender
       shell: cmd

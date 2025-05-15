@@ -1,66 +1,58 @@
-name: Build master
+# .github/workflows/windows-build.yml
+name: Windows Build
 
 on:
   push:
     branches:
-      - try_custom_cmp_node
-  # allow manual dispatches
-  workflow_dispatch:
+      - try_custom_cmp_node  
+  workflow_dispatch:       
 
 jobs:
-  builder:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        builder: ["windows_master"]
-        include:
-          - builder: "windows_master"
-            os: "windows-2019"
-            branch: "try_custom_cmp_node"
+  build-windows:
+    name: Build Blender on Windows
+    runs-on: windows-latest
+
+    env:
+      BLENDER_VERSION: "4.5.0-alpha"
+      BUILD_TYPE: "Release"
+
     steps:
-      - name: Cache lib folder
-        uses: actions/cache@v4
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v3
         with:
-          path: ${{ github.workspace }}/lib
-          key: ${{ matrix.builder }}-lib-${{ github.ref }}-${{ runner.OS }}
-          restore-keys: |
-            ${{ matrix.builder }}-lib-${{ github.ref }}
-            ${{ matrix.builder }}-lib
-
-      - name: Set up Python 3
-        uses: actions/setup-python@v3
-        with:
-          python-version: 3.11
-
-      - name: worker_preparation
-        run: mkdir -p ${{ github.workspace }}/build
-
-      - name: Checkout Blender ${{ matrix.branch }}
-        uses: actions/checkout@v2
-        with:
-          path: blender.git
+          submodules: recursive
           fetch-depth: 0
-          submodules: false
 
-      - name: submodules and libraries update
-        working-directory: ${{ github.workspace }}/build
-        run: cmake ../blender.git/build_files/buildbot/config/blender_windows.cmake ${{ matrix.builder }} ${{ matrix.branch }}
+      - name: Initialize and update submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
 
-      - name: compile
-        working-directory: ${{ github.workspace }}/build
-        run: cmake ../blender.git/build_files/buildbot/config/blender_windows.cmake ${{ matrix.builder }} ${{ matrix.branch }}
+      - name: Configure CMake
+        shell: bash
+        run: |
+          mkdir -p build_windows
+          cd build_windows
+          cmake .. \
+            -G Ninja \
+            -A x64 \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -S . \
+            -B .
 
-      - name: test
-        working-directory: ${{ github.workspace }}/build
-        run: cmake ../blender.git/build_files/buildbot/config/blender_windows.cmake ${{ matrix.builder }} ${{ matrix.branch }}
+      - name: Build with Ninja
+        shell: bash
+        run: |
+          cmake --build build_windows --config ${{ env.BUILD_TYPE }} --parallel
 
-      - name: package
-        working-directory: ${{ github.workspace }}/build
-        run: cmake ../blender.git/build_files/buildbot/config/blender_windows.cmake ${{ matrix.builder }} ${{ matrix.branch }}
+      - name: Package build output
+        shell: bash
+        run: |
+          cd build_windows/bin/${{ env.BUILD_TYPE }}
+          powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
 
-      - name: Create artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: blender-${{ matrix.builder }}
-          path: ${{ github.workspace }}/install
+          name: blender-windows-${{ env.BLENDER_VERSION }}
+          path: blender-windows-${{ env.BLENDER_VERSION }}.zip

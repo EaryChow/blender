@@ -27,17 +27,13 @@ jobs:
     - name: Install Dependencies
       shell: cmd
       run: |
-        choco install -y git cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install -y git cmake svn --installargs 'ADD_CMAKE_TO_PATH=System'
 
     - name: Download Libraries (make update)
       shell: cmd
       run: |
         cd %BLENDER_ROOT%
-        (
-          echo y
-          echo.
-        ) > response.txt
-        make update < response.txt
+        echo y | make update
 
     - name: Build Blender
       shell: cmd
@@ -50,6 +46,6 @@ jobs:
       with:
         name: blender-build
         path: |
-          %BLENDER_ROOT%\build_windows\bin\Release\blender.exe
-          %BLENDER_ROOT%\build_windows\bin\Release\*.dll
+          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\blender.exe
+          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\*.dll
         retention-days: 1

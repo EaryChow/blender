@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Download libraries
         shell: cmd
-        run: make update /y
+        run: make update y
       - name: Build Blender
         shell: cmd
         run: make

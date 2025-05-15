@@ -19,19 +19,20 @@ jobs:
     - name: Install SVN
       run: choco install svn -y
 
-    - name: Create library directory
-      shell: pwsh
+    - name: Refresh environment
+      shell: cmd
       run: |
-        New-Item -Path "lib/windows_x64" -ItemType Directory -Force
-        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        refreshenv
+        svn --version
+
+    - name: Create library directory
+      shell: cmd
+      run: mkdir lib\windows_x64
 
     - name: Download libraries
-      shell: pwsh
+      shell: cmd
       run: |
-        $input = 'y'
-        $process = Start-Process -FilePath "make.bat" -ArgumentList "update" -NoNewWindow -PassThru -RedirectStandardInput input.txt
-        $process.WaitForExit()
-        if ($process.ExitCode -ne 0) { exit 1 }
+        echo y | make.bat update
 
     - name: Verify libraries
       shell: cmd

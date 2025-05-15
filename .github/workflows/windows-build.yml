@@ -1,4 +1,3 @@
-# .github/workflows/windows-build.yml
 name: Windows Build
 
 on:
@@ -22,16 +21,15 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Initialize & update submodules
+      - name: Init & update submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
 
-      - name: Fetch precompiled libraries
-        shell: cmd
+      - name: Fetch precompiled Windows x64 libraries
+        shell: powershell
         run: |
-          REM Populate lib/windows_x64 via Blender’s Windows update script
-          make.bat update
+          python build_files/utils/make_update.py --architecture="x64"
 
       - name: Configure with Visual Studio 17 2022
         shell: bash

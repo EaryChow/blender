@@ -29,12 +29,34 @@ jobs:
       run: |
         choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install -y ninja
-        choco install -y svn
 
-    - name: Setup Python
+    - name: Download Python Libraries
       run: |
-        $pythonUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/python"
-        svn checkout $pythonUrl "$env:BLENDER_ROOT\lib\windows_x86_64_vc15\python"
+        $pythonUrl = "https://svn.blender.org/svnroot/bf-blender/trunk/lib/win64_vc15/python?format=zip"
+        $destPath = "$env:BLENDER_ROOT\lib\windows_x86_64_vc15"
+        $zipPath = "$destPath\python.zip"
+        
+        # Create directory structure
+        New-Item -ItemType Directory -Path $destPath -Force
+        
+        # Download with retries
+        $retryCount = 0
+        $maxRetries = 3
+        do {
+            try {
+                Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath -ErrorAction Stop
+                break
+            }
+            catch {
+                $retryCount++
+                if ($retryCount -ge $maxRetries) { throw }
+                Start-Sleep -Seconds (30 * $retryCount)
+            }
+        } while ($true)
+        
+        # Extract and clean up
+        Expand-Archive -Path $zipPath -DestinationPath $destPath
+        Remove-Item $zipPath
 
     - name: Configure and build
       shell: cmd

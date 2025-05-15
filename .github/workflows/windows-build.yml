@@ -33,7 +33,11 @@ jobs:
       shell: cmd
       run: |
         cd %BLENDER_ROOT%
-        echo y | make update
+        (
+          echo y
+          echo.
+        ) > response.txt
+        make update < response.txt
 
     - name: Build Blender
       shell: cmd
@@ -46,6 +50,6 @@ jobs:
       with:
         name: blender-build
         path: |
-          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\blender.exe
-          ${{ env.BLENDER_ROOT }}\build_windows\bin\Release\*.dll
+          %BLENDER_ROOT%\build_windows\bin\Release\blender.exe
+          %BLENDER_ROOT%\build_windows\bin\Release\*.dll
         retention-days: 1

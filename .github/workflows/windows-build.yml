@@ -13,25 +13,28 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
-        ref: try_custom_cmp_node
+        path: 'blender'  # Explicitly check out to blender directory
 
     - name: Setup MSBuild environment
       uses: microsoft/setup-msbuild@v1
+
+    - name: Install CMake
+      uses: lukka/get-cmake@latest
 
     - name: Download libraries (make update)
       shell: cmd
       run: |
         cd blender
-        echo y | make update
+        echo y | call make update
 
     - name: Build Blender
       shell: cmd
       run: |
         cd blender
-        make
+        call make
 
     - name: Upload Blender executable
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: blender-build
-        path: build_windows_*/bin/Release/blender.exe
+        path: blender/build_windows_*/bin/Release/blender.exe

@@ -9,22 +9,29 @@ on:
 
 jobs:
   build-windows:
+    name: Build Blender on Windows
     runs-on: windows-latest
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
 
     steps:
-      - name: Checkout repo & submodules
+      - name: Checkout repository and submodules
         uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Update submodules
+      - name: Initialize & update submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
+
+      - name: Fetch precompiled libraries
+        shell: bash
+        run: |
+          # Populates lib/windows_x64 via Blender's update script
+          make update
 
       - name: Configure with Visual Studio 17 2022
         shell: bash

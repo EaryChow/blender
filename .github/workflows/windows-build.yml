@@ -3,12 +3,14 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_github_actions
+      - try_custom_cmp_node
   workflow_dispatch:
 
 jobs:
   build-windows:
+    name: Build Blender on Windows
     runs-on: windows-latest
+
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
@@ -33,7 +35,8 @@ jobs:
       - name: Configure with Visual Studio 17 2022
         shell: bash
         run: |
-          mkdir build_windows && cd build_windows
+          mkdir build_windows
+          cd build_windows
           cmake .. \
             -C ../build_files/buildbot/config/blender_windows.cmake \
             -G "Visual Studio 17 2022" \
@@ -47,10 +50,11 @@ jobs:
           cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
 
       - name: Package build
-        shell: bash
+        shell: pwsh
         run: |
           cd build_windows/bin/${{ env.BUILD_TYPE }}
-          powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
+          $zipPath = Join-Path -Path "${{ github.workspace }}" -ChildPath "blender-windows-${{ env.BLENDER_VERSION }}.zip"
+          Compress-Archive -Path * -DestinationPath $zipPath
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

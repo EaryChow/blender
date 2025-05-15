@@ -12,29 +12,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        repository: EaryChow/blender
         submodules: recursive
-        path: 'blender'  # Explicitly check out to blender directory
+        ref: try_custom_cmp_node
+
+    - name: Install SVN
+      run: choco install svn -y
 
     - name: Setup MSBuild environment
       uses: microsoft/setup-msbuild@v1
 
-    - name: Install CMake
-      uses: lukka/get-cmake@latest
-
     - name: Download libraries (make update)
       shell: cmd
       run: |
-        cd blender
-        echo y | call make update
+        # Answer 'y' to library download prompt and handle path for fork
+        echo y | make update
 
     - name: Build Blender
       shell: cmd
-      run: |
-        cd blender
-        call make
+      run: make
 
     - name: Upload Blender executable
       uses: actions/upload-artifact@v4
       with:
         name: blender-build
-        path: blender/build_windows_*/bin/Release/blender.exe
+        path: build_windows_*/bin/Release/blender.exe

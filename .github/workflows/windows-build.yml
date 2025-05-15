@@ -4,54 +4,50 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_custom_cmp_node  # your branch
-  workflow_dispatch:       # manual trigger
+      - try_custom_cmp_node
+  workflow_dispatch:
 
 jobs:
   build-windows:
-    name: Build Blender on Windows
     runs-on: windows-latest
-
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
 
     steps:
-      - name: Checkout repository and submodules
+      - name: Checkout repo & submodules
         uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Init & update submodules
+      - name: Update submodules
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive
 
-      - name: Configure with Blender's Windows CMake config
+      - name: Configure with Visual Studio 17 2022
         shell: bash
         run: |
-          mkdir -p build_windows
-          cd build_windows
-          # Point CMake at the Blender-provided Windows setup file:
+          mkdir build_windows && cd build_windows
           cmake .. \
             -C ../build_files/buildbot/config/blender_windows.cmake \
-            -G Ninja \
+            -G "Visual Studio 17 2022" \
             -A x64 \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
-      - name: Build with Ninja
+      - name: Build
         shell: bash
         run: |
           cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
 
-      - name: Package build output
+      - name: Package build
         shell: bash
         run: |
           cd bin/${{ env.BUILD_TYPE }}
           powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
 
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blender-windows-${{ env.BLENDER_VERSION }}

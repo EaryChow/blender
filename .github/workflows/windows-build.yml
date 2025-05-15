@@ -16,7 +16,7 @@ jobs:
       BUILD_TYPE: "Release"
 
     steps:
-      - name: Checkout repository and submodules
+      - name: Checkout repo & submodules
         uses: actions/checkout@v3
         with:
           submodules: recursive
@@ -28,10 +28,10 @@ jobs:
           git submodule update --init --recursive
 
       - name: Fetch precompiled libraries
-        shell: bash
+        shell: cmd
         run: |
-          # Populates lib/windows_x64 via Blender's update script
-          make update
+          REM Populate lib/windows_x64 via Blender’s Windows update script
+          make.bat update  # must be run via make.bat, not 'make' :contentReference[oaicite:1]{index=1}
 
       - name: Configure with Visual Studio 17 2022
         shell: bash

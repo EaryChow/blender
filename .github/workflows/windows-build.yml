@@ -13,17 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        builder: ["windows_master", "macos_master", "linux_master"]
+        builder: ["windows_master"]
         include:
           - builder: "windows_master"
             os: "windows-2019"
-            branch: "master"
-          - builder: "macos_master"
-            os: "macos-10.15"
-            branch: "master"
-          - builder: "linux_master"
-            os: "ubuntu-20.04"
-            branch: "master"
+            branch: "try_custom_cmp_node"
     steps:
       - name: Cache lib folder
         uses: actions/cache@v4
@@ -34,10 +28,10 @@ jobs:
             ${{ matrix.builder }}-lib-${{ github.ref }}
             ${{ matrix.builder }}-lib
 
-      - name: Set up Python 3.11.11
+      - name: Set up Python 3
         uses: actions/setup-python@v3
         with:
-          python-version: 3.11.11
+          python-version: 3.11
 
       - name: worker_preparation
         run: mkdir -p ${{ github.workspace }}/build

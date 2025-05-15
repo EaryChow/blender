@@ -22,27 +22,22 @@ jobs:
     - name: Setup environment
       shell: pwsh
       run: |
-        New-Item -Path "lib/windows_x64" -ItemType Directory -Forc
-        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-        Update-SessionEnvironment
+        New-Item -Path "lib\windows_x64" -ItemType Directory -Force
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
     - name: Download libraries
       shell: cmd
       run: |
         echo Starting library download...
-        powershell -Command "echo y | make update"
+        echo y | make.bat update
         echo Libraries downloaded successfully!
-
-    - name: Verify libraries
-      shell: cmd
-      run: dir lib\windows_x64
 
     - name: Build Blender
       shell: cmd
-      run: make
+      run: make.bat
 
     - name: Upload Blender executable
       uses: actions/upload-artifact@v4
       with:
         name: blender-build
-        path: build_windows_*/bin/Release/blender.exe
+        path: build_windows_*\bin\Release\blender.exe

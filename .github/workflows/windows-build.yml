@@ -8,6 +8,9 @@ jobs:
   build:
     runs-on: windows-latest
 
+    env:
+      BLENDER_LIBRARY_PATH: ${{ github.workspace }}/lib/windows_x64
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -19,14 +22,19 @@ jobs:
     - name: Install SVN
       run: choco install svn -y
 
-    - name: Setup MSBuild environment
-      uses: microsoft/setup-msbuild@v1
+    - name: Setup build environment
+      shell: pwsh
+      run: |
+        # Create required library directory
+        New-Item -Path "lib/windows_x64" -ItemType Directory -Force
+        refreshenv
 
     - name: Download libraries
       shell: cmd
       run: |
-        echo Initializing library download...
-        echo y | make update
+        echo Starting library download...
+        powershell -Command "Write-Output 'y' | make update"
+        echo Library download completed!
 
     - name: Build Blender
       shell: cmd

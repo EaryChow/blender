@@ -39,17 +39,21 @@ jobs:
         # Create directory structure
         New-Item -ItemType Directory -Path $destPath -Force
         
-        # Download with retries
+        # Download with retries and handle insecure redirect
         $retryCount = 0
-        $maxRetries = 3
+        $maxRetries = 5
         do {
             try {
-                Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath -ErrorAction Stop
+                Invoke-WebRequest -Uri $pythonUrl -OutFile $zipPath `
+                    -AllowInsecureRedirect `
+                    -UserAgent "Blender-CI-Script" `
+                    -ErrorAction Stop
                 break
             }
             catch {
                 $retryCount++
                 if ($retryCount -ge $maxRetries) { throw }
+                Write-Host "Download failed, retry $retryCount in $(30 * $retryCount) seconds..."
                 Start-Sleep -Seconds (30 * $retryCount)
             }
         } while ($true)

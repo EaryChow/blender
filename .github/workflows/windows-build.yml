@@ -52,9 +52,10 @@ jobs:
       - name: Verify installation
         shell: pwsh
         run: |
-          Write-Host "Checking install directory:"
-          Get-ChildItem -Path install -Recurse
-          Test-Path install/blender.exe
+          if (-not (Test-Path "install/blender.exe")) {
+              Write-Error "Blender executable not found!"
+              exit 1
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

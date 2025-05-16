@@ -20,9 +20,9 @@ jobs:
           $lfs_url = "https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-windows-amd64-v3.5.1.zip"
           Invoke-WebRequest -Uri $lfs_url -OutFile git-lfs.zip
           Expand-Archive git-lfs.zip -DestinationPath git-lfs
-          cd git-lfs
-          .\install.ps1 -ExecutionPolicy Bypass
-          git lfs install --force
+          cd git-lfs\usr\bin
+          .\git-lfs.exe install --force
+          $env:PATH = "$pwd;" + $env:PATH
 
       - name: Checkout repo & submodules
         uses: actions/checkout@v3

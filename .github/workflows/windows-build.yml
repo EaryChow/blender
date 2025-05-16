@@ -17,10 +17,11 @@ jobs:
       - name: Install Git LFS (Windows)
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://github.com/git-lfs/git-lfs/releases/latest/download/git-lfs-windows-amd64.zip" -OutFile git-lfs.zip
+          $lfs_url = "https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-windows-amd64-v3.5.1.zip"
+          Invoke-WebRequest -Uri $lfs_url -OutFile git-lfs.zip
           Expand-Archive git-lfs.zip -DestinationPath git-lfs
           cd git-lfs
-          ./install.ps1
+          .\install.ps1 -ExecutionPolicy Bypass
           git lfs install --force
 
       - name: Checkout repo & submodules

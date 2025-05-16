@@ -14,16 +14,28 @@ jobs:
       BUILD_TYPE: "Release"
 
     steps:
+      - name: Install Git LFS (Windows)
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-windows-amd64-v3.5.1.zip" -OutFile git-lfs.zip
+          Expand-Archive git-lfs.zip -DestinationPath git-lfs
+          cd git-lfs
+          ./install.ps1
+          git lfs install --force
+
       - name: Checkout repo & submodules
         uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
+          lfs: true
 
       - name: Init & update submodules
+        shell: bash
         run: |
           git submodule sync --recursive
-          git submodule update --init --recursive
+          git submodule update --init --recursive --force
+          git submodule foreach --recursive 'git lfs install && git lfs pull'
 
       - name: Fetch precompiled libraries
         shell: powershell
@@ -54,6 +66,11 @@ jobs:
         run: |
           if (-not (Test-Path "install/blender.exe")) {
               Write-Error "Blender executable not found!"
+              exit 1
+          }
+          $blendContent = Get-Content "install/4.5/scripts/startup/bl_operators/startup.blend" -Raw
+          if ($blendContent -match "oid sha256") {
+              Write-Error "Git LFS files not resolved!"
               exit 1
           }
 

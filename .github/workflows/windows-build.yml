@@ -48,14 +48,8 @@ jobs:
           cd build_windows
           cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
-      - name: Package build
-        shell: pwsh
-        run: |
-          $src = Join-Path "${{ github.workspace }}" 'build_windows/install'
-          $dest = Join-Path "${{ github.workspace }}" "blender-windows-${{ env.BLENDER_VERSION }}.zip"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blender-windows-${{ env.BLENDER_VERSION }}
-          path: blender-windows-${{ env.BLENDER_VERSION }}.zip
+          path: build_windows/install

@@ -53,7 +53,6 @@ jobs:
         run: |
           $src = Join-Path "${{ github.workspace }}" 'build_windows/install'
           $dest = Join-Path "${{ github.workspace }}" "blender-windows-${{ env.BLENDER_VERSION }}.zip"
-          Compress-Archive -Path "$src\*" -DestinationPath $dest
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

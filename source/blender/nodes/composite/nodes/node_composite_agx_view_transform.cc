@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 // Include Headers
+#include "BKE_node.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.hh"
@@ -13,6 +14,7 @@
 #include "NOD_multi_function.hh"
 #include "IMB_colormanagement.hh"
 #include "node_cmp_agx_utils.hh"
+#include "RNA_access.hh"
 
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
@@ -50,21 +52,21 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
      .compositor_domain_priority(0);
 
   /* Panel for Working Space setting. */
-  PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
+  auto &working_space_panel = b.add_panel("Working Space").default_closed(true);
   working_space_panel.add_property<decl::Enum>("Working Primaries")
     .set_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
-  PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
+  auto &working_log_panel = b.add_panel("Working Log").default_closed(true);
   working_log_panel.add_property<decl::Enum>("Working Log")
     .set_items(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
   /* Panel for log and sigmoid curve settings. */
-  PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
+  auto &curve_panel = b.add_panel("Curve").default_closed(false);
 
   curve_panel.add_input<decl::Float>("General Contrast")
     .default_value(2.4f)
@@ -121,7 +123,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
         "Only in use when working log is set to Generic Log2");
 
   /* Panel for inset matrix settings. */
-  PanelDeclarationBuilder &inset_panel = b.add_panel("Attenuation").default_closed(true);
+  auto &inset_panel = b.add_panel("Attenuation").default_closed(true);
      
   inset_panel.add_input<decl::Vector>("Hue Flights")
     .default_value({2.13976f, -1.22827f, -3.05174f})
@@ -142,7 +144,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
         "by which the chromaticity scales inwards before curve");
      
   /* Panel for outset matrix settings. */
-  PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
+  auto &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
 
   outset_panel.add_input<decl::Boolean>("Use Same Settings as Attenuation")
     .default_value(false)
@@ -170,7 +172,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
         "by which the chromaticity scales outwards after curve");
       
   /* Panel for look adjustments settings. */
-  PanelDeclarationBuilder &look_panel = b.add_panel("Look").default_closed(false);
+  auto &look_panel = b.add_panel("Look").default_closed(false);
 
   look_panel.add_input<decl::Float>("Per-Channel Hue Flight")
     .default_value(0.4f)
@@ -200,7 +202,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
         "influencing the overall hue of the tint applied after curve");
   
    /* Panel for Output Gamut Limit settings. */
-  PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
+  auto &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
   display_gamut_panel.add_property<decl::Enum>("Display Primaries")
     .set_items(agx_primaries_items)

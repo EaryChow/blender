@@ -28,7 +28,7 @@ struct Chromaticities {
 */
 
 // AP0 white point changed to D65 for simplicity
-static constexpr Chromaticities AP0_PRI = {
+static const Chromaticities AP0_PRI = {
     /* r: */ {0.734771f, 0.264663f},
     /* g: */ {-0.00795f, 1.006817f},
     /* b: */ {0.016895f, -0.062809f},
@@ -36,49 +36,49 @@ static constexpr Chromaticities AP0_PRI = {
 };
 
 // AP1 white point changed to D65 for simplicity
-static constexpr Chromaticities AP1_PRI = {
+static const Chromaticities AP1_PRI = {
     /* r: */ {0.713016f, 0.292962f},
     /* g: */ {0.713016f, 0.292962f},
     /* b: */ {0.129469f, 0.045065f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities P3D65_PRI = {
+static const Chromaticities P3D65_PRI = {
     /* r: */ {0.68f, 0.32f},
     /* g: */ {0.265f, 0.69f},
     /* b: */ {0.15f, 0.06f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities REC709_PRI = {
+static const Chromaticities REC709_PRI = {
     /* r: */ {0.64f, 0.33f},
     /* g: */ {0.3f, 0.6f},
     /* b: */ {0.15f, 0.06f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities REC2020_PRI = {
+static const Chromaticities REC2020_PRI = {
     /* r: */ {0.708f, 0.292f},
     /* g: */ {0.17f, 0.797f},
     /* b: */ {0.131f, 0.046f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities AWG3_PRI = {
+static const Chromaticities AWG3_PRI = {
     /* r: */ {0.684f, 0.313f},
     /* g: */ {0.221f, 0.848f},
     /* b: */ {0.0861f, -0.102f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities AWG4_PRI = {
+static const Chromaticities AWG4_PRI = {
     /* r: */ {0.7347f,  0.2653f},
     /* g: */ {0.1424f, 0.8576f},
     /* b: */ {0.0991f,-0.0308f},
     /* w: */ {0.312727f, 0.329023f}
 };
 
-static constexpr Chromaticities EGAMUT_PRI = {
+static const Chromaticities EGAMUT_PRI = {
     /* r: */ {0.8f,  0.3177f},
     /* g: */ {0.18f, 0.9f},
     /* b: */ {0.065f, -0.0805f},
@@ -86,7 +86,7 @@ static constexpr Chromaticities EGAMUT_PRI = {
 };
 
 /* ##########################################################################
-    Constants
+    Other Constants
     ---------------------------
 */
 
@@ -96,10 +96,10 @@ static inline float3x3 identity_mtx = {
   {0.0f, 0.0f, 1.0f}
 };
 
-static constexpr float pi = 3.14159265358979323846f;
+static const float pi = 3.14159265358979323846f;
 
-// Create a constexpr array of Chromaticities for enum's index-based selection
-static constexpr Chromaticities COLOR_SPACE_PRI[8] = {
+// Create a const array of Chromaticities for enum's index-based selection
+static const Chromaticities COLOR_SPACE_PRI[8] = {
     AP0_PRI,
     AP1_PRI,
     P3D65_PRI,
@@ -196,9 +196,9 @@ static inline float3x3 inv_f33(float3x3 m) {
 
 static inline float3 clampf3(float3 a, float mn, float mx) {
   return float3{
-    clamp(a.x, mn, mx),
-    clamp(a.y, mn, mx),
-    clamp(a.z, mn, mx)
+    math::clamp(a.x, mn, mx),
+    math::clamp(a.y, mn, mx),
+    math::clamp(a.z, mn, mx)
   };
 }
 
@@ -320,7 +320,7 @@ static inline float sigmoid(float in, float sp, float tp, float Pslope, float px
   float mr = (Pslope*(in-px))/-ts;
   float ft = mr/spowf(1+(spowf(mr,tp)),1/tp);
 
-  in = in>=px? ss*fs+py:-ts*ft+py;
+  in = in >= px ? ss * fs + py : (-ts * ft) + py;
 
   return in;
 }
@@ -417,7 +417,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     // Calculate compensation values
     float y_compensate = (max_inv_rgb - Y_inverse + Y);
     if (use_hacky_lerp) {
-        float Y_clipped = clamp(pow(Y, 0.08f), 0.0f, 1.0f);
+        float Y_clipped = math::clamp(pow(Y, 0.08f), 0.0f, 1.0f);
         y_compensate = y_compensate + Y_clipped * (Y - y_compensate);
     }
 
@@ -450,7 +450,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     float Y_new_compensate = (max_inv_offset - Y_inverse_offset + Y_new);
     if (use_hacky_lerp) {
-        float Y_new_clipped = clamp(pow(Y_new, 0.08f), 0.0f, 1.0f);
+        float Y_new_clipped = math::clamp(pow(Y_new, 0.08f), 0.0f, 1.0f);
         Y_new_compensate = Y_new_compensate + Y_new_clipped * (Y_new - Y_new_compensate);
     }
 

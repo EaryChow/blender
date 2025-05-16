@@ -19,7 +19,28 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-          lfs: true 
+          lfs: true
+
+      - name: Fetch LFS for main repo
+        run: git lfs pull
+
+      - name: Fetch LFS for submodules
+        run: git submodule foreach --recursive git lfs pull
+
+      - name: Check LFS files
+        shell: pwsh
+        run: |
+          $blendFile = "release/datafiles/startup.blend"
+          if (Test-Path $blendFile) {
+              $size = (Get-Item $blendFile).Length
+              if ($size -lt 10240) {
+                  Write-Error "$blendFile is too small ($size bytes), likely a Git LFS pointer! Please ensure all LFS objects are pushed to the server by running 'git lfs push --all origin' locally before pushing your branch."
+                  exit 1
+              }
+          } else {
+              Write-Error "$blendFile not found! Please check the repository structure."
+              exit 1
+          }
 
       - name: Init & update submodules
         run: |

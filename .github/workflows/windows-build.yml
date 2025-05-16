@@ -42,23 +42,11 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON
 
-      - name: Build
+      - name: Build and Install
         shell: bash
         run: |
           cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
-
-      - name: Install Blender
-        shell: bash
-        run: |
-          cd build_windows
-          cmake --install . --config ${{ env.BUILD_TYPE }} --prefix install
-
-      - name: Collect runtime DLLs
-        shell: powershell
-        run: |
-          $installDir = "${{ github.workspace }}\build_windows\install"
-          python build_files/utils/collect_dlls.py "$installDir\blender.exe" --dest "$installDir"
+          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
       - name: Package build
         shell: pwsh

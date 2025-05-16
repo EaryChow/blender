@@ -19,7 +19,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-          lfs: true
 
       - name: Fetch LFS for main repo
         run: git lfs pull

@@ -58,8 +58,7 @@ jobs:
         shell: powershell
         run: |
           $installDir = "${{ github.workspace }}\build_windows\install"
-          python -m pip install pefile
-          python build_files\utils\collect_dlls.py "$installDir\blender.exe" --dest "$installDir"
+          python build_files/utils/collect_dlls.py "$installDir\blender.exe" --dest "$installDir"
 
       - name: Package build
         shell: pwsh

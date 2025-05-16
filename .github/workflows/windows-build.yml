@@ -20,41 +20,42 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Init & update submodules
-        run: |
-          git submodule sync --recursive
-          git submodule update --init --recursive
-
-      - name: Fetch precompiled Windows x64 libraries
+      - name: Fetch precompiled libraries
         shell: powershell
         run: |
-          python build_files/utils/make_update.py --architecture="amd64"
+          python build_files/utils/make_update.py --architecture="x64"
 
-      - name: Configure with Visual Studio 17 2022
+      - name: Configure CMake
         shell: bash
         run: |
           mkdir build_windows
           cd build_windows
           cmake .. \
-            -C ../build_files/buildbot/config/blender_windows.cmake \
+            -C "../build_files/buildbot/config/blender_windows.cmake" \
             -G "Visual Studio 17 2022" \
             -A x64 \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON
 
-      - name: Build
+      - name: Build and Install
         shell: bash
         run: |
           cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
+          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
-      - name: Package with CPack
-        shell: bash
+      - name: Collect runtime dependencies
+        shell: powershell
         run: |
-          cd build_windows
-          cpack -G ZIP
-          zipfile=$(ls *-windows64.zip)
-          mv "$zipfile" "$GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
+          $installDir = "${{ github.workspace }}\build_windows\install"
+          python -m pip install pefile
+          python build_files\utils\collect_dlls.py "$installDir\blender.exe" --dest "$installDir"
+
+      - name: Package build
+        shell: pwsh
+        run: |
+          $src = Join-Path "${{ github.workspace }}" 'build_windows/install'
+          $dest = Join-Path "${{ github.workspace }}" "blender-windows-${{ env.BLENDER_VERSION }}.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $dest -CompressionLevel Optimal
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

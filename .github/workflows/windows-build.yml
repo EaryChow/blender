@@ -14,46 +14,70 @@ jobs:
       BUILD_TYPE: "Release"
 
     steps:
-      - name: Checkout repo & submodules
+      - name: Install Git LFS
+        run: git lfs install --skip-repo
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
+          lfs: false
 
-      - name: Init & update submodules
+      - name: Fetch Gitea LFS objects
+        shell: bash
         run: |
-          git submodule sync --recursive
-          git submodule update --init --recursive
+          git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
+          git lfs pull
+          git submodule foreach --recursive " \
+            git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs; \
+            git lfs pull \
+          "
 
-      - name: Fetch precompiled Windows x64 libraries
+      - name: Verify datafiles
+        shell: pwsh
+        run: |
+          $f = "release/datafiles/startup.blend"
+          if (!(Test-Path $f)) {
+            Write-Error "$f not found—check your fork structure!"
+            exit 1
+          }
+          if ((Get-Item $f).Length -lt 10240) {
+            Write-Error "$f is too small—still a pointer file?"
+            exit 1
+          }
+
+      - name: Fetch precompiled libraries
         shell: powershell
-        run: |
-          python build_files/utils/make_update.py --architecture="amd64"
+        run: python build_files/utils/make_update.py --architecture="amd64"
 
-      - name: Configure with Visual Studio 17 2022
+      - name: Configure CMake
         shell: bash
         run: |
           mkdir build_windows && cd build_windows
           cmake .. \
-            -C ../build_files/buildbot/config/blender_windows.cmake \
+            -C "../build_files/buildbot/config/blender_windows.cmake" \
             -G "Visual Studio 17 2022" \
             -A x64 \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+            -DCMAKE_INSTALL_PREFIX=../install \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -D WITH_INSTALL_PORTABLE=ON
 
-      - name: Build
+      - name: Build and Install
         shell: bash
         run: |
           cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
+          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
-      - name: Package build
-        shell: bash
+      - name: Verify installation
+        shell: pwsh
         run: |
-          cd build_windows/bin/${{ env.BUILD_TYPE }}
-          powershell -Command "Compress-Archive -Path * -DestinationPath $Env:GITHUB_WORKSPACE/blender-windows-${{ env.BLENDER_VERSION }}.zip"
+          if (-not (Test-Path "install/blender.exe")) {
+            Write-Error "blender.exe missing!"
+            exit 1
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: blender-windows-${{ env.BLENDER_VERSION }}
-          path: blender-windows-${{ env.BLENDER_VERSION }}.zip
+          path: install

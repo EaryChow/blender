@@ -27,12 +27,6 @@ struct Chromaticities {
     ---------------------------
 */
 
-static inline float3x3 identity_mtx = {
-  {1.0f, 0.0f, 0.0f},
-  {0.0f, 1.0f, 0.0f},
-  {0.0f, 0.0f, 1.0f}
-};
-
 // AP0 white point changed to D65 for simplicity
 static constexpr Chromaticities AP0_PRI = {
     /* r: */ {0.734771f, 0.264663f},
@@ -96,6 +90,12 @@ static constexpr Chromaticities EGAMUT_PRI = {
     ---------------------------
 */
 
+static inline float3x3 identity_mtx = {
+  {1.0f, 0.0f, 0.0f},
+  {0.0f, 1.0f, 0.0f},
+  {0.0f, 0.0f, 1.0f}
+};
+
 static constexpr float pi = 3.14159265358979323846f;
 
 // Create a constexpr array of Chromaticities for enum's index-based selection
@@ -108,6 +108,30 @@ static constexpr Chromaticities COLOR_SPACE_PRI[8] = {
     AWG3_PRI,
     AWG4_PRI,
     EGAMUT_PRI
+};
+
+/* ##########################################################################
+    Enums
+    ---------------------------
+*/
+
+enum AGXPrimaries : int {
+  AGX_PRIMARIES_AP0 = 0,
+  AGX_PRIMARIES_AP1,
+  AGX_PRIMARIES_P3D65,
+  AGX_PRIMARIES_REC709,
+  AGX_PRIMARIES_REC2020,
+  AGX_PRIMARIES_AWG3,
+  AGX_PRIMARIES_AWG4,
+  AGX_PRIMARIES_EGAMUT,
+};
+
+enum AGXWorkingLog : int {
+  AGX_WORKING_LOG_LINEAR = 0,
+  AGX_WORKING_LOG_ACESCCT,
+  AGX_WORKING_LOG_ARRI_LOGC3,
+  AGX_WORKING_LOG_ARRI_LOGC4,
+  AGX_WORKING_LOG_GENERIC_LOG2,
 };
 
 /* ##########################################################################

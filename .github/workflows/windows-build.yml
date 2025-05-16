@@ -17,7 +17,7 @@ jobs:
       - name: Install Git LFS (Windows)
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-windows-amd64-v3.5.1.zip" -OutFile git-lfs.zip
+          Invoke-WebRequest -Uri "https://github.com/git-lfs/git-lfs/releases/latest/download/git-lfs-windows-amd64.zip" -OutFile git-lfs.zip
           Expand-Archive git-lfs.zip -DestinationPath git-lfs
           cd git-lfs
           ./install.ps1
@@ -31,7 +31,7 @@ jobs:
           lfs: true
 
       - name: Init & update submodules
-        shell: bash
+        shell: powershell
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive --force
@@ -43,26 +43,26 @@ jobs:
           python build_files/utils/make_update.py --architecture="amd64"
 
       - name: Configure CMake
-        shell: bash
+        shell: powershell
         run: |
           mkdir build_windows
           cd build_windows
-          cmake .. \
-            -C "../build_files/buildbot/config/blender_windows.cmake" \
-            -G "Visual Studio 17 2022" \
-            -A x64 \
-            -DCMAKE_INSTALL_PREFIX=../install \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+          cmake .. `
+            -C "../build_files/buildbot/config/blender_windows.cmake" `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            -DCMAKE_INSTALL_PREFIX=../install `
+            -DCMAKE_BUILD_TYPE=$env:BUILD_TYPE `
             -D WITH_INSTALL_PORTABLE=ON
 
       - name: Build and Install
-        shell: bash
+        shell: powershell
         run: |
           cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
+          cmake --build . --config $env:BUILD_TYPE --target install --parallel
 
       - name: Verify installation
-        shell: pwsh
+        shell: powershell
         run: |
           if (-not (Test-Path "install/blender.exe")) {
               Write-Error "Blender executable not found!"

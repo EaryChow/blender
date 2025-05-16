@@ -20,12 +20,17 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Fetch precompiled libraries
+      - name: Init & update submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Fetch precompiled Windows x64 libraries
         shell: powershell
         run: |
-          python build_files/utils/make_update.py --architecture="x64"
+          python build_files/utils/make_update.py --architecture="amd64"
 
-      - name: Configure CMake
+      - name: Configure with Visual Studio 17 2022
         shell: bash
         run: |
           mkdir build_windows
@@ -37,13 +42,19 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON
 
-      - name: Build and Install
+      - name: Build
         shell: bash
         run: |
           cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
+          cmake --build . --config ${{ env.BUILD_TYPE }} --parallel
 
-      - name: Collect runtime dependencies
+      - name: Install Blender
+        shell: bash
+        run: |
+          cd build_windows
+          cmake --install . --config ${{ env.BUILD_TYPE }} --prefix install
+
+      - name: Collect runtime DLLs
         shell: powershell
         run: |
           $installDir = "${{ github.workspace }}\build_windows\install"
@@ -55,7 +66,7 @@ jobs:
         run: |
           $src = Join-Path "${{ github.workspace }}" 'build_windows/install'
           $dest = Join-Path "${{ github.workspace }}" "blender-windows-${{ env.BLENDER_VERSION }}.zip"
-          Compress-Archive -Path "$src\*" -DestinationPath $dest -CompressionLevel Optimal
+          Compress-Archive -Path "$src\*" -DestinationPath $dest
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

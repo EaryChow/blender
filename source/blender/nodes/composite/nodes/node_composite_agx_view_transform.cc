@@ -58,14 +58,14 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
   working_space_panel.add_input<decl::Int>("Working Primaries")
-    .enumeration(agx_primaries_items)
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
   working_log_panel.add_input<decl::Int>("Working Log")
-    .enumeration(agx_working_log_items)
+    .enum_items(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
@@ -209,7 +209,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
   display_gamut_panel.add_input<decl::Int>("Display Primaries")
-    .enumeration(agx_primaries_items)
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC709)
     .description("The primaries of the target display device");
 
@@ -229,7 +229,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AgXViewTransformFunction()
   {
     static const mf::Signature signature = []() {
-      mf::SignatureBuilder builder{"AgX View Transform"};
+      mf::SignatureBuilder builder;
+      builder.set_name("AgX View Transform");
       builder.single_input<float4>("Color");
       builder.single_input<int>("Working Primaries");
       builder.single_input<int>("Working Log");
@@ -282,7 +283,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     mask.foreach_index([&](const int64_t i) {
       float4 col = in_color[i];
       // save alpha channel for direct output, we only process RGB here
-      float alpha = col.a;
+      float alpha = col.w;
       // use color management system to import colors from OCIO's scene_linear role space
       float in_rgb_array[3] = {col.r, col.g, col.b};
       float in_xyz_array[3];
@@ -310,13 +311,13 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
       // record pre-formation chromaticity angle
       float3 pre_curve_hsv;
-      pre_curve_hsv = rgb_to_hsv(rgb);
+      rgb_to_hsv_v(rgb, pre_curve_hsv);
 
       // encode to working log
       rgb = lin2log(rgb, working_log[i], log2_min[i], log2_max[i]);
 
       // apply sigmoid, the image is formed at this point
-      float log_midgray = lin2log(make_float3(0.18f), working_log[i], log2_min[i], log2_max[i]).x;
+      float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), working_log[i], log2_min[i], log2_max[i]).x;
       float image_native_power = 2.4f; // assume image's native transfer function is Rec.1886 power 2.4
       float midgray = pow(0.18f, 1.0f / image_native_power);
       rgb.x = sigmoid(rgb.x, shoulder_contrast[i], toe_contrast[i], general_contrast[i], log_midgray + pivot_offset[i], midgray);
@@ -330,7 +331,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float3 post_curve_hsv;
       rgb_to_hsv_v(img, post_curve_hsv);
       post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight[i]);
-      img = hsv_to_rgb(post_curve_hsv);
+      hsv_to_rgb_v(post_curve_hsv, img);
 
       // generate outset matrix
       float3x3 outsetmat;
@@ -374,10 +375,10 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);
 
       // re-combine the alpha channel
-      col.r = img_array[0];
-      col.g = img_array[1];
-      col.b = img_array[2];
-      col.a = alpha;
+      col.x = img_array[0];
+      col.y = img_array[1];
+      col.z = img_array[2];
+      col.w = alpha;
 
       out_color[i] = col;
     });

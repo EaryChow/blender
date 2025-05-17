@@ -51,18 +51,17 @@ jobs:
         shell: powershell
         run: python build_files/utils/make_update.py --architecture="amd64"
 
-      - name: Install CUDA Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.23  
-        with:
-          cuda: '12.1.1'
-
-      - name: Install OptiX SDK
+      - name: Install CUDA Toolkit via Chocolatey
         shell: pwsh
         run: |
-          $url = "https://developer.nvidia.com/optix/7.4.0/OptiX-7.4.0-win64.zip"
-          Invoke-WebRequest $url -OutFile optix.zip
-          Expand-Archive optix.zip -DestinationPath C:\OptiX-7.4.0
-          echo "OPTIX_ROOT_DIR=C:/OptiX-7.4.0" >> $env:GITHUB_ENV
+          choco install cuda -y
+          refreshenv
+
+      - name: Clone OptiX header-only repo
+        shell: bash
+        run: |
+          git clone --depth=1 https://github.com/NVIDIA/optix-dev.git optix-dev
+          echo "OPTIX_ROOT_DIR=$(pwd)/optix-dev" >> $GITHUB_ENV
 
       - name: Configure HIP SDK path
         shell: pwsh

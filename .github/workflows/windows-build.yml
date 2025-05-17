@@ -16,6 +16,7 @@ jobs:
     steps:
       - name: Install Git LFS
         run: git lfs install --skip-repo
+
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -48,7 +49,31 @@ jobs:
 
       - name: Fetch precompiled libraries
         shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64"
+        run: python build_files/utils/make_update.py --architecture="amd64" --source=all
+
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.23  
+        with:
+          cuda: '12.1.1'
+
+      - name: Install OptiX SDK
+        shell: pwsh
+        run: |
+          $url = "https://developer.nvidia.com/optix/7.4.0/OptiX-7.4.0-win64.zip"
+          Invoke-WebRequest $url -OutFile optix.zip
+          Expand-Archive optix.zip -DestinationPath C:\OptiX-7.4.0
+          echo "OPTIX_ROOT_DIR=C:/OptiX-7.4.0" >> $env:GITHUB_ENV
+
+      - name: Configure HIP SDK path
+        shell: pwsh
+        run: |
+          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
+
+      - name: Install Intel oneAPI Base Toolkit
+        shell: pwsh
+        run: |
+          choco install intel-oneapi-basekit --version=2024.1 --yes
+          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         shell: bash
@@ -60,7 +85,19 @@ jobs:
             -A x64 \
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -D WITH_INSTALL_PORTABLE=ON
+            -DWITH_INSTALL_PORTABLE=ON \
+            \
+            -DWITH_CYCLES_CUDA_BINARIES=ON \
+            -DCYCLES_CUDA_BINARIES_ARCH="sm_75;sm_86" \
+            \
+            -DWITH_CYCLES_DEVICE_OPTIX=ON \
+            -DOPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            \
+            -DWITH_CYCLES_HIP_BINARIES=ON \
+            -DHIP_SDK_PATH="${{ env.HIP_SDK_PATH }}" \
+            \
+            -DWITH_CYCLES_DEVICE_ONEAPI=ON \
+            -DONEAPI_ROOT_DIR="${{ env.ONEAPI_ROOT_DIR }}"
 
       - name: Build and Install
         shell: bash

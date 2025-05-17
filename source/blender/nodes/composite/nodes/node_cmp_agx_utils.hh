@@ -115,7 +115,7 @@ static const Chromaticities COLOR_SPACE_PRI[8] = {
     ---------------------------
 */
 
-static enum AGXPrimaries : int {
+enum AGXPrimaries : int {
   AGX_PRIMARIES_AP0 = 0,
   AGX_PRIMARIES_AP1,
   AGX_PRIMARIES_P3D65,
@@ -126,7 +126,7 @@ static enum AGXPrimaries : int {
   AGX_PRIMARIES_EGAMUT,
 };
 
-static enum AGXWorkingLog : int {
+enum AGXWorkingLog : int {
   AGX_WORKING_LOG_LINEAR = 0,
   AGX_WORKING_LOG_ACESCCT,
   AGX_WORKING_LOG_ARRI_LOGC3,

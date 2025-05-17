@@ -5,6 +5,7 @@
 #include "BKE_node.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_color.h"
+#include "BLI_math_color.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "COM_node_operation.hh"
@@ -56,14 +57,14 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
-  working_space_panel.add_property<decl::Enum>("Working Primaries")
+  working_space_panel.add_input<decl::Int>("Working Primaries")
     .set_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
-  working_log_panel.add_property<decl::Enum>("Working Log")
+  working_log_panel.add_input<decl::Int>("Working Log")
     .set_items(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
@@ -207,12 +208,12 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
    /* Panel for Output Gamut Limit settings. */
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
-  display_gamut_panel.add_property<decl::Enum>("Display Primaries")
+  display_gamut_panel.add_input<decl::Int>("Display Primaries")
     .set_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC709)
     .description("The primaries of the target display device");
 
-  b.add_input<decl::Boolean>("Compensate for the Negatives")
+  b.add_input<decl::Bool>("Compensate for the Negatives")
     .default_value(true)
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
@@ -228,35 +229,35 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AgXViewTransformFunction()
   {
     static const mf::Signature signature = []() {
-      mf::SignatureBuilder signature{"AgX View Transform"};
-      signature.single_input<Color4f>("Color");
-      signature.single_input<int>("Working Primaries");
-      signature.single_input<int>("Working Log");
-      signature.single_input<float>("General Contrast");
-      signature.single_input<float>("Toe Contrast");
-      signature.single_input<float>("Shoulder Contrast");
-      signature.single_input<float>("Contrast Pivot Offset");
-      signature.single_input<float>("Log2 Minimum Exposure");
-      signature.single_input<float>("Log2 Maximum Exposure");
-      signature.single_input<float3>("Hue Flights");
-      signature.single_input<float3>("Attenuation Rates");
-      signature.single_input<bool>("Use Same Settings as Attenuation");
-      signature.single_input<float3>("Reverse Hue Flights");
-      signature.single_input<float3>("Restore Purity");
-      signature.single_input<float>("Per-Channel Hue Flight");
-      signature.single_input<float>("Tinting Scale");
-      signature.single_input<float>("Tinting Hue");
-      signature.single_input<int>("Display Primaries");
-      signature.single_input<bool>("Compensate for the Negatives");
-      signature.single_output<Color4f>("Color");
-      return signature.build();
+      mf::SignatureBuilder builder{"AgX View Transform"};
+      builder.single_input<blender::Color4f>("Color");
+      builder.single_input<int>("Working Primaries");
+      builder.single_input<int>("Working Log");
+      builder.single_input<float>("General Contrast");
+      builder.single_input<float>("Toe Contrast");
+      builder.single_input<float>("Shoulder Contrast");
+      builder.single_input<float>("Contrast Pivot Offset");
+      builder.single_input<float>("Log2 Minimum Exposure");
+      builder.single_input<float>("Log2 Maximum Exposure");
+      builder.single_input<float3>("Hue Flights");
+      builder.single_input<float3>("Attenuation Rates");
+      builder.single_input<bool>("Use Same Settings as Attenuation");
+      builder.single_input<float3>("Reverse Hue Flights");
+      builder.single_input<float3>("Restore Purity");
+      builder.single_input<float>("Per-Channel Hue Flight");
+      builder.single_input<float>("Tinting Scale");
+      builder.single_input<float>("Tinting Hue");
+      builder.single_input<int>("Display Primaries");
+      builder.single_input<bool>("Compensate for the Negatives");
+      builder.single_output<blender::Color4f>("Color");
+      return builder.build();
     }();
     this->set_signature(&signature);
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
-    const VArray<Color4f> in_color = params.readonly_single_input<Color4f>(0, "Color");
+    const VArray<blender::Color4f> in_color = params.readonly_single_input<blender::Color4f>(0, "Color");
     const VArray<int> working_primaries = params.readonly_single_input<int>(1, "Working Primaries");
     const VArray<int> working_log = params.readonly_single_input<int>(2, "Working Log");
     const VArray<float> general_contrast = params.readonly_single_input<float>(3, "General Contrast");
@@ -276,7 +277,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     const VArray<int> display_primaries = params.readonly_single_input<int>(17, "Display Primaries");
     const VArray<bool> compensate_negatives = params.readonly_single_input<bool>(18, "Compensate for the Negatives");
 
-    MutableSpan<Color4f> out_color = params.uninitialized_single_output<Color4f>(19, "Color");
+    MutableSpan<blender::Color4f> out_color = params.uninitialized_single_output<blender::Color4f>(19, "Color");
 
     mask.foreach_index([&](const int64_t i) {
       Color4f col = in_color[i];
@@ -386,7 +387,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 // Multi-function Builder
 static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  builder.set_match<AgXViewTransformFunction>();
+  static auto fn = blender::mf::build::SI1_SO<AgXViewTransformFunction, blender::Color4f, blender::Color4f>("AgX View Transform");
+  builder.set_matching_fn(fn);
 }
 
 }  // namespace blender::nodes::node_composite_agx_view_transform_cc
@@ -397,7 +399,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", cmp_node_agx_view_transform);
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.idname = "CompositorNodeAgXViewTransform";

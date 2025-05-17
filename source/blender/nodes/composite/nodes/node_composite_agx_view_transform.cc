@@ -58,14 +58,14 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
   working_space_panel.add_input<decl::Int>("Working Primaries")
-    .enum_items(agx_primaries_items)
+    .enum_(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
   working_log_panel.add_input<decl::Int>("Working Log")
-    .enum_items(agx_working_log_items)
+    .enum_(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
@@ -209,7 +209,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
   display_gamut_panel.add_input<decl::Int>("Display Primaries")
-    .enum_items(agx_primaries_items)
+    .enum_(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC709)
     .description("The primaries of the target display device");
 
@@ -229,8 +229,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AgXViewTransformFunction()
   {
     static const mf::Signature signature = []() {
-      mf::SignatureBuilder builder;
-      builder.set_name("AgX View Transform");
+      mf::SignatureBuilder builder{"AgX View Transform"};
       builder.single_input<float4>("Color");
       builder.single_input<int>("Working Primaries");
       builder.single_input<int>("Working Log");
@@ -285,7 +284,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       // save alpha channel for direct output, we only process RGB here
       float alpha = col.w;
       // use color management system to import colors from OCIO's scene_linear role space
-      float in_rgb_array[3] = {col.r, col.g, col.b};
+      float in_rgb_array[3] = {col.x, col.y, col.z};
       float in_xyz_array[3];
       IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
       float3 in_xyz = make_float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);

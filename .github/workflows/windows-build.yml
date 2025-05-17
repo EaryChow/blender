@@ -49,7 +49,7 @@ jobs:
 
       - name: Fetch precompiled libraries
         shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64" --source=all
+        run: python build_files/utils/make_update.py --architecture="amd64"
 
       - name: Install CUDA Toolkit
         uses: Jimver/cuda-toolkit@v0.2.23  

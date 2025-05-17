@@ -58,14 +58,14 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
   working_space_panel.add_input<decl::Int>("Working Primaries")
-    .set_items(agx_primaries_items)
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
   working_log_panel.add_input<decl::Int>("Working Log")
-    .set_items(agx_working_log_items)
+    .enum_items(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
@@ -150,7 +150,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
 
-  outset_panel.add_input<decl::Boolean>("Use Same Settings as Attenuation")
+  outset_panel.add_input<decl::Bool>("Use Same Settings as Attenuation")
     .default_value(false)
     .description(
         "Use the same settings as Attenuation section for ease of use."
@@ -209,7 +209,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
   display_gamut_panel.add_input<decl::Int>("Display Primaries")
-    .set_items(agx_primaries_items)
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC709)
     .description("The primaries of the target display device");
 
@@ -230,7 +230,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   {
     static const mf::Signature signature = []() {
       mf::SignatureBuilder builder{"AgX View Transform"};
-      builder.single_input<blender::Color4f>("Color");
+      builder.single_input<float4>("Color");
       builder.single_input<int>("Working Primaries");
       builder.single_input<int>("Working Log");
       builder.single_input<float>("General Contrast");
@@ -249,7 +249,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       builder.single_input<float>("Tinting Hue");
       builder.single_input<int>("Display Primaries");
       builder.single_input<bool>("Compensate for the Negatives");
-      builder.single_output<blender::Color4f>("Color");
+      builder.single_output<float4>("Color");
       return builder.build();
     }();
     this->set_signature(&signature);
@@ -257,7 +257,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
-    const VArray<blender::Color4f> in_color = params.readonly_single_input<blender::Color4f>(0, "Color");
+    const VArray<float4> in_color = params.readonly_single_input<blender::Color4f>(0, "Color");
     const VArray<int> working_primaries = params.readonly_single_input<int>(1, "Working Primaries");
     const VArray<int> working_log = params.readonly_single_input<int>(2, "Working Log");
     const VArray<float> general_contrast = params.readonly_single_input<float>(3, "General Contrast");
@@ -277,7 +277,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     const VArray<int> display_primaries = params.readonly_single_input<int>(17, "Display Primaries");
     const VArray<bool> compensate_negatives = params.readonly_single_input<bool>(18, "Compensate for the Negatives");
 
-    MutableSpan<blender::Color4f> out_color = params.uninitialized_single_output<blender::Color4f>(19, "Color");
+    MutableSpan<float4> out_color = params.uninitialized_single_output<blender::Color4f>(19, "Color");
 
     mask.foreach_index([&](const int64_t i) {
       Color4f col = in_color[i];
@@ -310,7 +310,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
       // record pre-formation chromaticity angle
       float3 pre_curve_hsv;
-      rgb_to_hsv_v(rgb, pre_curve_hsv);
+      pre_curve_hsv = rgb_to_hsv(rgb);
 
       // encode to working log
       rgb = lin2log(rgb, working_log[i], log2_min[i], log2_max[i]);
@@ -330,7 +330,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float3 post_curve_hsv;
       rgb_to_hsv_v(img, post_curve_hsv);
       post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight[i]);
-      hsv_to_rgb_v(post_curve_hsv, img);
+      img = hsv_to_rgb(post_curve_hsv);
 
       // generate outset matrix
       float3x3 outsetmat;
@@ -403,7 +403,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.idname = "CompositorNodeAgXViewTransform";
-  ntype.enum_name_legacy = NODE_CUSTOM;
+  ntype.enum_name_legacy = nullptr;
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;

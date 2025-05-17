@@ -115,7 +115,7 @@ static const Chromaticities COLOR_SPACE_PRI[8] = {
     ---------------------------
 */
 
-enum AGXPrimaries : int {
+static enum AGXPrimaries : int {
   AGX_PRIMARIES_AP0 = 0,
   AGX_PRIMARIES_AP1,
   AGX_PRIMARIES_P3D65,
@@ -126,7 +126,7 @@ enum AGXPrimaries : int {
   AGX_PRIMARIES_EGAMUT,
 };
 
-enum AGXWorkingLog : int {
+static enum AGXWorkingLog : int {
   AGX_WORKING_LOG_LINEAR = 0,
   AGX_WORKING_LOG_ACESCCT,
   AGX_WORKING_LOG_ARRI_LOGC3,
@@ -218,7 +218,7 @@ static inline float3 powf3(float3 a, float b) {
 }
 
 static inline float3 log2f3(float3 RGB) {
-  return make_float3(log2(RGB.x), log2(RGB.y), log2(RGB.z));
+  return make_float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
 }
 
 static inline float sign(float x) {
@@ -231,16 +231,16 @@ static inline float sign(float x) {
 static inline float spowf(float a, float b) {
   // Compute "safe" power of float a, reflected over the origin
 
-  a=sign(a)*pow(fabs(a), b);
+  a=sign(a)*pow(fabsf(a), b);
   return a;
 }
 
 static inline float3 spowf3(float3 a, float b) {
   // Compute "safe" power of float3 a, reflected over the origin
   return make_float3(
-    sign(a.x)*pow(fabs(a.x), b),
-    sign(a.y)*pow(fabs(a.y), b),
-    sign(a.z)*pow(fabs(a.z), b)
+    sign(a.x)*pow(fabsf(a.x), b),
+    sign(a.y)*pow(fabsf(a.y), b),
+    sign(a.z)*pow(fabsf(a.z), b)
   );
 }
 
@@ -282,9 +282,9 @@ static inline float3 log2lin(float3 rgb, int tf, float generic_log2_min_expo = -
 static inline float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo = -10, float generic_log2_max_expo = 6.5) {
   if (tf == 0) return rgb;
   else if (tf == 1) { // ACEScct
-    rgb.x = rgb.x > 0.0078125f ? (log2(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
-    rgb.y = rgb.y > 0.0078125f ? (log2(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
-    rgb.z = rgb.z > 0.0078125f ? (log2(rgb.z) + 9.72f) / 17.52f : 10.5402377416545f * rgb.z + 0.0729055341958355f;
+    rgb.x = rgb.x > 0.0078125f ? (log2f(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
+    rgb.y = rgb.y > 0.0078125f ? (log2f(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
+    rgb.z = rgb.z > 0.0078125f ? (log2f(rgb.z) + 9.72f) / 17.52f : 10.5402377416545f * rgb.z + 0.0729055341958355f;
   } else if (tf == 2) { // Arri LogC3 EI 800
     rgb.x = rgb.x > 0.010591f ? 0.24719f * log10f(5.555556f * rgb.x + 0.052272f) + 0.385537f : 5.367655f * rgb.x + 0.092809f;
     rgb.y = rgb.y > 0.010591f ? 0.24719f * log10f(5.555556f * rgb.y + 0.052272f) + 0.385537f : 5.367655f * rgb.y + 0.092809f;
@@ -296,14 +296,14 @@ static inline float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo = -
     const float s = (7.f * logf(2.0f) * pow(2.0f, 7.0f - 14.0f * c / b)) / (a * b);
     const float t = (pow(2.0f, 14.0f * ((-1.0f * c) / b) + 6.0f) - 64.0f) / a;
 
-    rgb.x = rgb.x >= t ? ((log2(a * rgb.x + 64.f) - 6.f) / 14.f) * b + c : (rgb.x - t) / s;
-    rgb.y = rgb.y >= t ? ((log2(a * rgb.y + 64.f) - 6.f) / 14.f) * b + c : (rgb.y - t) / s;
-    rgb.z = rgb.z >= t ? ((log2(a * rgb.z + 64.f) - 6.f) / 14.f) * b + c : (rgb.z - t) / s;
+    rgb.x = rgb.x >= t ? ((log2f(a * rgb.x + 64.f) - 6.f) / 14.f) * b + c : (rgb.x - t) / s;
+    rgb.y = rgb.y >= t ? ((log2f(a * rgb.y + 64.f) - 6.f) / 14.f) * b + c : (rgb.y - t) / s;
+    rgb.z = rgb.z >= t ? ((log2f(a * rgb.z + 64.f) - 6.f) / 14.f) * b + c : (rgb.z - t) / s;
   } else if (tf == 4) { // User controlled PureLog2
     rgb = log2f3(rgb / 0.18f);
     rgb = clampf3(rgb, generic_log2_min_expo, generic_log2_max_expo);
 
-    rgb = (rgb + fabs(generic_log2_min_expo)) / (fabs(generic_log2_min_expo)+fabs(generic_log2_max_expo));
+    rgb = (rgb + fabsf(generic_log2_min_expo)) / (fabsf(generic_log2_min_expo)+fabsf(generic_log2_max_expo));
   }
   return rgb;
 }
@@ -530,15 +530,17 @@ static inline Chromaticities ScalePrim(Chromaticities N,float rs,float gs,float 
   return N;
 }
 
-static inline float2 Line_equation(float2 a, float2 b) {
-  float dx = b.x - a.x;
-  if (fabsf(dx) < 1e-6f) {
-    // vertical line → represent as (m=∞, c = x_intercept)
-    return make_float2(1.0f/0.0f, a.x);
-  }
-  float m = (b.y - a.y) / dx;
-  float c = a.y - m * a.x;
-  return make_float2(m, c);
+static inline float2 Line_equation(float2 a, float2 b)
+{
+    float dx = b.x - a.x;
+    if (fabsf(dx) < 1e-6f) {
+        /* vertical line → slope = +∞, intercept = x */
+        const float kInf = 1e30f * 1e30f;
+        return make_float2(kInf, a.x);
+    }
+    float m = (b.y - a.y) / dx;
+    float c = a.y - m * a.x;
+    return make_float2(m, c);
 }
 
 static inline Chromaticities Polygon(Chromaticities N){
@@ -659,10 +661,10 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
   float2 hull_achromatic = original_white;
   float2 A = rotated_achromatic, B = original_white;
   auto on_segment = [&](float2 P, float2 C, float2 D){
-    float t = (fabs(B.x-A.x)>fabs(B.y-A.y))
+    float t = (fabsf(B.x-A.x)>fabsf(B.y-A.y))
       ? (P.x-A.x)/(B.x-A.x)
       : (P.y-A.y)/(B.y-A.y);
-    float u = (fabs(D.x-C.x)>fabs(D.y-C.y))
+    float u = (fabsf(D.x-C.x)>fabsf(D.y-C.y))
       ? (P.x-C.x)/(D.x-C.x)
       : (P.y-C.y)/(D.y-C.y);
     return (t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f);

@@ -55,7 +55,8 @@ jobs:
         shell: pwsh
         run: |
           choco install cuda -y
-          refreshenv
+          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"   :contentReference[oaicite:0]{index=0}
+          refreshenv                                                               :contentReference[oaicite:1]{index=1}
 
       - name: Clone OptiX header-only repo
         shell: bash
@@ -72,6 +73,8 @@ jobs:
         shell: pwsh
         run: |
           choco install intel-oneapi-basekit --version=2024.1 --yes
+          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
+          refreshenv
           echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
 
       - name: Configure CMake
@@ -85,16 +88,12 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DWITH_INSTALL_PORTABLE=ON \
-            \
             -DWITH_CYCLES_CUDA_BINARIES=ON \
             -DCYCLES_CUDA_BINARIES_ARCH="sm_75;sm_86" \
-            \
             -DWITH_CYCLES_DEVICE_OPTIX=ON \
             -DOPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
-            \
             -DWITH_CYCLES_HIP_BINARIES=ON \
             -DHIP_SDK_PATH="${{ env.HIP_SDK_PATH }}" \
-            \
             -DWITH_CYCLES_DEVICE_ONEAPI=ON \
             -DONEAPI_ROOT_DIR="${{ env.ONEAPI_ROOT_DIR }}"
 

@@ -14,6 +14,7 @@ jobs:
       BUILD_TYPE: "Release"
 
     steps:
+      # 1. Install Git LFS and checkout
       - name: Install Git LFS
         run: git lfs install --skip-repo
 
@@ -55,8 +56,8 @@ jobs:
         shell: pwsh
         run: |
           choco install cuda -y
-          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"   :contentReference[oaicite:0]{index=0}
-          refreshenv                                                               :contentReference[oaicite:1]{index=1}
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv                                         
 
       - name: Clone OptiX header-only repo
         shell: bash
@@ -73,9 +74,10 @@ jobs:
         shell: pwsh
         run: |
           choco install intel-oneapi-basekit --version=2024.1 --yes
-          Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
-          refreshenv
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv                                         
           echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
+
 
       - name: Configure CMake
         shell: bash

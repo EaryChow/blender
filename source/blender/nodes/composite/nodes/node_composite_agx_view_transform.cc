@@ -57,15 +57,15 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
-  working_space_panel.add_input<decl::Int>("Working Primaries")
-    .enum_(agx_primaries_items)
+  working_space_panel.add_input<decl::Enum>("Working Primaries")
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC2020)
     .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
-  working_log_panel.add_input<decl::Int>("Working Log")
-    .enum_(agx_working_log_items)
+  working_log_panel.add_input<decl::Enum>("Working Log")
+    .enum_items(agx_working_log_items)
     .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
     .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
@@ -208,8 +208,8 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
    /* Panel for Output Gamut Limit settings. */
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
-  display_gamut_panel.add_input<decl::Int>("Display Primaries")
-    .enum_(agx_primaries_items)
+  display_gamut_panel.add_input<decl::Enum>("Display Primaries")
+    .enum_items(agx_primaries_items)
     .default_value(AGX_PRIMARIES_REC709)
     .description("The primaries of the target display device");
 
@@ -229,7 +229,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AgXViewTransformFunction()
   {
     static const mf::Signature signature = []() {
-      mf::SignatureBuilder builder{"AgX View Transform"};
+      mf::SignatureBuilder builder;
       builder.single_input<float4>("Color");
       builder.single_input<int>("Working Primaries");
       builder.single_input<int>("Working Log");
@@ -387,6 +387,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 // Multi-function Builder
 static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
+  using namespace blender::nodes::node_composite_agx_view_transform_cc;
   builder.set_matching_fn<AgXViewTransformFunction>();
 }
 

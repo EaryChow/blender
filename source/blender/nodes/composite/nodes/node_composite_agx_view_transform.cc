@@ -23,30 +23,54 @@ namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 // Storage Structure
 struct NodeAgxViewTransform {
-};
-NODE_STORAGE_FUNCS(NodeAgxViewTransform);
-
-// define enums
-static const EnumPropertyItem agx_primaries_items[] = {
-    {AGX_PRIMARIES_AP0, "ap0", 0, "ACES2065-1 (AP0)", ""},
-    {AGX_PRIMARIES_AP1, "ap1", 0, "ACEScg (AP1)", ""},
-    {AGX_PRIMARIES_P3D65, "p3d65", 0, "P3-D65", ""},
-    {AGX_PRIMARIES_REC709, "rec709", 0, "Rec.709", ""},
-    {AGX_PRIMARIES_REC2020, "rec2020", 0, "Rec.2020", ""},
-    {AGX_PRIMARIES_AWG3, "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
-    {AGX_PRIMARIES_AWG4, "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
-    {AGX_PRIMARIES_EGAMUT, "egamut", 0, "FilmLight E-Gamut", ""},
-    {0, nullptr, 0, nullptr, nullptr},
+  AGXPrimaries working_primaries;
+  AGXWorkingLog working_log;
+  int display_primaries;
 };
 
-static const EnumPropertyItem agx_working_log_items[] = {
-    {AGX_WORKING_LOG_LINEAR, "linear", 0, "Linear", ""},
-    {AGX_WORKING_LOG_ACESCCT, "acescct", 0, "ACEScct", ""},
-    {AGX_WORKING_LOG_ARRI_LOGC3, "arri_logc3", 0, "ARRI LogC3", ""},
-    {AGX_WORKING_LOG_ARRI_LOGC4, "arri_logc4", 0, "ARRI LogC4", ""},
-    {AGX_WORKING_LOG_GENERIC_LOG2, "generic_log2", 0, "Generic Log2", ""},
-    {0, nullptr, 0, nullptr, nullptr},
+NODE_STORAGE_FUNCS(NodeAgxViewTransform)
+{
+  #define RNA_ENUM_ACCESSORS(id) \
+    static int rna_NodeAgxViewTransform_##id##_get(PointerRNA *ptr) { \
+      return int(((NodeAgxViewTransform *)ptr->data)->id); \
+    } \
+    static void rna_NodeAgxViewTransform_##id##_set(PointerRNA *ptr, int value) { \
+      ((NodeAgxViewTransform *)ptr->data)->id = static_cast<decltype(NodeAgxViewTransform::id)>(value); \
+    }
+
+  RNA_ENUM_ACCESSORS(working_primaries)
+  RNA_ENUM_ACCESSORS(working_log)
+  RNA_ENUM_ACCESSORS(display_primaries)
+  #undef RNA_ENUM_ACCESSORS
 };
+
+// enums
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem primaries_items[] = {
+    {int(AGXPrimaries::AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
+    {int(AGXPrimaries::AP1), "ap1", 0, "ACEScg (AP1)", ""},
+    {int(AGXPrimaries::P3D65), "p3d65", 0, "P3-D65", ""},
+    {int(AGXPrimaries::REC709), "rec709", 0, "Rec.709", ""},
+    {int(AGXPrimaries::REC2020), "rec2020", 0, "Rec.2020", ""},
+    {int(AGXPrimaries::AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
+    {int(AGXPrimaries::AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
+    {int(AGXPrimaries::EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem working_log_items[] = {
+    {int(AGXWorkingLog::LINEAR), "linear", 0, "Linear", ""},
+    {int(AGXWorkingLog::ACESCCT), "acescct", 0, "ACEScct", ""},
+    {int(AGXWorkingLog::ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
+    {int(AGXWorkingLog::ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
+    {int(AGXWorkingLog::GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+  };
+  RNA_def_node_enum(srna, "working_primaries", "Working Primaries", "", primaries_items, NOD_storage_enum_accessors(working_primaries));
+  RNA_def_node_enum(srna, "working_log", "Working Log", "", working_log_items, NOD_storage_enum_accessors(working_log));
+  RNA_def_node_enum(srna, "display_primaries", "Display Primaries", "", primaries_items, NOD_storage_enum_accessors(display_primaries));
+}
 
 // Node Declaration
 static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
@@ -57,17 +81,9 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 
   /* Panel for Working Space setting. */
   PanelDeclarationBuilder &working_space_panel = b.add_panel("Working Space").default_closed(true);
-  working_space_panel.add_input<decl::Enum>("Working Primaries")
-    .enum_items(agx_primaries_items)
-    .default_value(AGX_PRIMARIES_REC2020)
-    .description("The working primaries we apply the AgX mechanism to");
 
   /* Panel for working log setting. */
   PanelDeclarationBuilder &working_log_panel = b.add_panel("Working Log").default_closed(true);
-  working_log_panel.add_input<decl::Enum>("Working Log")
-    .enum_items(agx_working_log_items)
-    .default_value(AGX_WORKING_LOG_GENERIC_LOG2)
-    .description("The Log curve applied before the sigmoid in the AgX mechanism");
 
   /* Panel for log and sigmoid curve settings. */
   PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
@@ -208,11 +224,6 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
    /* Panel for Output Gamut Limit settings. */
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
-  display_gamut_panel.add_input<decl::Enum>("Display Primaries")
-    .enum_items(agx_primaries_items)
-    .default_value(AGX_PRIMARIES_REC709)
-    .description("The primaries of the target display device");
-
   b.add_input<decl::Bool>("Compensate for the Negatives")
     .default_value(true)
     .description(
@@ -221,6 +232,28 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
   
   b.add_output<decl::Color>("Color");
 
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  NodeAgxViewTransform *data = MEM_cnew<NodeAgxViewTransform>(__func__);
+  data->working_primaries = AGXPrimaries::REC2020;
+  data->working_log = AGXWorkingLog::GENERIC_LOG2;
+  data->display_primaries = AGXPrimaries::REC709;
+  node->storage = data;
+}
+
+// UI Layout for enums
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiLayout *panel = uiLayoutPanel(layout, "Working Space", true);
+  uiItemR(panel, ptr, "working_primaries", UI_ITEM_NONE, "Primaries", ICON_NONE);
+
+  panel = uiLayoutPanel(layout, "Working Log", true);
+  uiItemR(panel, ptr, "working_log", UI_ITEM_NONE, "Log", ICON_NONE);
+
+  panel = uiLayoutPanel(layout, "Display Primaries", true);
+  uiItemR(panel, ptr, "display_primaries", UI_ITEM_NONE, "Display", ICON_NONE);
 }
 
 // Multi-function Builder
@@ -259,8 +292,10 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float4> in_color = params.readonly_single_input<float4>(0, "Color");
-    const VArray<int> working_primaries = params.readonly_single_input<int>(1, "Working Primaries");
-    const VArray<int> working_log = params.readonly_single_input<int>(2, "Working Log");
+    const bNode &node = params.user_data()->node;
+    const NodeAgxViewTransform *settings = static_cast<NodeAgxViewTransform*>(node.storage);
+    const AGXPrimaries working_primaries = settings->working_primaries;
+    const AGXWorkingLog working_log = settings->working_log;
     const VArray<float> general_contrast = params.readonly_single_input<float>(3, "General Contrast");
     const VArray<float> toe_contrast = params.readonly_single_input<float>(4, "Toe Contrast");
     const VArray<float> shoulder_contrast = params.readonly_single_input<float>(5, "Shoulder Contrast");
@@ -275,7 +310,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     const VArray<float> per_channel_hue_flight = params.readonly_single_input<float>(14, "Per-Channel Hue Flight");
     const VArray<float> tinting_outset = params.readonly_single_input<float>(15, "Tinting Scale");
     const VArray<float> tinting_rotate = params.readonly_single_input<float>(16, "Tinting Hue");
-    const VArray<int> display_primaries = params.readonly_single_input<int>(17, "Display Primaries");
+    const AGXPrimaries display_primaries = settings->display_primaries;
     const VArray<bool> compensate_negatives = params.readonly_single_input<bool>(18, "Compensate for the Negatives");
 
     MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(19, "Color");
@@ -406,6 +441,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.enum_name_legacy = nullptr;
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
+  ntype.storage_size = sizeof(NodeAgxViewTransform);
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
 
   blender::bke::node_register_type(ntype);

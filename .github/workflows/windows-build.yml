@@ -79,9 +79,8 @@ jobs:
       - name: Install Intel oneAPI Base Toolkit
         shell: pwsh
         run: |
-          winget install --id intel-basekit --exact --silent \
-            --accept-package-agreements --accept-source-agreements
-          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $GITHUB_ENV
+          winget install --id intel-basekit --exact --silent --accept-package-agreements --accept-source-agreements
+          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         shell: bash

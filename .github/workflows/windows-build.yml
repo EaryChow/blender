@@ -43,50 +43,19 @@ jobs:
 
       - name: Fetch precompiled libraries
         shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64"
+        run: python build_files/utils/make_update.py --architecture="amd64"      
 
-
-      - name: Install CUDA Toolkit
+      - name: Install CUDA Toolkit via Chocolatey
         shell: pwsh
         run: |
-          choco install cuda -y
+          choco install cuda -y                                            
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
 
-      - name: Download OptiX SDK
-        uses: actions/download-release-asset@v2
-        with:
-          repository: EaryChow/blender
-          tag:         4.5.0-alpha
-          asset_name:  NVIDIA-OptiX-SDK-7.4.0-win64.zip
-          output:      optix.zip
-
-      - name: Unpack OptiX SDK
+      - name: Configure HIP SDK path
         shell: pwsh
         run: |
-          Expand-Archive optix.zip -DestinationPath C:\OptiX-7.4.0
-          echo "OPTIX_ROOT_DIR=C:/OptiX-7.4.0" >> $env:GITHUB_ENV
-
-      - name: Configure HIP SDK
-        shell: pwsh
-        run: |
-          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
-
-      - name: Download ocloc.exe
-        uses: actions/download-release-asset@v2
-        with:
-          repository: EaryChow/blender
-          tag:         4.5.0-alpha
-          asset_name:  ocloc.exe
-          output:      ocloc.exe
-
-      - name: Install ocloc for CMake
-        shell: pwsh
-        run: |
-          mkdir tools\ocloc
-          Move-Item ocloc.exe tools\ocloc\ocloc.exe
-          echo "OCLOC_INSTALL_DIR=$(pwd)/tools/ocloc" >> $env:GITHUB_ENV
-
+          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV                
 
       - name: Configure CMake
         shell: bash
@@ -103,14 +72,13 @@ jobs:
             -DCYCLES_CUDA_BINARIES_ARCH="sm_75;sm_86" \
             \
             -DWITH_CYCLES_DEVICE_OPTIX=ON \
-            -DOPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            -DOPTIX_ROOT_DIR="../lib/windows_x64/NVIDIA-OptiX-SDK-7.4.0-win64" \
             \
             -DWITH_CYCLES_HIP_BINARIES=ON \
             -DHIP_SDK_PATH="${{ env.HIP_SDK_PATH }}" \
             \
             -DWITH_CYCLES_DEVICE_ONEAPI=ON \
-            -DWITH_CYCLES_ONEAPI_BINARIES=ON \
-            -DOCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}"
+            -DWITH_CYCLES_ONEAPI_BINARIES=ON
 
       - name: Build & Install
         shell: bash
@@ -118,8 +86,7 @@ jobs:
           cd build_windows
           cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
-
-      - name: Verify build
+      - name: Verify installation
         shell: pwsh
         run: |
           if (-not (Test-Path "install/blender.exe")) { throw "blender.exe missing!" }

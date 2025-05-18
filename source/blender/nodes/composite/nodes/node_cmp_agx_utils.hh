@@ -99,7 +99,7 @@ static inline float3x3 identity_mtx = {
 static const float pi = 3.14159265358979323846f;
 
 // Create a const array of Chromaticities for enum's index-based selection
-static const Chromaticities COLOR_SPACE_PRI[8] = {
+static const Chromaticities COLOR_SPACE_PRI[] = {
     AP0_PRI,
     AP1_PRI,
     P3D65_PRI,
@@ -108,30 +108,6 @@ static const Chromaticities COLOR_SPACE_PRI[8] = {
     AWG3_PRI,
     AWG4_PRI,
     EGAMUT_PRI
-};
-
-/* ##########################################################################
-    Enums
-    ---------------------------
-*/
-
-enum class AGXPrimaries : int8_t {
-  AGX_PRIMARIES_AP0 = 0,
-  AGX_PRIMARIES_AP1,
-  AGX_PRIMARIES_P3D65,
-  AGX_PRIMARIES_REC709,
-  AGX_PRIMARIES_REC2020,
-  AGX_PRIMARIES_AWG3,
-  AGX_PRIMARIES_AWG4,
-  AGX_PRIMARIES_EGAMUT,
-};
-
-enum class AGXWorkingLog : int8_t {
-  AGX_WORKING_LOG_LINEAR = 0,
-  AGX_WORKING_LOG_ACESCCT,
-  AGX_WORKING_LOG_ARRI_LOGC3,
-  AGX_WORKING_LOG_ARRI_LOGC4,
-  AGX_WORKING_LOG_GENERIC_LOG2,
 };
 
 /* ##########################################################################

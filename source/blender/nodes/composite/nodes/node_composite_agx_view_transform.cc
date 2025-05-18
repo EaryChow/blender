@@ -13,11 +13,14 @@
 #include "FN_multi_function_builder.hh"
 #include "IMB_colormanagement.hh"
 #include "NOD_node_declaration.hh"
+#include "NOD_socket_declarations.hh"
 #include "node_composite_util.hh"
 #include "node_cmp_agx_utils.hh"
 #include "NOD_multi_function.hh"
 #include "RNA_access.hh"
 #include "UI_interface.hh"
+#include "UI_resources.hh"
+
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
@@ -29,42 +32,36 @@ struct NodeAgxViewTransform {
 };
 
 NODE_STORAGE_FUNCS(NodeAgxViewTransform)
-{
-  #define RNA_ENUM_ACCESSORS(id) \
-    static int rna_NodeAgxViewTransform_##id##_get(PointerRNA *ptr) { \
-      return int(((NodeAgxViewTransform *)ptr->data)->id); \
-    } \
-    static void rna_NodeAgxViewTransform_##id##_set(PointerRNA *ptr, int value) { \
-      ((NodeAgxViewTransform *)ptr->data)->id = static_cast<decltype(NodeAgxViewTransform::id)>(value); \
-    }
-
-  RNA_ENUM_ACCESSORS(working_primaries)
-  RNA_ENUM_ACCESSORS(working_log)
-  RNA_ENUM_ACCESSORS(display_primaries)
-  #undef RNA_ENUM_ACCESSORS
-};
+{ a
+#define RNA_ENUM_ACCESSORS(id) \
+  static int rna_NodeAgxViewTransform_##id##_get(PointerRNA *ptr) { \
+    return int(((NodeAgxViewTransform *)ptr->data)->id); \
+  } \
+  static void rna_NodeAgxViewTransform_##id##_set(PointerRNA *ptr, int value) { \
+    ((NodeAgxViewTransform *)ptr->data)->id = static_cast<decltype(NodeAgxViewTransform::id)>(value); \
+  }
 
 // enums
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem primaries_items[] = {
-    {int(AGX_PRIMARIES_AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
-    {int(AGX_PRIMARIES_AP1), "ap1", 0, "ACEScg (AP1)", ""},
-    {int(AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
-    {int(AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
-    {int(AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
-    {int(AGX_PRIMARIES_AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
-    {int(AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
-    {int(AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AP1), "ap1", 0, "ACEScg (AP1)", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
     {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem working_log_items[] = {
-    {int(AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
-    {int(AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
-    {int(AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
-    {int(AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
-    {int(AGX_WORKING_LOG_GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
     {0, nullptr, 0, nullptr, nullptr},
   };
   RNA_def_node_enum(srna, "working_primaries", "Working Primaries", "", primaries_items, NOD_storage_enum_accessors(working_primaries));
@@ -237,9 +234,9 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeAgxViewTransform *data = MEM_cnew<NodeAgxViewTransform>(__func__);
-  data->working_primaries = AGX_PRIMARIES_REC2020;
-  data->working_log = AGX_WORKING_LOG_GENERIC_LOG2;
-  data->display_primaries = AGX_PRIMARIES_REC709;
+  data->working_primaries = AGXPrimaries::AGX_PRIMARIES_REC2020;
+  data->working_log = AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2;
+  data->display_primaries = AGXPrimaries::AGX_PRIMARIES_REC709;
   node->storage = data;
 }
 
@@ -324,23 +321,23 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float in_xyz_array[3];
       IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
       float3 in_xyz = make_float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
-      float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[working_primaries[i]]);
+      float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(working_primaries)]);
       float3 rgb = mult_f3_f33(in_xyz, xyz_to_working);
 
       // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
       if (compensate_negatives[i]) {
-        rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[working_primaries[i]]);
+        rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(working_primaries)]);
       }
       else {
         rgb = maxf3(0, rgb);
       }
       // generate inset matrix
       Chromaticities inset_chromaticities = InsetPrimaries(
-          COLOR_SPACE_PRI[working_primaries[i]],
+          COLOR_SPACE_PRI[static_cast<int>(working_primaries)],
           inset_scale[i].x, inset_scale[i].y, inset_scale[i].z,
           inset_rotate[i].x, inset_rotate[i].y, inset_rotate[i].z);
 
-      float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[working_primaries[i]]);
+      float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(working_primaries)]);
       // apply inset matrix
       rgb = mult_f3_f33(rgb, insetmat);
 
@@ -349,10 +346,10 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       rgb_to_hsv_v(rgb, pre_curve_hsv);
 
       // encode to working log
-      rgb = lin2log(rgb, working_log[i], log2_min[i], log2_max[i]);
+      rgb = lin2log(rgb, static_cast<int>(working_log), log2_min[i], log2_max[i]);
 
       // apply sigmoid, the image is formed at this point
-      float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), working_log[i], log2_min[i], log2_max[i]).x;
+      float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(working_log), log2_min[i], log2_max[i]).x;
       float image_native_power = 2.4f; // assume image's native transfer function is Rec.1886 power 2.4
       float midgray = pow(0.18f, 1.0f / image_native_power);
       rgb.x = sigmoid(rgb.x, shoulder_contrast[i], toe_contrast[i], general_contrast[i], log_midgray + pivot_offset[i], midgray);
@@ -372,38 +369,38 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float3x3 outsetmat;
       if (use_inverse_inset[i]) {
         Chromaticities outset_chromaticities = InsetPrimaries(
-            COLOR_SPACE_PRI[working_primaries[i]],
+            COLOR_SPACE_PRI[static_cast<int>(working_primaries)],
             inset_scale[i].x, inset_scale[i].y, inset_scale[i].z,
             inset_rotate[i].x, inset_rotate[i].y, inset_rotate[i].z,
             tinting_rotate[i] + 180, tinting_outset[i]);
-        outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[working_primaries[i]]));
+        outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(working_primaries)]));
       }
       else {
         Chromaticities outset_chromaticities = InsetPrimaries(
-            COLOR_SPACE_PRI[working_primaries[i]],
+            COLOR_SPACE_PRI[static_cast<int>(working_primaries)],
             outset_scale[i].x, outset_scale[i].y, outset_scale[i].z,
             outset_rotate[i].x, outset_rotate[i].y, outset_rotate[i].z,
             tinting_rotate[i] + 180, tinting_outset[i]);
-        outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[working_primaries[i]]));
+        outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(working_primaries)]));
       }
 
       // apply outset matrix
       img = mult_f3_f33(img, outsetmat);
 
       // convert from working primaries to target display primaries
-      float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[working_primaries[i]], COLOR_SPACE_PRI[display_primaries[i]]);
+      float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(working_primaries)], COLOR_SPACE_PRI[static_cast<int>(display_primaries)]);
       img = mult_f3_f33(img, working_to_display);
 
       // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
       if (compensate_negatives[i]) {
-        img = compensate_low_side(img, true, COLOR_SPACE_PRI[display_primaries[i]]);
+        img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(display_primaries)]);
       }
       else {
         img = maxf3(0, img);
       }
 
       // convert linearized formed image back to OCIO's scene_linear role space
-      float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[display_primaries[i]]);
+      float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(display_primaries)]);
       float3 out_xyz = mult_f3_f33(img, display_to_xyz);
       float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
       float img_array[3];

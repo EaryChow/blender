@@ -32,14 +32,14 @@ struct NodeAgxViewTransform {
 };
 
 NODE_STORAGE_FUNCS(NodeAgxViewTransform)
-{ a
-#define RNA_ENUM_ACCESSORS(id) \
-  static int rna_NodeAgxViewTransform_##id##_get(PointerRNA *ptr) { \
-    return int(((NodeAgxViewTransform *)ptr->data)->id); \
-  } \
-  static void rna_NodeAgxViewTransform_##id##_set(PointerRNA *ptr, int value) { \
-    ((NodeAgxViewTransform *)ptr->data)->id = static_cast<decltype(NodeAgxViewTransform::id)>(value); \
-  }
+{
+  #define RNA_ENUM_ACCESSORS(id) \
+    static int rna_NodeAgxViewTransform_##id##_get(PointerRNA *ptr) { \
+      return int(((NodeAgxViewTransform *)ptr->data)->id); \
+    } \
+    static void rna_NodeAgxViewTransform_##id##_set(PointerRNA *ptr, int value) { \
+      ((NodeAgxViewTransform *)ptr->data)->id = static_cast<decltype(NodeAgxViewTransform::id)>(value); \
+    }
 
 // enums
 static void node_rna(StructRNA *srna)

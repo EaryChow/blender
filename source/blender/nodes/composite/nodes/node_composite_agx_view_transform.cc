@@ -48,23 +48,23 @@ NODE_STORAGE_FUNCS(NodeAgxViewTransform)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem primaries_items[] = {
-    {int(AGXPrimaries::AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
-    {int(AGXPrimaries::AP1), "ap1", 0, "ACEScg (AP1)", ""},
-    {int(AGXPrimaries::P3D65), "p3d65", 0, "P3-D65", ""},
-    {int(AGXPrimaries::REC709), "rec709", 0, "Rec.709", ""},
-    {int(AGXPrimaries::REC2020), "rec2020", 0, "Rec.2020", ""},
-    {int(AGXPrimaries::AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
-    {int(AGXPrimaries::AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
-    {int(AGXPrimaries::EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
+    {int(AGX_PRIMARIES_AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
+    {int(AGX_PRIMARIES_AP1), "ap1", 0, "ACEScg (AP1)", ""},
+    {int(AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
+    {int(AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
+    {int(AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
+    {int(AGX_PRIMARIES_AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
+    {int(AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
+    {int(AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
     {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem working_log_items[] = {
-    {int(AGXWorkingLog::LINEAR), "linear", 0, "Linear", ""},
-    {int(AGXWorkingLog::ACESCCT), "acescct", 0, "ACEScct", ""},
-    {int(AGXWorkingLog::ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
-    {int(AGXWorkingLog::ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
-    {int(AGXWorkingLog::GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
+    {int(AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
+    {int(AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
+    {int(AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
+    {int(AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
+    {int(AGX_WORKING_LOG_GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
     {0, nullptr, 0, nullptr, nullptr},
   };
   RNA_def_node_enum(srna, "working_primaries", "Working Primaries", "", primaries_items, NOD_storage_enum_accessors(working_primaries));
@@ -96,7 +96,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Slope for the curve function."
         "Controls the general contrast across the image");
-      
+
   curve_panel.add_input<decl::Float>("Toe Contrast")
     .default_value(1.5f)
     .min(0.7f)
@@ -105,7 +105,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Exponential power of toe for the curve function."
         "Higher values make dark regions crush harder towards black");
-      
+
   curve_panel.add_input<decl::Float>("Shoulder Contrast")
     .default_value(1.5f)
     .min(0.7f)
@@ -114,7 +114,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Exponential power of shoulder for the curve function."
         "Higher values make bright regions crush harder towards white");
-      
+
   curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
     .default_value(0.0f)
     .min(-0.3f)
@@ -132,7 +132,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "The lower end of the generic log2 curve. Values are in Exposure stops."
         "Only in use when working log is set to Generic Log2");
-    
+
   curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
     .default_value(6.5f)
     .min(2.8f)
@@ -144,7 +144,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 
   /* Panel for inset matrix settings. */
   PanelDeclarationBuilder &inset_panel = b.add_panel("Attenuation").default_closed(true);
-     
+
   inset_panel.add_input<decl::Vector>("Hue Flights")
     .default_value({2.13976f, -1.22827f, -3.05174f})
     .min(-10.0f)
@@ -153,7 +153,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries before curve."
         "Negative is clockwise, and positive is counterclockwise");
-     
+
   inset_panel.add_input<decl::Vector>("Attenuation Rates")
     .default_value({0.329652f, 0.280513f, 0.124754f})
     .min(0.0f)
@@ -162,7 +162,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Percentage relative to the primary chromaticity purity."
         "by which the chromaticity scales inwards before curve");
-     
+
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
 
@@ -181,7 +181,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries after curve."
         "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.");
-     
+
   outset_panel.add_input<decl::Vector>("Restore Purity")
     .default_value({0.323174f, 0.283256f, 0.037433f})
     .min(0.0f)
@@ -190,7 +190,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Percentage relative to the primary chromaticity purity."
         "by which the chromaticity scales outwards after curve");
-      
+
   /* Panel for look adjustments settings. */
   PanelDeclarationBuilder &look_panel = b.add_panel("Look").default_closed(false);
 
@@ -211,7 +211,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Controls how far the white point shifts in the outset."
         "Affecting the intensity or strength of the tint applied after curve");
-      
+
   look_panel.add_input<decl::Float>("Tinting Hue")
     .default_value(0.0f)
     .min(-180.0f)
@@ -220,7 +220,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Adjusts the direction in which the white point shifts in the outset."
         "influencing the overall hue of the tint applied after curve");
-  
+
    /* Panel for Output Gamut Limit settings. */
   PanelDeclarationBuilder &display_gamut_panel = b.add_panel("Display Primaries").default_closed(true);
 
@@ -229,7 +229,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
         "Done in both pre-curve and post-curve state.");
-  
+
   b.add_output<decl::Color>("Color");
 
 }
@@ -237,9 +237,9 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeAgxViewTransform *data = MEM_cnew<NodeAgxViewTransform>(__func__);
-  data->working_primaries = AGXPrimaries::REC2020;
-  data->working_log = AGXWorkingLog::GENERIC_LOG2;
-  data->display_primaries = AGXPrimaries::REC709;
+  data->working_primaries = AGX_PRIMARIES_REC2020;
+  data->working_log = AGX_WORKING_LOG_GENERIC_LOG2;
+  data->display_primaries = AGX_PRIMARIES_REC709;
   node->storage = data;
 }
 

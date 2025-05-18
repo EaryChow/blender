@@ -69,17 +69,11 @@ jobs:
         run: |
           echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
 
-      - name: Download Intel oneAPI Base Toolkit installer
+      - name: Install Intel oneAPI Base Toolkit via WinGet
         shell: pwsh
         run: |
-          $url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2cbb02eb-dd4c-4058-4aac-2e38729a8409/intel-oneapi-base-toolkit-2025.1.2.7_offline.exe"
-          Invoke-WebRequest $url -OutFile oneapi-installer.exe
-
-      - name: Install Intel oneAPI Base Toolkit silently
-        shell: pwsh
-        run: |
-          Start-Process .\oneapi-installer.exe -ArgumentList "-a --silent --cli --eula accept" -Wait
-          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
+          winget install --id intel-basekit --exact --silent --accept-package-agreements --accept-source-agreements
+          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $GITHUB_ENV
 
       - name: Configure CMake
         shell: bash

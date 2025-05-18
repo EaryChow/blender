@@ -14,6 +14,7 @@ jobs:
       BUILD_TYPE: "Release"
 
     steps:
+      # 1. Install Git LFS and checkout
       - name: Install Git LFS
         run: git lfs install --skip-repo
 
@@ -34,6 +35,7 @@ jobs:
             git lfs pull \
           "
 
+      # 2. Verify datafiles
       - name: Verify datafiles
         shell: pwsh
         run: |
@@ -69,10 +71,16 @@ jobs:
         run: |
           echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
 
-      - name: Install Intel oneAPI Base Toolkit via WinGet
+      - name: Install winget
+        uses: Cyberboss/install-winget@v1               
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Intel oneAPI Base Toolkit
         shell: pwsh
         run: |
-          winget install --id intel-basekit --exact --silent --accept-package-agreements --accept-source-agreements
+          winget install --id intel-basekit --exact --silent \
+            --accept-package-agreements --accept-source-agreements
           echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $GITHUB_ENV
 
       - name: Configure CMake

@@ -1,4 +1,4 @@
-name: Windows Build
+name: Windows Production Build
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Install Git LFS
         run: git lfs install --skip-repo
 
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
@@ -38,36 +38,55 @@ jobs:
         shell: pwsh
         run: |
           $f = "release/datafiles/startup.blend"
-          if (!(Test-Path $f)) {
-            Write-Error "$f not found—check your fork structure!"
-            exit 1
-          }
-          if ((Get-Item $f).Length -lt 10240) {
-            Write-Error "$f is too small—still a pointer file?"
-            exit 1
-          }
+          if (!(Test-Path $f)) { throw "$f missing!" }
+          if ((Get-Item $f).Length -lt 10240) { throw "$f too small!" }
 
       - name: Fetch precompiled libraries
         shell: powershell
         run: python build_files/utils/make_update.py --architecture="amd64"
 
-      - name: Install CUDA Toolkit via Chocolatey
+
+      - name: Install CUDA Toolkit
         shell: pwsh
         run: |
           choco install cuda -y
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
 
-      - name: Clone OptiX header-only repo
-        shell: bash
-        run: |
-          git clone --depth=1 https://github.com/NVIDIA/optix-dev.git optix-dev
-          echo "OPTIX_ROOT_DIR=$(pwd)/optix-dev" >> $GITHUB_ENV
+      - name: Download OptiX SDK
+        uses: actions/download-release-asset@v2
+        with:
+          repository: EaryChow/blender
+          tag:         4.5.0-alpha
+          asset_name:  NVIDIA-OptiX-SDK-7.4.0-win64.zip
+          output:      optix.zip
 
-      - name: Configure HIP SDK path
+      - name: Unpack OptiX SDK
+        shell: pwsh
+        run: |
+          Expand-Archive optix.zip -DestinationPath C:\OptiX-7.4.0
+          echo "OPTIX_ROOT_DIR=C:/OptiX-7.4.0" >> $env:GITHUB_ENV
+
+      - name: Configure HIP SDK
         shell: pwsh
         run: |
           echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
+
+      - name: Download ocloc.exe
+        uses: actions/download-release-asset@v2
+        with:
+          repository: EaryChow/blender
+          tag:         4.5.0-alpha
+          asset_name:  ocloc.exe
+          output:      ocloc.exe
+
+      - name: Install ocloc for CMake
+        shell: pwsh
+        run: |
+          mkdir tools\ocloc
+          Move-Item ocloc.exe tools\ocloc\ocloc.exe
+          echo "OCLOC_INSTALL_DIR=$(pwd)/tools/ocloc" >> $env:GITHUB_ENV
+
 
       - name: Configure CMake
         shell: bash
@@ -75,8 +94,7 @@ jobs:
           mkdir build_windows && cd build_windows
           cmake .. \
             -C "../build_files/buildbot/config/blender_windows.cmake" \
-            -G "Visual Studio 17 2022" \
-            -A x64 \
+            -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DWITH_INSTALL_PORTABLE=ON \
@@ -91,21 +109,20 @@ jobs:
             -DHIP_SDK_PATH="${{ env.HIP_SDK_PATH }}" \
             \
             -DWITH_CYCLES_DEVICE_ONEAPI=ON \
-            -DWITH_CYCLES_ONEAPI_BINARIES=ON
+            -DWITH_CYCLES_ONEAPI_BINARIES=ON \
+            -DOCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}"
 
-      - name: Build and Install
+      - name: Build & Install
         shell: bash
         run: |
           cd build_windows
           cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
 
-      - name: Verify installation
+
+      - name: Verify build
         shell: pwsh
         run: |
-          if (-not (Test-Path "install/blender.exe")) {
-            Write-Error "blender.exe missing!"
-            exit 1
-          }
+          if (-not (Test-Path "install/blender.exe")) { throw "blender.exe missing!" }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

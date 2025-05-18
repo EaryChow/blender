@@ -229,7 +229,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AgXViewTransformFunction()
   {
     static const mf::Signature signature = []() {
-      mf::SignatureBuilder builder;
+      mf::Signature signature;
+      mf::SignatureBuilder builder("AgXViewTransform", signature);
       builder.single_input<float4>("Color");
       builder.single_input<int>("Working Primaries");
       builder.single_input<int>("Working Log");
@@ -250,7 +251,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       builder.single_input<int>("Display Primaries");
       builder.single_input<bool>("Compensate for the Negatives");
       builder.single_output<float4>("Color");
-      return builder.build();
+      return signature;
     }();
     this->set_signature(&signature);
   }
@@ -388,7 +389,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   using namespace blender::nodes::node_composite_agx_view_transform_cc;
-  builder.set_matching_fn<AgXViewTransformFunction>();
+  builder.set_matching_fn<node_composite_agx_view_transform_cc::AgXViewTransformFunction>();
 }
 
 }  // namespace blender::nodes::node_composite_agx_view_transform_cc

@@ -54,32 +54,32 @@ jobs:
       - name: Install CUDA Toolkit via Chocolatey
         shell: pwsh
         run: |
-          choco install cuda -y                                           :contentReference[oaicite:2]{index=2}
-          Import-Module "$env:ChocolateyInstall/helpers/chocolateyProfile.psm1"
-          refreshenv                                                       :contentReference[oaicite:3]{index=3}
+          choco install cuda -y
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
 
       - name: Clone OptiX header-only repo
         shell: bash
         run: |
           git clone --depth=1 https://github.com/NVIDIA/optix-dev.git optix-dev
-          echo "OPTIX_ROOT_DIR=$(pwd)/optix-dev" >> $GITHUB_ENV           :contentReference[oaicite:4]{index=4}
+          echo "OPTIX_ROOT_DIR=$(pwd)/optix-dev" >> $GITHUB_ENV
 
       - name: Configure HIP SDK path
         shell: pwsh
         run: |
-          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV                
+          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV
 
       - name: Download Intel oneAPI Base Toolkit installer
         shell: pwsh
         run: |
           $url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2cbb02eb-dd4c-4058-4aac-2e38729a8409/intel-oneapi-base-toolkit-2025.1.2.7_offline.exe"
-          Invoke-WebRequest $url -OutFile oneapi-installer.exe            :contentReference[oaicite:6]{index=6}
+          Invoke-WebRequest $url -OutFile oneapi-installer.exe
 
       - name: Install Intel oneAPI Base Toolkit silently
         shell: pwsh
         run: |
           Start-Process .\oneapi-installer.exe -ArgumentList "-a --silent --cli --eula accept" -Wait
-          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV :contentReference[oaicite:7]{index=7}
+          echo "ONEAPI_ROOT_DIR=C:/Program Files (x86)/Intel/oneAPI" >> $env:GITHUB_ENV
 
       - name: Configure CMake
         shell: bash

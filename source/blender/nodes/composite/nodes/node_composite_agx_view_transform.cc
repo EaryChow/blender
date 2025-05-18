@@ -388,8 +388,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 // Multi-function Builder
 static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  using namespace blender::nodes::node_composite_agx_view_transform_cc;
-  builder.set_matching_fn<node_composite_agx_view_transform_cc::AgXViewTransformFunction>();
+  builder.set_matching_fn<AgXViewTransformFunction>();
 }
 
 }  // namespace blender::nodes::node_composite_agx_view_transform_cc

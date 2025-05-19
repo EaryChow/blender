@@ -19,7 +19,6 @@
 #include "NOD_node_declaration.hh"
 #include "NOD_rna_define.hh"
 #include "node_composite_util.hh"
-#include "node_function_util.hh"
 #include "node_cmp_agx_utils.hh"
 #include "RNA_access.hh"
 #include "rna_internal.hh"

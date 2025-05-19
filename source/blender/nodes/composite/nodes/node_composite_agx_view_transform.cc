@@ -78,11 +78,16 @@ struct NodeAgxViewTransform {
 NODE_STORAGE_FUNCS(NodeAgxViewTransform);
 
 // Storage free/copy functions
-static void node_free_agx_storage(bNode *node) {
-  MEM_SAFE_FREE(node->storage);
+static void node_free_agx_storage(bNodeTree * /*ntree*/, bNode *node) {
+    MEM_SAFE_FREE(node->storage);
 }
-static void node_copy_agx_storage(bNode *nnode, const bNode *node) {
-  nnode->storage = MEM_dupallocN(node->storage);
+
+static void node_copy_agx_storage(bNodeTree * /*ntree*/, bNode *nnode, const bNode *node) {
+    if (node->storage) {
+        nnode->storage = MEM_dupallocN(node->storage);
+    } else {
+        nnode->storage = nullptr;
+    }
 }
 
 // RNA functions for node properties
@@ -94,21 +99,21 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), AGX_PRIMARIES_REC2020);
+      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), static_cast<int>(AGX_PRIMARIES_REC2020));
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items, NOD_storage_enum_accessors(working_log), AGX_WORKING_LOG_GENERIC_LOG2);
+      agx_working_log_items, NOD_storage_enum_accessors(working_log), static_cast<int>(AGX_WORKING_LOG_GENERIC_LOG2));
 
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
-      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), AGX_PRIMARIES_REC709);
+      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), static_cast<int>(AGX_PRIMARIES_REC709));
 }
 
 // initialize
@@ -272,11 +277,9 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b) {
 
 // Node UI Layout
 static void cmp_node_agx_view_transform_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-  layout->prop(ptr, "working_primaries");
-
-  layout->prop(ptr, "working_log");
-
-  layout->prop(ptr, "display_primaries");
+layout->prop(ptr, "working_primaries", "");
+layout->prop(ptr, "working_log", "");
+layout->prop(ptr, "display_primaries", "");
 }
 
 
@@ -379,7 +382,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]);
 
       // apply sigmoid, the image is formed at this point
-      float log_midgray = lin2log(make_float3(0.18f), static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]).x;
+      float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]).x;
       float image_native_power = 2.4f;
       float midgray = pow(0.18f, 1.0f / image_native_power);
       rgb.x = sigmoid(rgb.x, shoulder_contrast_in[i], toe_contrast_in[i], general_contrast_in[i], log_midgray + pivot_offset_in[i], midgray);
@@ -402,7 +405,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
             attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings
             hue_flights_in[i].x, hue_flights_in[i].y, hue_flights_in[i].z,         // Uses attenuation settings
-            tinting_rotate_in[i] + 180, tinting_outset_in[i]);
+            tinting_hue_in[i] + 180, tinting_scale_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }
       else {
@@ -410,7 +413,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
             restore_purity_in[i].x, restore_purity_in[i].y, restore_purity.z_in[i],
             reverse_hue_flights_in[i].x, reverse_hue_flights_in[i].y, reverse_hue_flights.z_in[i],
-            tinting_rotate_in[i] + 180, tinting_outset_in[i]);
+            tinting_hue_in[i] + 180, tinting_scale_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }
 
@@ -450,9 +453,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
 // Multi-function Builder
 static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  builder.set_instantiating_fn(+[](const bNode &node, mf::FunctionInitializer &initializer) {
-    initializer.set_function<AgXViewTransformFunction>(node);
-  });
+  builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
 }
 
 }  // namespace blender::nodes::node_composite_agx_view_transform_cc
@@ -463,13 +464,13 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform"
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.idname = "CompositorNodeAgXViewTransform";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
-  ntype.updatefunc = node_update;
+  ntype.updatefunc = nullptr;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;

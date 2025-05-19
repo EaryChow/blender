@@ -21,7 +21,6 @@
 #include "node_composite_util.hh"
 #include "node_cmp_agx_utils.hh"
 #include "RNA_access.hh"
-#include "rna_internal.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "UI_interface.hh"

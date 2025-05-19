@@ -24,6 +24,8 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "UI_interface.hh"
+#include "UI_resources.hh"
+
 
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
@@ -78,16 +80,21 @@ struct NodeAgxViewTransform {
 NODE_STORAGE_FUNCS(NodeAgxViewTransform);
 
 // Storage free/copy functions
-static void node_free_agx_storage(bNodeTree * /*ntree*/, bNode *node) {
+static void node_free_agx_storage(bNode *node) {
     MEM_SAFE_FREE(node->storage);
 }
 
-static void node_copy_agx_storage(bNodeTree * /*ntree*/, bNode *nnode, const bNode *node) {
-    if (node->storage) {
-        nnode->storage = MEM_dupallocN(node->storage);
-    } else {
-        nnode->storage = nullptr;
-    }
+static void node_copy_agx_storage(
+    bNodeTree * /*dest_ntree*/,
+    bNode *dest_node,
+    const bNode *src_node)
+{
+  if (src_node->storage) {
+    dest_node->storage = MEM_dupallocN(src_node->storage);
+  }
+  else {
+    dest_node->storage = nullptr;
+  }
 }
 
 // RNA functions for node properties
@@ -99,21 +106,21 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), static_cast<int>(AGX_PRIMARIES_REC2020));
+      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), AGX_PRIMARIES_REC2020);
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items, NOD_storage_enum_accessors(working_log), static_cast<int>(AGX_WORKING_LOG_GENERIC_LOG2));
+      agx_working_log_items, NOD_storage_enum_accessors(working_log), AGX_WORKING_LOG_GENERIC_LOG2);
 
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
-      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), static_cast<int>(AGX_PRIMARIES_REC709));
+      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), AGX_PRIMARIES_REC709);
 }
 
 // initialize
@@ -275,11 +282,34 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b) {
   b.add_output<decl::Color>("Color");
 }
 
-// Node UI Layout
-static void cmp_node_agx_view_transform_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-layout->prop(ptr, "working_primaries", "");
-layout->prop(ptr, "working_log", "");
-layout->prop(ptr, "display_primaries", "");
+// Put Enums on UI Layout
+static void cmp_node_agx_view_transform_layout(uiLayout *layout,
+                                               bContext * /*C*/,
+                                               PointerRNA *ptr)
+{
+  // Draw the "working_primaries" enum property
+  // The label "Working Primaries" will come from its RNA definition.
+  layout->prop(ptr,
+               "working_primaries",
+               0, // Default layout flags (or UI_ITEM_R_NONE if defined and appropriate)
+               std::nullopt, // Use RNA's ui_name for the label text
+               ICON_NONE);   // No icon
+
+  // Draw the "working_log" enum property
+  // The label "Working Log" will come from its RNA definition.
+  layout->prop(ptr,
+               "working_log",
+               0,              // Default layout flags
+               std::nullopt,   // Use RNA's ui_name
+               ICON_NONE);     // No icon
+
+  // Draw the "display_primaries" enum property
+  // The label "Display Primaries" will come from its RNA definition.
+  layout->prop(ptr,
+               "display_primaries",
+               0,              // Default layout flags
+               std::nullopt,   // Use RNA's ui_name
+               ICON_NONE);     // No icon
 }
 
 
@@ -411,8 +441,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       else {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-            restore_purity_in[i].x, restore_purity_in[i].y, restore_purity.z_in[i],
-            reverse_hue_flights_in[i].x, reverse_hue_flights_in[i].y, reverse_hue_flights.z_in[i],
+            restore_purity_in[i].x, restore_purity_in[i].y, restore_purity_in.z[i],
+            reverse_hue_flights_in[i].x, reverse_hue_flights_in[i].y, reverse_hue_flights_in.z[i],
             tinting_hue_in[i] + 180, tinting_scale_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }

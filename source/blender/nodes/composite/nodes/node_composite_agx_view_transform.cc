@@ -6,6 +6,7 @@
 #include "BLI_math_color.h"
 #include "BLI_math_color.hh"
 #include "BLI_math_vector.hh"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLT_translation.hh"
 #include "BKE_node.hh"
@@ -17,8 +18,10 @@
 #include "node_composite_util.hh"
 #include "node_cmp_agx_utils.hh"
 #include "NOD_multi_function.hh"
+#include "NOD_rna_define.hh"
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "UI_interface.hh"
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
@@ -595,7 +598,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(
-      ntype, "NodeAgxViewTransform", node_free_agx_storage, node_copy_agx_storage);
+      ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);
   blender::bke::node_register_type(ntype);
   file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
 }

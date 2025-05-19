@@ -8,21 +8,25 @@
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 #include "BLT_translation.hh"
 #include "BKE_node.hh"
 #include "COM_node_operation.hh"
 #include "DNA_node_types.h"
 #include "FN_multi_function_builder.hh"
 #include "IMB_colormanagement.hh"
-#include "NOD_node_declaration.hh"
-#include "node_composite_util.hh"
-#include "node_cmp_agx_utils.hh"
 #include "NOD_multi_function.hh"
+#include "NOD_node_declaration.hh"
 #include "NOD_rna_define.hh"
+#include "node_composite_util.hh"
+#include "node_function_util.hh"
+#include "node_cmp_agx_utils.hh"
 #include "RNA_access.hh"
+#include "rna_internal.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "UI_interface.hh"
+
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
@@ -67,402 +71,277 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-// RNA functions node properties
-static void cmp_node_agx_view_transform_rna(StructRNA *srna)
-{
+// Storage Structure
+struct NodeAgxViewTransform {
+  AGXPrimaries working_primaries;
+  AGXWorkingLog working_log;
+  AGXPrimaries display_primaries;
+};
+NODE_STORAGE_FUNCS(NodeAgxViewTransform);
+
+// Storage free/copy functions
+static void node_free_agx_storage(bNode *node) {
+  MEM_SAFE_FREE(node->storage);
+}
+static void node_copy_agx_storage(bNode *nnode, const bNode *node) {
+  nnode->storage = MEM_dupallocN(node->storage);
+}
+
+// RNA functions for node properties
+static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
   PropertyRNA *prop;
-  // --- Enum Properties ---
+
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items,
-      NOD_storage_enum_accessors(working_primaries),
-      AGX_PRIMARIES_REC2020);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
+      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), AGX_PRIMARIES_REC2020);
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items,
-      NOD_storage_enum_accessors(working_log),
-      AGX_WORKING_LOG_GENERIC_LOG2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
+      agx_working_log_items, NOD_storage_enum_accessors(working_log), AGX_WORKING_LOG_GENERIC_LOG2);
 
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
-      agx_primaries_items,
-      NOD_storage_enum_accessors(display_primaries),
-      AGX_PRIMARIES_REC709);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  // --- Float Properties ---
-  prop = RNA_def_node_float(
-      srna,
-      "general_contrast",
-      "General Contrast",
-      "Slope of the S curve. Controls the general contrast across the image",
-      NOD_storage_float_accessors(general_contrast), 2.4f, 1.4f, 4.0f);
-  RNA_def_property_ui_range(prop, 1.4f, 4.0f, 0.1f, 2); // min, max, step, precision
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "toe_contrast",
-      "Toe Contrast",
-      "Toe exponential power of the S curve. Higher values make darker regions crush harder towards black",
-      NOD_storage_float_accessors(toe_contrast), 1.5f, 0.7f, 10.0f);
-  RNA_def_property_ui_range(prop, 0.7f, 10.0f, 0.1f, 2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "shoulder_contrast",
-      "Shoulder Contrast",
-      "Shoulder exponential power of the S curve. Higher values make brighter regions crush harder towards white",
-      NOD_storage_float_accessors(shoulder_contrast), 1.5f, 0.7f, 10.0f);
-  RNA_def_property_ui_range(prop, 0.7f, 10.0f, 0.1f, 2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "pivot_offset",
-      "Pivot Offset",
-      "Controls the pivot point for all contrast adjustments",
-      NOD_storage_float_accessors(pivot_offset), 0.0f, -0.3f, 0.18f);
-  RNA_def_property_ui_range(prop, -0.3f, 0.18f, 0.01f, 3);
-  RNA_def_property_flag(prop, PROP_SHORT_NAME); // For "Short Label" behavior if property name is long
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "log2_min",
-      "Log2 Minimum Exposure",
-      "The lower end of the generic log2 curve. Values are in Exposure stops. Only in use when working log is set to Generic Log2",
-      NOD_storage_float_accessors(log2_min), -10.0f, -15.0f, -5.0f);
-  RNA_def_property_ui_range(prop, -15.0f, -5.0f, 0.1f, 2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "log2_max",
-      "Log2 Maximum Exposure",
-      "The upper end of the generic log2 curve. Values are in Exposure stops. Only in use when working log is set to Generic Log2",
-      NOD_storage_float_accessors(log2_max), 6.5f, 2.8f, 38.0f);
-  RNA_def_property_ui_range(prop, 2.8f, 38.0f, 0.1f, 2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "per_channel_hue_flight",
-      "Per-Channel Hue Flight",
-      "The percentage of hue shift introduced by the per-channel curve. Higher value will have yellower orange, for example",
-      NOD_storage_float_accessors(per_channel_hue_flight), 0.4f, 0.0f, 1.0f);
-  RNA_def_property_subtype(prop, PROP_FACTOR);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "tinting_outset",
-      "Tinting Scale",
-      "Controls how far the white point shifts in the outset. Affecting the intensity or strength of the tint applied after curve",
-      NOD_storage_float_accessors(tinting_outset), 0.0f, -0.2f, 0.2f);
-  RNA_def_property_subtype(prop, PROP_FACTOR);
-  RNA_def_property_ui_range(prop, -0.2f, 0.2f, 0.01f, 3);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_float(
-      srna,
-      "tinting_rotate",
-      "Tinting Hue",
-      "Adjusts the direction in which the white point shifts in the outset. Influencing the overall hue of the tint applied after curve",
-      NOD_storage_float_accessors(tinting_rotate), 0.0f, -180.0f, 180.0f);
-  RNA_def_property_subtype(prop, PROP_FACTOR);
-  RNA_def_property_ui_range(prop, -180.0f, 180.0f, 1.0f, 1);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  // --- Vector Properties ---
-  prop = RNA_def_node_vector(
-      srna,
-      "hue_flights", 3, nullptr,
-      "Hue Flights",
-      "Hue Rotation angle in degrees for each of the RGB primaries before curve. Negative is clockwise, and positive is counterclockwise",
-      NOD_storage_vector_accessors(hue_flights), nullptr); // Last nullptr if default is handled by init
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.1f, 3); // Range for each component
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_vector(
-      srna,
-      "attenuation_rates", 3, nullptr,
-      "Attenuation Rates",
-      "Percentage relative to the primary chromaticity purity, by which the chromaticity scales inwards before curve",
-      NOD_storage_vector_accessors(attenuation_rates), nullptr);
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_range(prop, 0.0f, 0.6f, 0.01f, 3);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_vector(
-      srna,
-      "reverse_hue_flights", 3, nullptr,
-      "Reverse Hue Flights",
-      "Hue Rotation angle in degrees for each of the RGB primaries after curve. Direction is the reverse of the Attenuation.",
-      NOD_storage_vector_accessors(reverse_hue_flights), nullptr);
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.1f, 3);
-  RNA_def_property_flag(prop, PROP_SHORT_NAME);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_vector(
-      srna,
-      "restore_purity", 3, nullptr,
-      "Restore Purity",
-      "Percentage relative to the primary chromaticity purity, by which the chromaticity scales outwards after curve",
-      NOD_storage_vector_accessors(restore_purity), nullptr);
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_range(prop, 0.0f, 0.6f, 0.01f, 3);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  // --- Boolean Properties ---
-  prop = RNA_def_node_boolean(
-      srna,
-      "use_inverse_inset",
-      "Use Same Settings as Attenuation",
-      "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
-      NOD_storage_bool_accessors(use_inverse_inset), false);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-
-  prop = RNA_def_node_boolean(
-      srna,
-      "compensate_negatives",
-      "Compensate for the Negatives",
-      "Use special luminance compensation technique to prevent out-of-gamut negative values. Done in both pre-curve and post-curve state",
-      NOD_storage_bool_accessors(compensate_negatives), true);
-  RNA_def_property_update(prop, NC_NODE | ND_TREE, "rna_Node_update_custom");
-}
-
-// Storage Structure
-struct NodeAgxViewTransform {
-  // Enum properties
-  AGXPrimaries working_primaries;
-  AGXWorkingLog working_log;
-  AGXPrimaries display_primaries;
-
-    // Float properties
-  float general_contrast;
-  float toe_contrast;
-  float shoulder_contrast;
-  float pivot_offset; // "Contrast Pivot Offset"
-  float log2_min;     // "Log2 Minimum Exposure"
-  float log2_max;     // "Log2 Maximum Exposure"
-  float per_channel_hue_flight;
-  float tinting_outset; // "Tinting Scale"
-  float tinting_rotate; // "Tinting Hue"
-
-  // Vector properties
-  float hue_flights[3];
-  float attenuation_rates[3];
-  float reverse_hue_flights[3];
-  float restore_purity[3];
-
-  // Boolean properties
-  bool use_inverse_inset; // "Use Same Settings as Attenuation"
-  bool compensate_negatives; // "Compensate for the Negatives"
-
-};
-NODE_STORAGE_FUNCS(NodeAgxViewTransform);
-
-static void node_free_agx_storage(bNode *node) {
-  MEM_SAFE_FREE(node->storage);
-}
-
-static void node_copy_agx_storage(bNode *nnode, const bNode *node) {
-  nnode->storage = MEM_dupallocN(node->storage);
+      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), AGX_PRIMARIES_REC709);
 }
 
 // initialize
-static void cmp_node_agx_view_transform_init(bNodeTree * /*tree*/, bNode *node)
-{
+static void cmp_node_agx_view_transform_init(bNodeTree * /*tree*/, bNode *node) {
   NodeAgxViewTransform *data = MEM_callocN<NodeAgxViewTransform>(__func__);
-  // Enum defaults
   data->working_primaries = AGX_PRIMARIES_REC2020;
   data->working_log = AGX_WORKING_LOG_GENERIC_LOG2;
   data->display_primaries = AGX_PRIMARIES_REC709;
-
-  // Float defaults
-  data->general_contrast = 2.4f;
-  data->toe_contrast = 1.5f;
-  data->shoulder_contrast = 1.5f;
-  data->pivot_offset = 0.0f;
-  data->log2_min = -10.0f;
-  data->log2_max = 6.5f;
-  data->per_channel_hue_flight = 0.4f;
-  data->tinting_outset = 0.0f;
-  data->tinting_rotate = 0.0f;
-
-  // Vector defaults
-  float3_to_array(data->hue_flights, {2.13976f, -1.22827f, -3.05174f});
-  float3_to_array(data->attenuation_rates, {0.329652f, 0.280513f, 0.124754f});
-  float3_to_array(data->reverse_hue_flights, {0.0f, 0.0f, 0.0f});
-  float3_to_array(data->restore_purity, {0.323174f, 0.283256f, 0.037433f});
-
-  // Boolean defaults
-  data->use_inverse_inset = false;
-  data->compensate_negatives = true;
-
   node->storage = data;
 }
 
 // Node Declaration
-static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b)
-{
+static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b) {
   b.add_input<decl::Color>("Color")
-     .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-     .compositor_domain_priority(0);
+      .default_value({1.0f, 1.0f, 1.0f, 1.0f})
+      .compositor_domain_priority(0);
+
+
+  /* Panel for log and sigmoid curve settings. */
+  PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
+
+  curve_panel.add_input<decl::Float>("General Contrast")
+    .default_value(2.4f)
+    .min(1.4f)
+    .max(4.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "Slope of the S curve."
+        "Slope of the S curve. Controls the general contrast across the image");
+
+  curve_panel.add_input<decl::Float>("Toe Contrast")
+    .default_value(1.5f)
+    .min(0.7f)
+    .max(10.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "Toe exponential power of the S curve."
+        "Higher values make darker regions crush harder towards black");
+
+  curve_panel.add_input<decl::Float>("Shoulder Contrast")
+    .default_value(1.5f)
+    .min(0.7f)
+    .max(10.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "Shoulder exponential power of the S curve."
+        "Higher values make brighter regions crush harder towards white");
+
+  curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
+    .default_value(0.0f)
+    .min(-0.3f)
+    .max(0.18f)
+    .subtype(PROP_NONE)
+    .short_label("Pivot Offset")
+    .description(
+        "Controls the pivot point for all contrast adjustments");
+
+  curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
+    .default_value(-10.0f)
+    .min(-15.0f)
+    .max(-5.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "The lower end of the generic log2 curve. Values are in Exposure stops."
+        "Only in use when working log is set to Generic Log2");
+
+  curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
+    .default_value(6.5f)
+    .min(2.8f)
+    .max(38.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "The upper end of the log curve. Values are in Exposure stops."
+        "Only in use when working log is set to Generic Log2");
+
+  /* Panel for inset matrix settings. */
+  PanelDeclarationBuilder &inset_panel = b.add_panel("Attenuation").default_closed(true);
+
+  inset_panel.add_input<decl::Vector>("Hue Flights")
+    .default_value({2.13976f, -1.22827f, -3.05174f})
+    .min(-10.0f)
+    .max(10.0f)
+    .subtype(PROP_NONE)
+    .description(
+        "Hue Rotation angle in degrees for each of the RGB primaries before curve."
+        "Negative is clockwise, and positive is counterclockwise");
+
+  inset_panel.add_input<decl::Vector>("Attenuation Rates")
+    .default_value({0.329652f, 0.280513f, 0.124754f})
+    .min(0.0f)
+    .max(0.6f)
+    .subtype(PROP_NONE)
+    .description(
+        "Percentage relative to the primary chromaticity purity,"
+        "by which the chromaticity scales inwards before curve");
+
+  /* Panel for outset matrix settings. */
+  PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
+
+  outset_panel.add_input<decl::Bool>("Use Same Settings as Attenuation")
+    .default_value(false)
+    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use");
+
+  outset_panel.add_input<decl::Vector>("Reverse Hue Flights")
+    .default_value({0.0f, 0.0f, 0.0f})
+    .min(-10.0f)
+    .max(10.0f)
+    .subtype(PROP_NONE)
+    .short_label("Rotation")
+    .description(
+        "Hue Rotation angle in degrees for each of the RGB primaries after curve."
+        "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.");
+
+  outset_panel.add_input<decl::Vector>("Restore Purity")
+    .default_value({0.323174f, 0.283256f, 0.037433f})
+    .min(0.0f)
+    .max(0.6f)
+    .subtype(PROP_NONE)
+    .description(
+        "Percentage relative to the primary chromaticity purity,"
+        "by which the chromaticity scales outwards after curve");
+
+  /* Panel for look adjustments settings. */
+  PanelDeclarationBuilder &look_panel = b.add_panel("Look").default_closed(false);
+
+  look_panel.add_input<decl::Float>("Per-Channel Hue Flight")
+    .default_value(0.4f)
+    .min(0.0f)
+    .max(1.0f)
+    .subtype(PROP_FACTOR)
+    .description(
+        "The percentage of hue shift introduced by the per-channel curve."
+        "Higher value will have yellower orange, for example");
+
+  look_panel.add_input<decl::Float>("Tinting Scale")
+    .default_value(0.0f)
+    .min(-0.2f)
+    .max(0.2f)
+    .subtype(PROP_FACTOR)
+    .description(
+        "Controls how far the white point shifts in the outset."
+        "Affecting the intensity or strength of the tint applied after curve");
+
+  look_panel.add_input<decl::Float>("Tinting Hue")
+    .default_value(0.0f)
+    .min(-180.0f)
+    .max(180.0f)
+    .subtype(PROP_FACTOR)
+    .description(
+        "Adjusts the direction in which the white point shifts in the outset."
+        "influencing the overall hue of the tint applied after curve");
+
+  b.add_input<decl::Bool>("Compensate for the Negatives")
+    .default_value(true)
+    .description(
+        "Use special luminance compensation technique to prevent out-of-gamut negative values."
+        "Done in both pre-curve and post-curve state.");
 
   b.add_output<decl::Color>("Color");
-
 }
 
 // Node UI Layout
-static void cmp_node_agx_view_transform_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
-{
-  uiLayout *col;
+static void cmp_node_agx_view_transform_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+  layout->prop(ptr, "working_primaries");
 
-  // Working Space Section
-  layout->label(text_ctxt("Working Space"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "working_primaries");
-  col->prop(ptr, "working_log", text_ctxt("Log"));
+  layout->prop(ptr, "working_log");
 
-  layout->separator();
-
-  // Curve Section
-  layout->label(text_ctxt("Curve"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "general_contrast");
-  col->prop(ptr, "toe_contrast");
-  col->prop(ptr, "shoulder_contrast");
-  col->prop(ptr, "pivot_offset", text_ctxt("Pivot Offset"));
-  col->prop(ptr, "log2_min");
-  col->prop(ptr, "log2_max");
-
-  layout->separator();
-
-  // Attenuation Section
-  layout->label(text_ctxt("Attenuation"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "hue_flights");
-  col->prop(ptr, "attenuation_rates");
-
-  layout->separator();
-
-  // Purity Restoration Section
-  layout->label(text_ctxt("Purity Restoration"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "use_inverse_inset");
-
-  // Conditionally enable/disable based on use_inverse_inset
-  bool use_same = RNA_boolean_get(ptr, "use_inverse_inset");
-  uiLayout *sub_col = col->column();
-  sub_col->active = !use_same; // Grey out if use_same is true
-  sub_col->prop(ptr, "reverse_hue_flights", text_ctxt("Rotation"));
-  sub_col->prop(ptr, "restore_purity");
-
-  layout->separator();
-
-  // Look Section
-  layout->label(text_ctxt("Look"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "per_channel_hue_flight");
-  col->prop(ptr, "tinting_outset", text_ctxt("Tinting Scale"));
-  col->prop(ptr, "tinting_rotate", text_ctxt("Tinting Hue"));
-
-  layout->separator();
-
-  // Display Primaries Section
-  layout->label(text_ctxt("Target Display Primaries"));
-  col = layout->column(UI_LAYOUT_COLUMN_FLOW_FIRST);
-  col->prop(ptr, "display_primaries");
-
-  layout->separator();
-
-  // Other settings
-  layout->prop(ptr, "compensate_negatives");
+  layout->prop(ptr, "display_primaries");
 }
+
 
 // Multi-function Builder
 class AgXViewTransformFunction : public mf::MultiFunction {
  public:
-  // Store ALL global settings as member variables
+  // Members for "baked-in" settings (enums from node storage)
   AGXPrimaries p_working_primaries;
   AGXWorkingLog p_working_log;
-  float p_general_contrast;
-  float p_toe_contrast;
-  float p_shoulder_contrast;
-  float p_pivot_offset;
-  float p_log2_min;
-  float p_log2_max;
-  float3 p_hue_flights;
-  float3 p_attenuation_rates;
-  bool p_use_inverse_inset;
-  float3 p_reverse_hue_flights;
-  float3 p_restore_purity;
-  float p_per_channel_hue_flight;
-  float p_tinting_outset;
-  float p_tinting_rotate;
   AGXPrimaries p_display_primaries;
-  bool p_compensate_negatives;
 
-
-  // Constructor that takes the bNode to extract settings from storage
-  explicit AgXViewTransformFunction(const bNode &node)
-  {
+  explicit AgXViewTransformFunction(const bNode &node) {
     const NodeAgxViewTransform *s = static_cast<const NodeAgxViewTransform *>(node.storage);
-
     p_working_primaries = s->working_primaries;
     p_working_log = s->working_log;
     p_display_primaries = s->display_primaries;
-    p_general_contrast = s->general_contrast;
-    p_toe_contrast = s->toe_contrast;
-    p_shoulder_contrast = s->shoulder_contrast;
-    p_pivot_offset = s->pivot_offset;
-    p_log2_min = s->log2_min;
-    p_log2_max = s->log2_max;
-
-    // Convert float arrays from storage to float3 for internal use
-    p_hue_flights = make_float3(s->hue_flights);
-    p_attenuation_rates = make_float3(s->attenuation_rates);
-    p_reverse_hue_flights = make_float3(s->reverse_hue_flights);
-    p_restore_purity = make_float3(s->restore_purity);
-
-    p_use_inverse_inset = s->use_inverse_inset;
-    p_per_channel_hue_flight = s->per_channel_hue_flight;
-    p_tinting_outset = s->tinting_outset;
-    p_tinting_rotate = s->tinting_rotate;
-    p_compensate_negatives = s->compensate_negatives;
 
     static const mf::Signature signature = []() {
       mf::Signature sig;
       mf::SignatureBuilder builder("AgXViewTransform", sig);
-      builder.single_input<float4>("Color");
-      builder.single_output<float4>("Color");
+      // Socket Inputs:
+      builder.single_input<float4>("Color");                            // Index 0
+      builder.single_input<float>("General Contrast");                  // Index 1
+      builder.single_input<float>("Toe Contrast");                      // Index 2
+      builder.single_input<float>("Shoulder Contrast");                 // Index 3
+      builder.single_input<float>("Contrast Pivot Offset");             // Index 4
+      builder.single_input<float>("Log2 Minimum Exposure");             // Index 5
+      builder.single_input<float>("Log2 Maximum Exposure");             // Index 6
+      builder.single_input<float3>("Hue Flights");                      // Index 7
+      builder.single_input<float3>("Attenuation Rates");                // Index 8
+      builder.single_input<bool>("Use Same Settings as Attenuation");   // Index 9
+      builder.single_input<float3>("Reverse Hue Flights");              // Index 10
+      builder.single_input<float3>("Restore Purity");                   // Index 11
+      builder.single_input<float>("Per-Channel Hue Flight");            // Index 12
+      builder.single_input<float>("Tinting Scale");                     // Index 13
+      builder.single_input<float>("Tinting Hue");                       // Index 14
+      builder.single_input<bool>("Compensate for the Negatives");       // Index 15
+      // Output:
+      builder.single_output<float4>("Color");                           // Index 16
       return sig;
     }();
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override {
     const VArray<float4> in_color = params.readonly_single_input<float4>(0, "Color");
-    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(1, "Color");
+    const VArray<float> general_contrast_in = params.readonly_single_input<float>(1, "General Contrast");
+    const VArray<float> toe_contrast_in = params.readonly_single_input<float>(2, "Toe Contrast");
+    const VArray<float> shoulder_contrast_in = params.readonly_single_input<float>(3, "Shoulder Contrast");
+    const VArray<float> pivot_offset_in = params.readonly_single_input<float>(4, "Contrast Pivot Offset");
+    const VArray<float> log2_min_in = params.readonly_single_input<float>(5, "Log2 Minimum Exposure");
+    const VArray<float> log2_max_in = params.readonly_single_input<float>(6, "Log2 Maximum Exposure");
+    const VArray<float3> hue_flights_in = params.readonly_single_input<float3>(7, "Hue Flights");
+    const VArray<float3> attenuation_rates_in = params.readonly_single_input<float3>(8, "Attenuation Rates");
+    const VArray<bool> use_inverse_inset_in = params.readonly_single_input<bool>(9, "Use Same Settings as Attenuation");
+    const VArray<float3> reverse_hue_flights_in = params.readonly_single_input<float3>(10, "Reverse Hue Flights");
+    const VArray<float3> restore_purity_in = params.readonly_single_input<float3>(11, "Restore Purity");
+    const VArray<float> per_channel_hue_flight_in = params.readonly_single_input<float>(12, "Per-Channel Hue Flight");
+    const VArray<float> tinting_scale_in = params.readonly_single_input<float>(13, "Tinting Scale");
+    const VArray<float> tinting_hue_in = params.readonly_single_input<float>(14, "Tinting Hue");
+    const VArray<bool> compensate_negatives_in = params.readonly_single_input<bool>(15, "Compensate for the Negatives");
+
+    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(16, "Color");
 
     mask.foreach_index([&](const int64_t i) {
       float4 col = in_color[i];
@@ -476,7 +355,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float3 rgb = mult_f3_f33(in_xyz, xyz_to_working);
 
       // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-      if (p_compensate_negatives) {
+      if (compensate_negatives_in[i]) {
         rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
       }
       else {
@@ -486,8 +365,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       // generate inset matrix
       Chromaticities inset_chromaticities = InsetPrimaries(
           COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-          p_attenuation_rates.x, p_attenuation_rates.y, p_attenuation_rates.z,
-          p_hue_flights.x, p_hue_flights.y, p_hue_flights.z);
+          attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z,
+          hue_flights_in[i].x, hue_flights_in[i].y, hue_flights_in[i].z);
 
       float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
 
@@ -499,15 +378,15 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       rgb_to_hsv_v(rgb, pre_curve_hsv);
 
       // encode to working log
-      rgb = lin2log(rgb, static_cast<int>(p_working_log), p_log2_min, p_log2_max);
+      rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]);
 
       // apply sigmoid, the image is formed at this point
-      float log_midgray = lin2log(make_float3(0.18f), static_cast<int>(p_working_log), p_log2_min, p_log2_max).x;
+      float log_midgray = lin2log(make_float3(0.18f), static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]).x;
       float image_native_power = 2.4f;
       float midgray = pow(0.18f, 1.0f / image_native_power);
-      rgb.x = sigmoid(rgb.x, p_shoulder_contrast, p_toe_contrast, p_general_contrast, log_midgray + p_pivot_offset, midgray);
-      rgb.y = sigmoid(rgb.y, p_shoulder_contrast, p_toe_contrast, p_general_contrast, log_midgray + p_pivot_offset, midgray);
-      rgb.z = sigmoid(rgb.z, p_shoulder_contrast, p_toe_contrast, p_general_contrast, log_midgray + p_pivot_offset, midgray);
+      rgb.x = sigmoid(rgb.x, shoulder_contrast_in[i], toe_contrast_in[i], general_contrast_in[i], log_midgray + pivot_offset_in[i], midgray);
+      rgb.y = sigmoid(rgb.y, shoulder_contrast_in[i], toe_contrast_in[i], general_contrast_in[i], log_midgray + pivot_offset_in[i], midgray);
+      rgb.z = sigmoid(rgb.z, shoulder_contrast_in[i], toe_contrast_in[i], general_contrast_in[i], log_midgray + pivot_offset_in[i], midgray);
       float3 img = rgb;
       // Linearize the formed image assuming its native transfer function is Rec.1886 curve
       img = spowf3(img, image_native_power);
@@ -515,25 +394,25 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       // lerp pre- and post-curve chromaticity angle
       float3 post_curve_hsv;
       rgb_to_hsv_v(img, post_curve_hsv);
-      post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], p_per_channel_hue_flight);
+      post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in[i]);
       hsv_to_rgb_v(post_curve_hsv, img);
 
       // generate outset matrix
       float3x3 outsetmat;
-      if (p_use_inverse_inset) {
+      if (use_inverse_inset_in[i]) {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-            p_attenuation_rates.x, p_attenuation_rates.y, p_attenuation_rates.z, // Uses attenuation settings
-            p_hue_flights.x, p_hue_flights.y, p_hue_flights.z,         // Uses attenuation settings
-            p_tinting_rotate + 180, p_tinting_outset);
+            attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings
+            hue_flights_in[i].x, hue_flights_in[i].y, hue_flights_in[i].z,         // Uses attenuation settings
+            tinting_rotate_in[i] + 180, tinting_outset_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }
       else {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-            p_restore_purity.x, p_restore_purity.y, p_restore_purity.z,
-            p_reverse_hue_flights.x, p_reverse_hue_flights.y, p_reverse_hue_flights.z,
-            p_tinting_rotate + 180, p_tinting_outset);
+            restore_purity_in[i].x, restore_purity_in[i].y, restore_purity.z_in[i],
+            reverse_hue_flights_in[i].x, reverse_hue_flights_in[i].y, reverse_hue_flights.z_in[i],
+            tinting_rotate_in[i] + 180, tinting_outset_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }
 
@@ -546,7 +425,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       img = mult_f3_f33(img, working_to_display);
 
       // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-      if (p_compensate_negatives) {
+      if (compensate_negatives_in[i]) {
         img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
       }
       else {
@@ -572,10 +451,9 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 };
 
 // Multi-function Builder
-static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder)
-{
+static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder) {
   builder.set_instantiating_fn(+[](const bNode &node, mf::FunctionInitializer &initializer) {
-    initializer.set_function<AgXViewTransformFunction>(node); // Pass the node to the constructor
+    initializer.set_function<AgXViewTransformFunction>(node);
   });
 }
 
@@ -587,13 +465,13 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform"
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.idname = "CompositorNodeAgXViewTransform";
-  ntype.enum_name_legacy = nullptr;
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
+  ntype.updatefunc = node_update;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;

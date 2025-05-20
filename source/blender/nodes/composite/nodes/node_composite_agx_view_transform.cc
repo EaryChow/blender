@@ -97,33 +97,83 @@ static void node_copy_agx_storage(
   }
 }
 
+// --- Custom Accessor Functions for Enum Properties ---
+static int rna_AgxNode_working_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
+  const bNode &node = *static_cast<const bNode *>(ptr->data);
+  return static_cast<int>(node_storage(node).working_primaries);
+}
+static void rna_AgxNode_working_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  node_storage(node).working_primaries = static_cast<AGXPrimaries>(value); // Explicit cast
+}
+
+static int rna_AgxNode_working_log_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
+  const bNode &node = *static_cast<const bNode *>(ptr->data);
+  return static_cast<int>(node_storage(node).working_log);
+}
+static void rna_AgxNode_working_log_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  node_storage(node).working_log = static_cast<AGXWorkingLog>(value);
+}
+
+static int rna_AgxNode_display_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
+  const bNode &node = *static_cast<const bNode *>(ptr->data);
+  return static_cast<int>(node_storage(node).display_primaries);
+}
+static void rna_AgxNode_display_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  node_storage(node).display_primaries = static_cast<AGXPrimaries>(value);
+}
+// --- End of Custom Accessor Functions ---
+
 // RNA functions for node properties
 static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
   PropertyRNA *prop;
 
+  // For working_primaries using custom accessors
+  EnumRNAAccessors working_primaries_accessors(
+      rna_AgxNode_working_primaries_get,
+      rna_AgxNode_working_primaries_set
+  );
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items,
-      NOD_storage_enum_accessors(working_primaries));
+      working_primaries_accessors,
+      AGX_PRIMARIES_REC2020
+  );
 
+  // For working_log using custom accessors
+  EnumRNAAccessors working_log_accessors(
+      rna_AgxNode_working_log_get,
+      rna_AgxNode_working_log_set
+  );
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
-      NOD_storage_enum_accessors(working_log));
+      working_log_accessors,
+      AGX_WORKING_LOG_GENERIC_LOG2
+  );
 
+  // For display_primaries using custom accessors
+  EnumRNAAccessors display_primaries_accessors(
+      rna_AgxNode_display_primaries_get,
+      rna_AgxNode_display_primaries_set
+  );
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
       agx_primaries_items,
-      NOD_storage_enum_accessors(display_primaries));
+      display_primaries_accessors,
+      AGX_PRIMARIES_REC709
+  );
 }
 
 // initialize

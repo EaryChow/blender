@@ -31,7 +31,7 @@
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 // define enums
-enum AGXPrimaries {
+typedef enum AGXPrimaries {
   AGX_PRIMARIES_AP0 = 0,
   AGX_PRIMARIES_AP1,
   AGX_PRIMARIES_P3D65,
@@ -42,7 +42,7 @@ enum AGXPrimaries {
   AGX_PRIMARIES_EGAMUT,
 };
 
-enum AGXWorkingLog {
+typedef enum AGXWorkingLog {
   AGX_WORKING_LOG_LINEAR = 0,
   AGX_WORKING_LOG_ACESCCT,
   AGX_WORKING_LOG_ARRI_LOGC3,

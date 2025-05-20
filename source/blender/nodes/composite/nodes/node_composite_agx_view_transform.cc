@@ -106,21 +106,24 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items, NOD_storage_enum_accessors(working_primaries));
+      agx_primaries_items,
+      NOD_storage_enum_accessors(working_primaries));
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items, NOD_storage_enum_accessors(working_log));
+      agx_working_log_items,
+      NOD_storage_enum_accessors(working_log));
 
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
-      agx_primaries_items, NOD_storage_enum_accessors(display_primaries));
+      agx_primaries_items,
+      NOD_storage_enum_accessors(display_primaries));
 }
 
 // initialize

@@ -31,7 +31,7 @@
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 // define enums
-typedef enum AGXPrimaries {
+enum AGXPrimaries {
   AGX_PRIMARIES_AP0 = 0,
   AGX_PRIMARIES_AP1,
   AGX_PRIMARIES_P3D65,
@@ -42,7 +42,7 @@ typedef enum AGXPrimaries {
   AGX_PRIMARIES_EGAMUT,
 };
 
-typedef enum AGXWorkingLog {
+enum AGXWorkingLog {
   AGX_WORKING_LOG_LINEAR = 0,
   AGX_WORKING_LOG_ACESCCT,
   AGX_WORKING_LOG_ARRI_LOGC3,
@@ -106,21 +106,21 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items, NOD_storage_enum_accessors(working_primaries), AGX_PRIMARIES_REC2020);
+      agx_primaries_items, NOD_storage_enum_accessors(working_primaries));
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items, NOD_storage_enum_accessors(working_log), AGX_WORKING_LOG_GENERIC_LOG2);
+      agx_working_log_items, NOD_storage_enum_accessors(working_log));
 
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
-      agx_primaries_items, NOD_storage_enum_accessors(display_primaries), AGX_PRIMARIES_REC709);
+      agx_primaries_items, NOD_storage_enum_accessors(display_primaries));
 }
 
 // initialize

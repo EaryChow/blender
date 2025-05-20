@@ -98,7 +98,6 @@ static void node_copy_agx_storage(
 }
 
 // --- Custom Accessor Functions for Enum Properties ---
-// to prevent error C2440: '=': cannot convert from 'const int' to `AGXPrimaries'.
 static int rna_AgxNode_working_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
   const bNode &node = *static_cast<const bNode *>(ptr->data);
   return static_cast<int>(node_storage(node).working_primaries);
@@ -545,12 +544,11 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", std::nullopt);
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.idname = "CompositorNodeAgXViewTransform";
   ntype.nclass = NODE_CLASS_OP_COLOR;
-  ntype.ui_icon = 0;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.updatefunc = nullptr;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
@@ -558,7 +556,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(
       ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);
-  blender::bke::node_register_type(ntype);
   file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
+  blender::bke::node_register_type(ntype);
 }
 NOD_REGISTER_NODE(register_node_type_cmp_node_agx_view_transform)

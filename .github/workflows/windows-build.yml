@@ -19,19 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          submodules: recursive
+          submodules: recursive 
           fetch-depth: 0
-          lfs: false
-
-      - name: Fetch Gitea LFS objects
-        shell: bash
-        run: |
-          git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
-          git lfs pull
-          git submodule foreach --recursive " \
-            git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs; \
-            git lfs pull \
-          "
+          lfs: false 
 
       - name: Verify datafiles
         shell: pwsh
@@ -48,7 +38,7 @@ jobs:
 
       - name: Fetch precompiled libraries
         shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64" --build-all
+        run: python build_files/utils/make_update.py --architecture="amd64"
 
       - name: Configure CMake
         shell: bash

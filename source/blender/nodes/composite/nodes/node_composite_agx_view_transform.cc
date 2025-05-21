@@ -85,6 +85,7 @@ static void node_free_agx_storage(bNode *node) {
 }
 
 static void node_copy_agx_storage(
+    bNodeTree * /*dest_ntree*/,
     bNode *dest_node,
     const bNode *src_node)
 {
@@ -125,33 +126,54 @@ static void rna_AgxNode_display_primaries_set(PointerRNA *ptr, PropertyRNA * /*p
 }
 // --- End of Custom Accessor Functions ---
 
-// RNA functions for enum properties
+// RNA functions for node properties
 static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
-  PropertyRNA *prop; // Declare PropertyRNA pointer here
+  PropertyRNA *prop;
 
-  // --- Enum Properties (using custom accessors) ---
+  // For working_primaries using custom accessors
+  EnumRNAAccessors working_primaries_accessors(
+      rna_AgxNode_working_primaries_get,
+      rna_AgxNode_working_primaries_set
+  );
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items,
-      blender::nodes::EnumRNAAccessors(rna_AgxNode_working_primaries_get, rna_AgxNode_working_primaries_set),
-      AGX_PRIMARIES_REC2020);
+      working_primaries_accessors,
+      AGX_PRIMARIES_REC2020
+  );
 
+  // For working_log using custom accessors
+  EnumRNAAccessors working_log_accessors(
+      rna_AgxNode_working_log_get,
+      rna_AgxNode_working_log_set
+  );
   prop = RNA_def_node_enum(
       srna,
       "working_log",
+      "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
-      blender::nodes::EnumRNAAccessors(rna_AgxNode_working_log_get, rna_AgxNode_working_log_set),
-      AGX_WORKING_LOG_GENERIC_LOG2);
+      working_log_accessors,
+      AGX_WORKING_LOG_GENERIC_LOG2
+  );
 
+  // For display_primaries using custom accessors
+  EnumRNAAccessors display_primaries_accessors(
+      rna_AgxNode_display_primaries_get,
+      rna_AgxNode_display_primaries_set
+  );
   prop = RNA_def_node_enum(
-      srna, "display_primaries", "Display Primaries", "The primaries of the target display device",
+      srna,
+      "display_primaries",
+      "Display Primaries",
+      "The primaries of the target display device",
       agx_primaries_items,
-      blender::nodes::EnumRNAAccessors(rna_AgxNode_display_primaries_get, rna_AgxNode_display_primaries_set),
-      AGX_PRIMARIES_REC709);
+      display_primaries_accessors,
+      AGX_PRIMARIES_REC709
+  );
 }
 
 // initialize
@@ -521,15 +543,14 @@ static void register_node_type_cmp_node_agx_view_transform()
 {
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
-  const char *node_id_name = "CompositorNodeAgXViewTransform";
-  cmp_node_type_base(&ntype, node_id_name);
+
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
-  ntype.idname = node_id_name;
-  ntype.enum_name_legacy = nullptr; // Not used for new nodes
+  ntype.idname = "CompositorNodeAgXViewTransform";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
-  ntype.updatefunc = nullptr; // As per your current code, no custom update func
+  ntype.updatefunc = nullptr;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;

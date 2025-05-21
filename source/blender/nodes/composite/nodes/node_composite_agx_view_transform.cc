@@ -556,7 +556,12 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(
       ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);
-  file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
-  blender::bke::node_register_type(ntype);
+  if (ntype.rna_ext.srna) { // check if srna was created
+      file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
+  }
+  else {
+      // This would be a problem, indicating registration failed to create the RNA struct
+      printf("Error: StructRNA for %s was not created during registration.\n", ntype.idname);
+  }
 }
 NOD_REGISTER_NODE(register_node_type_cmp_node_agx_view_transform)

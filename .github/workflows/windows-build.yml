@@ -12,6 +12,8 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
+      # Set BLENDER_LIB environment variable for CMake to find general precompiled libraries
+      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64" # This resolves to D:/a/blender/blender/lib/windows_x64
 
     steps:
       - name: Install Git LFS
@@ -19,9 +21,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          submodules: recursive
+          submodules: recursive # Checks out submodules, but LFS content are pointers
           fetch-depth: 0
-          lfs: false
+          lfs: false # We will manage LFS manually or via Blender's scripts
 
       - name: Fetch Main Repository LFS objects
         shell: bash
@@ -42,9 +44,103 @@ jobs:
             exit 1
           }
 
-      - name: Fetch precompiled libraries
+      - name: Fetch precompiled libraries (managed by make_update.py)
         shell: powershell
         run: python build_files/utils/make_update.py --architecture="amd64"
+
+      # --- Install External SDKs for GPU Backends ---
+
+      - name: Download and Install NVIDIA CUDA Toolkit
+        shell: pwsh
+        timeout-minutes: 15 # Large file, set timeout
+        run: |
+          $cuda_url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
+          $cuda_installer = "cuda_installer.exe"
+          Write-Host "Downloading CUDA Toolkit from $cuda_url"
+          Invoke-WebRequest -Uri $cuda_url -OutFile $cuda_installer
+          Write-Host "Installing CUDA Toolkit silently..."
+          # The /s flag performs a silent installation. Default install dir: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.Y
+          Start-Process -FilePath $cuda_installer -ArgumentList "/s" -Wait
+          Write-Host "CUDA Toolkit installation complete."
+          # Add CUDA bin to PATH. Installer usually adds it, but explicitly add for session
+          $env:Path = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\bin;" + $env:Path + ";" + "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\libnvvp"
+          Write-Host "CUDA bin and libnvvp added to PATH for this session."
+
+      - name: Download and Extract NVIDIA OptiX SDK
+        shell: pwsh
+        run: |
+          $optix_url = "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
+          $optix_zip = "OptiX-SDK.zip"
+          $optix_dir = "C:\OptiX_SDK_7_4" # Consistent install location for CMake
+          Write-Host "Downloading OptiX SDK from $optix_url"
+          Invoke-WebRequest -Uri $optix_url -OutFile $optix_zip
+          Write-Host "Extracting OptiX SDK to $optix_dir"
+          # OptiX ZIP typically contains a single root folder (e.g., 'OptiX-SDK-7.4.0-Windows').
+          # We need to extract its *contents* directly into $optix_dir.
+          Expand-Archive -Path $optix_zip -DestinationPath $optix_dir -Force
+          # If the zip extracts to a subfolder, move contents up. E.g., if it extracts to C:\OptiX_SDK_7_4\OptiX-SDK-7.4.0-Windows
+          $extracted_subfolder = Get-ChildItem -Path $optix_dir | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+          if ($extracted_subfolder) {
+            Write-Host "Moving contents from $($extracted_subfolder.FullName) to $optix_dir"
+            Move-Item -Path "$($extracted_subfolder.FullName)\*" -Destination $optix_dir -Force
+            Remove-Item -Path $extracted_subfolder.FullName -Recurse -Force
+          }
+          Write-Host "OptiX SDK extraction complete."
+          $env:OPTIX_ROOT_DIR = $optix_dir # Set environment variable for CMake
+          Write-Host "OPTIX_ROOT_DIR set to $env:OPTIX_ROOT_DIR"
+
+      - name: Download and Install AMD HIP SDK
+        shell: pwsh
+        timeout-minutes: 15 # Large file, set timeout
+        run: |
+          $hip_url = "https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-24.Q4-Win10-Win11-For-HIP.exe"
+          $hip_installer = "HIP-SDK.exe"
+          Write-Host "Downloading AMD HIP SDK from $hip_url"
+          Invoke-WebRequest -Uri $hip_url -OutFile $hip_installer
+          Write-Host "Installing AMD HIP SDK silently..."
+          # /install for silent install, /qn for no UI. This installer should create HIP_PATH env var.
+          Start-Process -FilePath $hip_installer -ArgumentList "/install /qn" -Wait
+          Write-Host "AMD HIP SDK installation complete."
+          # Verify HIP_PATH is set (it should be by the installer), and propagate for the session.
+          if ($env:HIP_PATH) {
+            Write-Host "HIP_PATH is set by installer: $env:HIP_PATH"
+          } else {
+            # Fallback in case installer doesn't set it (adjust default path if needed)
+            $env:HIP_PATH = "C:\Program Files\AMD\HIPSDK"
+            Write-Warning "HIP_PATH was not set by installer, setting to default: $env:HIP_PATH"
+          }
+          $env:Path = "$env:HIP_PATH\bin;" + $env:Path # Add HIP bin to PATH
+          Write-Host "HIP bin added to PATH for this session."
+
+      - name: Download and Place Intel OneAPI `ocloc.exe`
+        shell: pwsh
+        run: |
+          $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
+          $ocloc_zip = "ocloc.zip"
+          $ocloc_extract_dir = "ocloc_temp"
+          # Define a clear, direct path where ocloc.exe will reside
+          $ocloc_final_dir = "${{ github.workspace }}/ocloc_tool"
+          Write-Host "Downloading ocloc.exe from $ocloc_url"
+          Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
+          Write-Host "Extracting ocloc.exe to $ocloc_extract_dir"
+          Expand-Archive -Path $ocloc_zip -DestinationPath $ocloc_extract_dir -Force
+          
+          # Find the actual ocloc.exe within the extracted structure. 
+          # It's usually in a subfolder like 'w_ocloc_p_2025.1.7.4\bin\ocloc.exe'
+          $ocloc_source_path = Get-ChildItem -Path $ocloc_extract_dir -Filter "ocloc.exe" -Recurse | Select-Object -ExpandProperty FullName
+          
+          if ($ocloc_source_path) {
+            # Create the final target directory and copy ocloc.exe
+            New-Item -ItemType Directory -Force -Path $ocloc_final_dir
+            Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_dir -Force
+            Write-Host "ocloc.exe placed in $ocloc_final_dir"
+            # Set OCLOC_INSTALL_DIR to this final directory
+            $env:OCLOC_INSTALL_DIR = $ocloc_final_dir
+            Write-Host "OCLOC_INSTALL_DIR set to $env:OCLOC_INSTALL_DIR"
+          } else {
+            Write-Error "ocloc.exe not found in extracted archive! OneAPI build will likely fail."
+            exit 1 # Fail fast if ocloc.exe is not found
+          }
 
       - name: Configure CMake
         shell: bash
@@ -56,33 +152,12 @@ jobs:
             -A x64 \
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -D WITH_INSTALL_PORTABLE=ON
-
-      - name: Debug Check specific library file existence
-        shell: pwsh
-        run: |
-          # Check for the existence and size of a known LFS file
-          # Changed Write-Error to Write-Warning to ensure subsequent steps run
-          $oneAPIDLLPath = "lib/windows_x64/cycles/kernel/oneapi/cycles_kernel_oneapi_aot.dll"
-          Write-Host "Checking for file: $oneAPIDLLPath"
-          if (Test-Path $oneAPIDLLPath) {
-            $file = Get-Item $oneAPIDLLPath
-            Write-Host "File FOUND: $($file.Name) - Length: $($file.Length) bytes"
-            if ($file.Length -lt 500) { # LFS pointer files are typically < 200 bytes
-              Write-Warning "File might be an LFS pointer, not the actual binary!"
-            }
-          } else {
-            Write-Warning "File NOT FOUND: $oneAPIDLLPath"
-          }
-
-      - name: Debug List precompiled libraries contents and submodule config
-        shell: pwsh
-        run: |
-          # Ensure this step runs regardless of previous checks
-          Write-Host "`nListing contents of lib/windows_x64 (recursive up to 5 levels):"
-          Get-ChildItem -Path lib/windows_x64 -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
-          Write-Host "`nListing .git/modules/lib/windows_x64 (for submodule configuration):"
-          Get-ChildItem -Path ./.git/modules/lib/windows_x64 -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
+            -D WITH_INSTALL_PORTABLE=ON \
+            -D OPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            -D OCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}" \
+            -D HIP_PATH="${{ env.HIP_PATH }}" # Pass HIP_PATH explicitly
+            # Make sure SYCL_COMPILER is correctly inferred or set if needed by CMake.
+            # Usually, CMake finds it once OCLOC_INSTALL_DIR/bin is in PATH or given.
 
       - name: Build and Install
         shell: bash
@@ -96,6 +171,17 @@ jobs:
           if (-not (Test-Path "install/blender.exe")) {
             Write-Error "blender.exe missing!"
             exit 1
+          }
+          Write-Host "Checking for Cycles GPU DLLs in install directory:"
+          Get-ChildItem -Path "install" -Filter "*.dll" -Recurse | Where-Object {$_.Name -like "cycles_kernel_*.dll"} | Format-List FullName, Length
+          # Also check for CUDA specific files if needed
+          if (Test-Path "install/blender.exe") {
+            # Check for CUDA runtime DLL (example, path may vary slightly by CUDA version)
+            if (Test-Path "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\bin\cudart64_12.dll") {
+              Write-Host "CUDA runtime DLL found. This is a good sign for CUDA support."
+            } else {
+              Write-Warning "CUDA runtime DLL not found in expected path. CUDA support might be missing."
+            }
           }
 
       - name: Upload artifact

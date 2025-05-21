@@ -89,29 +89,6 @@ jobs:
           $env:OPTIX_ROOT_DIR = $optix_dir # Set environment variable for CMake
           Write-Host "OPTIX_ROOT_DIR set to $env:OPTIX_ROOT_DIR"
 
-      - name: Download and Install AMD HIP SDK
-        shell: pwsh
-        timeout-minutes: 15 # Large file, set timeout
-        run: |
-          $hip_url = "https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-23.Q4-Win10-Win11-For-HIP.exe"
-          $hip_installer = "HIP-SDK.exe"
-          Write-Host "Downloading AMD HIP SDK from $hip_url"
-          Invoke-WebRequest -Uri $hip_url -OutFile $hip_installer
-          Write-Host "Installing AMD HIP SDK silently..."
-          # /install for silent install, /qn for no UI. This installer should create HIP_PATH env var.
-          Start-Process -FilePath $hip_installer -ArgumentList "/install /qn" -Wait
-          Write-Host "AMD HIP SDK installation complete."
-          # Verify HIP_PATH is set (it should be by the installer), and propagate for the session.
-          if ($env:HIP_PATH) {
-            Write-Host "HIP_PATH is set by installer: $env:HIP_PATH"
-          } else {
-            # Fallback in case installer doesn't set it (adjust default path if needed)
-            $env:HIP_PATH = "C:\Program Files\AMD\HIPSDK"
-            Write-Warning "HIP_PATH was not set by installer, setting to default: $env:HIP_PATH"
-          }
-          $env:Path = "$env:HIP_PATH\bin;" + $env:Path # Add HIP bin to PATH
-          Write-Host "HIP bin added to PATH for this session."
-
       - name: Download and Place Intel OneAPI `ocloc.exe`
         shell: pwsh
         run: |

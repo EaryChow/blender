@@ -29,10 +29,11 @@ jobs:
           git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
           git lfs pull
 
-      - name: Debug - List precompiled libraries content
+      - name: Debug Check specific library file existence
         shell: pwsh
         run: |
           # Check for the existence and size of a known LFS file
+          # Changed Write-Error to Write-Warning to ensure subsequent steps run
           $oneAPIDLLPath = "lib/windows_x64/cycles/kernel/oneapi/cycles_kernel_oneapi_aot.dll"
           Write-Host "Checking for file: $oneAPIDLLPath"
           if (Test-Path $oneAPIDLLPath) {
@@ -42,10 +43,13 @@ jobs:
               Write-Warning "File might be an LFS pointer, not the actual binary!"
             }
           } else {
-            Write-Error "File NOT FOUND: $oneAPIDLLPath"
+            Write-Warning "File NOT FOUND: $oneAPIDLLPath"
           }
 
-          # List the contents of the entire submodule directory (up to 5 levels deep)
+      - name: Debug List precompiled libraries contents and submodule config
+        shell: pwsh
+        run: |
+          # Ensure this step runs regardless of previous checks
           Write-Host "`nListing contents of lib/windows_x64 (recursive up to 5 levels):"
           Get-ChildItem -Path lib/windows_x64 -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
           Write-Host "`nListing .git/modules/lib/windows_x64 (for submodule configuration):"

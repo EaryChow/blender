@@ -93,7 +93,7 @@ jobs:
         shell: pwsh
         timeout-minutes: 15 # Large file, set timeout
         run: |
-          $hip_url = "https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-24.Q4-Win10-Win11-For-HIP.exe"
+          $hip_url = "https://dcdrivers.driverscloud.com/drivers/3c4/3c401aaf40e1b0bcca3a91608fd81b4c/amd-software-pro-edition-24.q4-win10-win11-nov-rdna-combined.exe"
           $hip_installer = "HIP-SDK.exe"
           Write-Host "Downloading AMD HIP SDK from $hip_url"
           Invoke-WebRequest -Uri $hip_url -OutFile $hip_installer

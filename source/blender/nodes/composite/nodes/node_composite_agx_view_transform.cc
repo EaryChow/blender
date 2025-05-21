@@ -85,7 +85,6 @@ static void node_free_agx_storage(bNode *node) {
 }
 
 static void node_copy_agx_storage(
-    bNodeTree * /*dest_ntree*/,
     bNode *dest_node,
     const bNode *src_node)
 {
@@ -126,54 +125,33 @@ static void rna_AgxNode_display_primaries_set(PointerRNA *ptr, PropertyRNA * /*p
 }
 // --- End of Custom Accessor Functions ---
 
-// RNA functions for node properties
+// RNA functions for enum properties
 static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
-  PropertyRNA *prop;
+  PropertyRNA *prop; // Declare PropertyRNA pointer here
 
-  // For working_primaries using custom accessors
-  EnumRNAAccessors working_primaries_accessors(
-      rna_AgxNode_working_primaries_get,
-      rna_AgxNode_working_primaries_set
-  );
+  // --- Enum Properties (using custom accessors) ---
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items,
-      working_primaries_accessors,
-      AGX_PRIMARIES_REC2020
-  );
+      blender::nodes::EnumRNAAccessors(rna_AgxNode_working_primaries_get, rna_AgxNode_working_primaries_set),
+      AGX_PRIMARIES_REC2020);
 
-  // For working_log using custom accessors
-  EnumRNAAccessors working_log_accessors(
-      rna_AgxNode_working_log_get,
-      rna_AgxNode_working_log_set
-  );
   prop = RNA_def_node_enum(
       srna,
       "working_log",
-      "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
-      working_log_accessors,
-      AGX_WORKING_LOG_GENERIC_LOG2
-  );
+      blender::nodes::EnumRNAAccessors(rna_AgxNode_working_log_get, rna_AgxNode_working_log_set),
+      AGX_WORKING_LOG_GENERIC_LOG2);
 
-  // For display_primaries using custom accessors
-  EnumRNAAccessors display_primaries_accessors(
-      rna_AgxNode_display_primaries_get,
-      rna_AgxNode_display_primaries_set
-  );
   prop = RNA_def_node_enum(
-      srna,
-      "display_primaries",
-      "Display Primaries",
-      "The primaries of the target display device",
+      srna, "display_primaries", "Display Primaries", "The primaries of the target display device",
       agx_primaries_items,
-      display_primaries_accessors,
-      AGX_PRIMARIES_REC709
-  );
+      blender::nodes::EnumRNAAccessors(rna_AgxNode_display_primaries_get, rna_AgxNode_display_primaries_set),
+      AGX_PRIMARIES_REC709);
 }
 
 // initialize
@@ -543,29 +521,21 @@ static void register_node_type_cmp_node_agx_view_transform()
 {
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
-
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
+  const char *node_id_name = "CompositorNodeAgXViewTransform";
+  cmp_node_type_base(&ntype, node_id_name);
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
-  ntype.idname = "CompositorNodeAgXViewTransform";
+  ntype.idname = node_id_name;
+  ntype.enum_name_legacy = nullptr; // Not used for new nodes
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
-  ntype.updatefunc = nullptr;
+  ntype.updatefunc = nullptr; // As per your current code, no custom update func
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(
-      ntype,
-      "NodeAgxViewTransform",
-      file_ns::node_free_agx_storage,
-      file_ns::node_copy_agx_storage);
+      ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);
   blender::bke::node_register_type(ntype);
-  if (ntype.rna_ext.srna) { // check if srna was created
-      file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
-  }
-  else {
-      // This would be a problem, indicating registration failed to create the RNA struct
-      printf("Error: StructRNA for %s was not created during registration.\n", ntype.idname);
-  }
+  file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(register_node_type_cmp_node_agx_view_transform)

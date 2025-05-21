@@ -19,9 +19,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          submodules: recursive 
+          submodules: recursive
           fetch-depth: 0
-          lfs: false 
+          lfs: false
+
+      - name: Fetch Main Repository LFS objects
+        shell: bash
+        run: |
+          git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
+          git lfs pull
 
       - name: Verify datafiles
         shell: pwsh

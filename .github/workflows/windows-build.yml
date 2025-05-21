@@ -1,4 +1,4 @@
-name: Windows Production Build
+name: Windows Build
 
 on:
   push:
@@ -16,8 +16,7 @@ jobs:
     steps:
       - name: Install Git LFS
         run: git lfs install --skip-repo
-
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: recursive
@@ -38,24 +37,18 @@ jobs:
         shell: pwsh
         run: |
           $f = "release/datafiles/startup.blend"
-          if (!(Test-Path $f)) { throw "$f missing!" }
-          if ((Get-Item $f).Length -lt 10240) { throw "$f too small!" }
+          if (!(Test-Path $f)) {
+            Write-Error "$f not found—check your fork structure!"
+            exit 1
+          }
+          if ((Get-Item $f).Length -lt 10240) {
+            Write-Error "$f is too small—still a pointer file?"
+            exit 1
+          }
 
       - name: Fetch precompiled libraries
         shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64"      
-
-      - name: Install CUDA Toolkit via Chocolatey
-        shell: pwsh
-        run: |
-          choco install cuda -y                                            
-          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-          refreshenv
-
-      - name: Configure HIP SDK path
-        shell: pwsh
-        run: |
-          echo "HIP_SDK_PATH=C:/HIP-SDK" >> $env:GITHUB_ENV                
+        run: python build_files/utils/make_update.py --architecture="amd64" --build-all
 
       - name: Configure CMake
         shell: bash
@@ -63,24 +56,13 @@ jobs:
           mkdir build_windows && cd build_windows
           cmake .. \
             -C "../build_files/buildbot/config/blender_windows.cmake" \
-            -G "Visual Studio 17 2022" -A x64 \
+            -G "Visual Studio 17 2022" \
+            -A x64 \
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DWITH_INSTALL_PORTABLE=ON \
-            \
-            -DWITH_CYCLES_CUDA_BINARIES=ON \
-            -DCYCLES_CUDA_BINARIES_ARCH="sm_75;sm_86" \
-            \
-            -DWITH_CYCLES_DEVICE_OPTIX=ON \
-            -DOPTIX_ROOT_DIR="../lib/windows_x64/NVIDIA-OptiX-SDK-7.4.0-win64" \
-            \
-            -DWITH_CYCLES_HIP_BINARIES=ON \
-            -DHIP_SDK_PATH="${{ env.HIP_SDK_PATH }}" \
-            \
-            -DWITH_CYCLES_DEVICE_ONEAPI=ON \
-            -DWITH_CYCLES_ONEAPI_BINARIES=ON
+            -D WITH_INSTALL_PORTABLE=ON
 
-      - name: Build & Install
+      - name: Build and Install
         shell: bash
         run: |
           cd build_windows
@@ -89,7 +71,10 @@ jobs:
       - name: Verify installation
         shell: pwsh
         run: |
-          if (-not (Test-Path "install/blender.exe")) { throw "blender.exe missing!" }
+          if (-not (Test-Path "install/blender.exe")) {
+            Write-Error "blender.exe missing!"
+            exit 1
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

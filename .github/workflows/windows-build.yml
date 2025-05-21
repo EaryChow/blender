@@ -29,33 +29,6 @@ jobs:
           git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
           git lfs pull
 
-      - name: Debug Check specific library file existence
-        shell: pwsh
-        run: |
-          # Check for the existence and size of a known LFS file
-          # Changed Write-Error to Write-Warning to ensure subsequent steps run
-          $oneAPIDLLPath = "lib/windows_x64/cycles/kernel/oneapi/cycles_kernel_oneapi_aot.dll"
-          Write-Host "Checking for file: $oneAPIDLLPath"
-          if (Test-Path $oneAPIDLLPath) {
-            $file = Get-Item $oneAPIDLLPath
-            Write-Host "File FOUND: $($file.Name) - Length: $($file.Length) bytes"
-            if ($file.Length -lt 500) { # LFS pointer files are typically < 200 bytes
-              Write-Warning "File might be an LFS pointer, not the actual binary!"
-            }
-          } else {
-            Write-Warning "File NOT FOUND: $oneAPIDLLPath"
-          }
-
-      - name: Debug List precompiled libraries contents and submodule config
-        shell: pwsh
-        run: |
-          # Ensure this step runs regardless of previous checks
-          Write-Host "`nListing contents of lib/windows_x64 (recursive up to 5 levels):"
-          Get-ChildItem -Path lib/windows_x64 -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
-          Write-Host "`nListing .git/modules/lib/windows_x64 (for submodule configuration):"
-          Get-ChildItem -Path ./.git/modules/lib/windows_x64 -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
-        
-
       - name: Verify datafiles
         shell: pwsh
         run: |
@@ -84,6 +57,32 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON
+
+      - name: Debug Check specific library file existence
+        shell: pwsh
+        run: |
+          # Check for the existence and size of a known LFS file
+          # Changed Write-Error to Write-Warning to ensure subsequent steps run
+          $oneAPIDLLPath = "lib/windows_x64/cycles/kernel/oneapi/cycles_kernel_oneapi_aot.dll"
+          Write-Host "Checking for file: $oneAPIDLLPath"
+          if (Test-Path $oneAPIDLLPath) {
+            $file = Get-Item $oneAPIDLLPath
+            Write-Host "File FOUND: $($file.Name) - Length: $($file.Length) bytes"
+            if ($file.Length -lt 500) { # LFS pointer files are typically < 200 bytes
+              Write-Warning "File might be an LFS pointer, not the actual binary!"
+            }
+          } else {
+            Write-Warning "File NOT FOUND: $oneAPIDLLPath"
+          }
+
+      - name: Debug List precompiled libraries contents and submodule config
+        shell: pwsh
+        run: |
+          # Ensure this step runs regardless of previous checks
+          Write-Host "`nListing contents of lib/windows_x64 (recursive up to 5 levels):"
+          Get-ChildItem -Path lib/windows_x64 -Recurse -Depth 5 -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
+          Write-Host "`nListing .git/modules/lib/windows_x64 (for submodule configuration):"
+          Get-ChildItem -Path ./.git/modules/lib/windows_x64 -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length, Attributes | Format-Table -AutoSize
 
       - name: Build and Install
         shell: bash

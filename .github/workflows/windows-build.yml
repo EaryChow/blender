@@ -3,7 +3,7 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_github_actions
+      - try_github_actions_v2
   workflow_dispatch:
 
 jobs:
@@ -12,8 +12,7 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
-      # BLENDER_LIB for make_update.py and other Blender scripts
-      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
+      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64" # For make_update.py general lib fetching
 
     steps:
       - name: Install Git LFS
@@ -48,7 +47,7 @@ jobs:
         shell: powershell
         run: python build_files/utils/make_update.py --architecture="amd64"
 
-      # --- Install External SDKs for GPU Backends ---
+      # --- Install External SDKs for GPU Backends & Prepare Paths ---
 
       - name: Download and Install NVIDIA CUDA Toolkit
         shell: pwsh
@@ -56,50 +55,59 @@ jobs:
         run: |
           $cuda_url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
           $cuda_installer = "cuda_installer.exe"
-          $cuda_install_path = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
+          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
           Write-Host "Downloading CUDA Toolkit from $cuda_url"
           Invoke-WebRequest -Uri $cuda_url -OutFile $cuda_installer
-          Write-Host "Installing CUDA Toolkit silently to $cuda_install_path..."
-          Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_install_path" -Wait
+          Write-Host "Installing CUDA Toolkit silently to $cuda_root..."
+          Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_root" -Wait
           Write-Host "CUDA Toolkit installation complete."
-          $cuda_install_path_cmake = $cuda_install_path.Replace("\", "/")
-          # FIX: Added -Append to ensure all variables are added
-          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_PATH=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "CUDA_TOOLKIT_ROOT_DIR and CUDA_PATH set for job environment."
-          $env:Path = "$cuda_install_path\bin;$cuda_install_path\libnvvp;" + $env:Path
-          Write-Host "CUDA bin and libnvvp added to PATH for this session."
+          
+          # Prepare CUDA paths for CMake
+          $cuda_root_cmake = $cuda_root.Replace("\", "/")
+          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CUDA_PATH=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindCUDA
+          echo "CUDA_NVCC_EXECUTABLE=$cuda_root_cmake/bin/nvcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CUDA_INCLUDE_DIRS=$cuda_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CUDA_CUDART_LIBRARY=$cuda_root_cmake/lib/x64/cudart_static.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Assuming static link
+          # Or for dynamic: echo "CUDA_CUDART_LIBRARY=$cuda_root_cmake/bin/cudart64_12.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          $env:Path = "$cuda_root\bin;$cuda_root\libnvvp;" + $env:Path # Add to PATH for any direct calls
+          Write-Host "CUDA paths prepared."
 
       - name: Download and Extract NVIDIA OptiX SDK
         shell: pwsh
         run: |
           $optix_url = "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
           $optix_zip = "OptiX-SDK.zip"
-          $optix_install_path = "C:\OptiX_SDK_7_4"
+          $optix_root = "C:\OptiX_SDK_7_4"
           Write-Host "Downloading OptiX SDK from $optix_url"
           Invoke-WebRequest -Uri $optix_url -OutFile $optix_zip
-          Write-Host "Extracting OptiX SDK to $optix_install_path"
-          Expand-Archive -Path $optix_zip -DestinationPath $optix_install_path -Force
-          $extracted_subfolder = Get-ChildItem -Path $optix_install_path | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+          Write-Host "Extracting OptiX SDK to $optix_root"
+          Expand-Archive -Path $optix_zip -DestinationPath $optix_root -Force
+          $extracted_subfolder = Get-ChildItem -Path $optix_root | Where-Object { $_.PSIsContainer } | Select-Object -First 1
           if ($extracted_subfolder) {
-            Write-Host "Moving contents from $($extracted_subfolder.FullName) to $optix_install_path"
-            Move-Item -Path "$($extracted_subfolder.FullName)\*" -Destination $optix_install_path -Force
+            Write-Host "Moving contents from $($extracted_subfolder.FullName) to $optix_root"
+            Move-Item -Path "$($extracted_subfolder.FullName)\*" -Destination $optix_root -Force
             Remove-Item -Path $extracted_subfolder.FullName -Recurse -Force
           }
           Write-Host "OptiX SDK extraction complete."
-          $optix_install_path_cmake = $optix_install_path.Replace("\", "/")
-          # FIX: Added -Append to ensure all variables are added
-          echo "OPTIX_ROOT_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "OPTIX_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "OPTIX_ROOT_DIR and OPTIX_DIR set for job environment."
+          
+          # Prepare OptiX paths for CMake
+          $optix_root_cmake = $optix_root.Replace("\", "/")
+          echo "OPTIX_ROOT_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "OPTIX_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindOptiX
+          echo "OPTIX_INCLUDE_DIR=$optix_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # OptiX-Include.zip contains only headers, no lib. Assuming other components of buildbot provide it or it's implicitly handled.
+          # If linking errors appear later, we might need to find OptiX libraries.
+          Write-Host "OptiX paths prepared."
 
-      - name: Download and Place Intel OneAPI `ocloc.exe`
+      - name: Download and Place Intel OneAPI `ocloc.exe` & Setup SYCL paths
         shell: pwsh
         run: |
           $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
           $ocloc_zip = "ocloc.zip"
           $ocloc_extract_dir = "ocloc_temp"
-          $ocloc_final_path = "${{ github.workspace }}\ocloc_tool"
+          $ocloc_tool_path = "${{ github.workspace }}\ocloc_tool"
           Write-Host "Downloading ocloc.exe from $ocloc_url"
           Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
           Write-Host "Extracting ocloc.exe to $ocloc_extract_dir"
@@ -107,32 +115,62 @@ jobs:
           $ocloc_source_path = Get-ChildItem -Path $ocloc_extract_dir -Filter "ocloc.exe" -Recurse | Select-Object -ExpandProperty FullName
           
           if ($ocloc_source_path) {
-            New-Item -ItemType Directory -Force -Path $ocloc_final_path
-            Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_path -Force
-            Write-Host "ocloc.exe placed in $ocloc_final_path"
-            $ocloc_final_path_cmake = $ocloc_final_path.Replace("\", "/")
-            # FIX: Added -Append to ensure all variables are added
-            echo "OCLOC_INSTALL_DIR=$ocloc_final_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "OCLOC_INSTALL_DIR set for job environment."
-            $env:Path = "$ocloc_final_path;" + $env:Path
-            Write-Host "ocloc_tool added to PATH for this session."
+            New-Item -ItemType Directory -Force -Path $ocloc_tool_path
+            Copy-Item -Path $ocloc_source_path -Destination $ocloc_tool_path -Force
+            Write-Host "ocloc.exe placed in $ocloc_tool_path"
+            
+            # Prepare OneAPI/SYCL paths for CMake
+            $ocloc_tool_path_cmake = $ocloc_tool_path.Replace("\", "/")
+            $sycl_root_path = "${{ github.workspace }}/lib/windows_x64/dpcpp" # This is where the core SYCL/DPC++ libs are found by make_update.py
+            $sycl_root_path_cmake = $sycl_root_path.Replace("\", "/")
+
+            echo "OCLOC_INSTALL_DIR=$ocloc_tool_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Used by intern/cycles/kernel/CMakeLists.txt
+            echo "SYCL_ROOT_DIR=$sycl_root_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindSYCL
+            echo "SYCL_COMPILER=$sycl_root_path_cmake/bin/dpcpp.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Assuming dpcpp.exe as the compiler
+            echo "SYCL_INCLUDE_DIR=$sycl_root_path_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            echo "SYCL_LIBRARY=$sycl_root_path_cmake/lib/sycl8.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # From your logs
+            
+            Write-Host "OneAPI/SYCL paths prepared."
+            $env:Path = "$ocloc_tool_path;$sycl_root_path\bin;" + $env:Path # Add ocloc and dpcpp bin to PATH
+            Write-Host "ocloc and dpcpp bin added to PATH for this session."
           } else {
             Write-Error "ocloc.exe not found in extracted archive! OneAPI build will likely fail."
             exit 1
           }
 
-      - name: Debug - Print Relevant Environment Variables
+      - name: Debug - Print All Environment Variables
         shell: pwsh
         run: |
-          Write-Host "--- Environment Variables for CMake (after GITHUB_ENV updates) ---"
-          Write-Host "CUDA_TOOLKIT_ROOT_DIR: $env:CUDA_TOOLKIT_ROOT_DIR"
-          Write-Host "CUDA_PATH: $env:CUDA_PATH"
-          Write-Host "OPTIX_ROOT_DIR: $env:OPTIX_ROOT_DIR"
-          Write-Host "OPTIX_DIR: $env:OPTIX_DIR"
-          Write-Host "OCLOC_INSTALL_DIR: $env:OCLOC_INSTALL_DIR"
-          Write-Host "BLENDER_LIB: $env:BLENDER_LIB"
-          Write-Host "PATH: $env:PATH"
+          Write-Host "--- ALL Environment Variables for CMake ---"
+          Get-ChildItem Env: | Format-List
           Write-Host "-------------------------------------"
+          
+      - name: Debug - Check Specific SDK File Existence
+        shell: pwsh
+        run: |
+          Write-Host "--- Verifying Key SDK Files ---"
+          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
+          $optix_root = "C:\OptiX_SDK_7_4"
+          $ocloc_tool_path = "${{ github.workspace }}\ocloc_tool"
+          $dpcpp_root = "${{ github.workspace }}\lib\windows_x64\dpcpp" # Assuming dpcpp is relative to workspace too
+          
+          # CUDA checks
+          Write-Host "Checking CUDA files:"
+          Test-Path "$cuda_root\bin\nvcc.exe"
+          Test-Path "$cuda_root\include"
+          Test-Path "$cuda_root\lib\x64\cudart_static.lib"
+          
+          # OptiX checks
+          Write-Host "Checking OptiX files:"
+          Test-Path "$optix_root\include\optix.h"
+          
+          # OneAPI/SYCL checks
+          Write-Host "Checking OneAPI/SYCL files:"
+          Test-Path "$ocloc_tool_path\ocloc.exe"
+          Test-Path "$dpcpp_root\bin\dpcpp.exe" # Check if dpcpp.exe actually exists here
+          Test-Path "$dpcpp_root\lib\sycl8.lib"
+          Test-Path "$dpcpp_root\include\sycl\sycl.hpp"
+          Write-Host "-------------------------------"
 
       - name: Configure CMake
         shell: bash
@@ -145,10 +183,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON \
-            -D CUDA_TOOLKIT_ROOT_DIR="${{ env.CUDA_TOOLKIT_ROOT_DIR }}" \
-            -D OPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
-            -D OCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}" \
-            -D CYCLES_ONEAPI_INTEL_BINARIES_ARCH="" 
+            -D CYCLES_ONEAPI_INTEL_BINARIES_ARCH="" # Override default unsupported targets.
 
       - name: Build and Install
         shell: bash

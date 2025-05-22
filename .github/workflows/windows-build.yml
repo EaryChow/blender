@@ -34,12 +34,20 @@ jobs:
         run: python build_files/utils/make_update.py --architecture="amd64"
 
       # --- CUDA Toolkit via direct download & silent install ---
-      - name: Download CUDA 12.9 installer
-        shell: powershell
+      - name: Download CUDA 12.9 installer via BITS
+        shell: pwsh
+        timeout-minutes: 60
         run: |
-          Invoke-WebRequest `
-            -Uri https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe `
-            -OutFile cuda_installer.exe
+          $url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
+          Write-Host "Starting BITS download of CUDA, this may take ~20–30min..."
+          Start-BitsTransfer -Source $url -Destination cuda_installer.exe
+
+      - name: Install CUDA silently
+        shell: cmd
+        run: |
+          cuda_installer.exe -s nvcc,cuda,driver
+
+            
       - name: Install CUDA silently
         shell: cmd
         run: |

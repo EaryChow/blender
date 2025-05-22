@@ -78,25 +78,39 @@ jobs:
       
       # --- Configure & build with Ninja and GPU support ---
       - name: Configure CMake (MSVC + Ninja)
-        shell: cmd
+        shell: pwsh
         run: |
-          REM -- Load MSVC into this shell session:
-          CALL "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" x64
+          # 1) Find the VS installation path
+          $vsInstall = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
 
-          REM -- Now configure with Ninja (MSVC is active, so Ninja will use cl.exe):
-          mkdir build  && cd build
-          cmake .. ^
-            -G Ninja ^
-            -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
-            -DCMAKE_INSTALL_PREFIX=../install ^
-            -DWITH_INSTALL_PORTABLE=ON ^
-            -DWITH_CYCLES_CUDA_BINARIES=ON ^
-            -DCYCLES_CUDA_BINARIES_ARCH="sm_50;sm_60;sm_70;sm_80;sm_86" ^
-            -DWITH_CYCLES_DEVICE_OPTIX=ON ^
-            -DOPTIX_ROOT_DIR=%OPTIX_ROOT_DIR% ^
-            -DWITH_CYCLES_DEVICE_ONEAPI=ON ^
-            -DWITH_CYCLES_ONEAPI_BINARIES=ON ^
-            -DOCLOC_INSTALL_DIR=%OCLOC_INSTALL_DIR%
+          if (-not $vsInstall) {
+            Write-Error "VS2022 not found via vswhere!"
+            exit 1
+          }
+
+          # 2) Source the MSVC environment for x64
+                $vcvars = Join-Path $vsInstall 'VC\Auxiliary\Build\vcvars64.bat'
+          Write-Host "Sourcing MSVC environment from $vcvars"
+          & "$vcvars" x64 | Out-Null
+
+          # 3) Configure with Ninja (cl.exe is now the active compiler)
+          mkdir build; cd build
+          cmake .. `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=$env:BUILD_TYPE `
+            -DCMAKE_INSTALL_PREFIX=../install `
+            -DWITH_INSTALL_PORTABLE=ON `
+            -DWITH_CYCLES_CUDA_BINARIES=ON `
+            -DCYCLES_CUDA_BINARIES_ARCH="sm_50;sm_60;sm_70;sm_80;sm_86" `
+            -DWITH_CYCLES_DEVICE_OPTIX=ON `
+            -DOPTIX_ROOT_DIR=$env:OPTIX_ROOT_DIR `
+            -DWITH_CYCLES_DEVICE_ONEAPI=ON `
+            -DWITH_CYCLES_ONEAPI_BINARIES=ON `
+            -DOCLOC_INSTALL_DIR=$env:OCLOC_INSTALL_DIR
+
 
       - name: Build & install
         shell: bash

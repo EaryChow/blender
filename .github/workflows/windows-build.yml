@@ -13,6 +13,7 @@ jobs:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
       # Set BLENDER_LIB environment variable for CMake to find general precompiled libraries
+      # (e.g., for dpcpp runtime libs, hiprt) - this path is confirmed by fetched libraries.txt
       BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
 
     steps:
@@ -53,6 +54,7 @@ jobs:
       - name: Download and Install NVIDIA CUDA Toolkit
         shell: pwsh
         timeout-minutes: 15
+        id: install_cuda # Add an ID to the step to get its outputs
         run: |
           $cuda_url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
           $cuda_installer = "cuda_installer.exe"
@@ -60,18 +62,17 @@ jobs:
           Write-Host "Downloading CUDA Toolkit from $cuda_url"
           Invoke-WebRequest -Uri $cuda_url -OutFile $cuda_installer
           Write-Host "Installing CUDA Toolkit silently to $cuda_install_path..."
-          # RESTORED: Explicitly setting /NVSDK_PATH for silent installation
           Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_install_path" -Wait
           Write-Host "CUDA Toolkit installation complete."
-          # Set CUDA_TOOLKIT_ROOT_DIR for CMake directly
-          $env:CUDA_TOOLKIT_ROOT_DIR = $cuda_install_path
-          Write-Host "CUDA_TOOLKIT_ROOT_DIR set to $env:CUDA_TOOLKIT_ROOT_DIR"
-          # Add CUDA bin to PATH for any tools that might need it (e.g., nvcc if used directly)
+          # Output the path for subsequent steps
+          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          # Add CUDA bin to PATH for any tools that might need it (e.g., nvcc if used directly in compilation)
           $env:Path = "$cuda_install_path\bin;$cuda_install_path\libnvvp;" + $env:Path
           Write-Host "CUDA bin and libnvvp added to PATH for this session."
 
       - name: Download and Extract NVIDIA OptiX SDK
         shell: pwsh
+        id: install_optix # Add an ID to the step to get its outputs
         run: |
           $optix_url = "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
           $optix_zip = "OptiX-SDK.zip"
@@ -87,17 +88,18 @@ jobs:
             Remove-Item -Path $extracted_subfolder.FullName -Recurse -Force
           }
           Write-Host "OptiX SDK extraction complete."
-          # Set OPTIX_ROOT_DIR (as used by FindOptiX in Blender's CMake)
-          $env:OPTIX_ROOT_DIR = $optix_install_path
-          Write-Host "OPTIX_ROOT_DIR set to $env:OPTIX_ROOT_DIR"
+          # Output the path for subsequent steps
+          echo "OPTIX_ROOT_DIR=$optix_install_path" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
 
       - name: Download and Place Intel OneAPI `ocloc.exe`
         shell: pwsh
+        id: install_ocloc # Add an ID to the step to get its outputs
         run: |
           $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
           $ocloc_zip = "ocloc.zip"
           $ocloc_extract_dir = "ocloc_temp"
-          $ocloc_final_path = "${{ github.workspace }}/ocloc_tool"
+          # Define a clear, direct path where ocloc.exe will reside
+          $ocloc_final_path = "${{ github.workspace }}\ocloc_tool"
           Write-Host "Downloading ocloc.exe from $ocloc_url"
           Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
           Write-Host "Extracting ocloc.exe to $ocloc_extract_dir"
@@ -108,8 +110,9 @@ jobs:
             New-Item -ItemType Directory -Force -Path $ocloc_final_path
             Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_path -Force
             Write-Host "ocloc.exe placed in $ocloc_final_path"
-            $env:OCLOC_INSTALL_DIR = $ocloc_final_path
-            Write-Host "OCLOC_INSTALL_DIR set to $env:OCLOC_INSTALL_DIR"
+            # Output the path for subsequent steps
+            echo "OCLOC_INSTALL_DIR=$ocloc_final_path" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+            # Add ocloc_final_path to PATH for any direct command line calls (like ocloc ids)
             $env:Path = "$ocloc_final_path;" + $env:Path
             Write-Host "ocloc_tool added to PATH for this session."
           } else {
@@ -119,6 +122,7 @@ jobs:
 
       - name: Configure CMake
         shell: bash
+        # Use outputs from previous steps to directly set CMake cache variables
         run: |
           mkdir build_windows && cd build_windows
           cmake .. \
@@ -128,9 +132,9 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON \
-            -D CUDA_TOOLKIT_ROOT_DIR="${{ env.CUDA_TOOLKIT_ROOT_DIR }}" \
-            -D OPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
-            -D OCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}"
+            -D CUDA_TOOLKIT_ROOT_DIR="${{ steps.install_cuda.outputs.CUDA_TOOLKIT_ROOT_DIR }}" \
+            -D OPTIX_ROOT_DIR="${{ steps.install_optix.outputs.OPTIX_ROOT_DIR }}" \
+            -D OCLOC_INSTALL_DIR="${{ steps.install_ocloc.outputs.OCLOC_INSTALL_DIR }}"
 
       - name: Build and Install
         shell: bash
@@ -149,16 +153,16 @@ jobs:
           Get-ChildItem -Path "install" -Filter "cycles_kernel_*.dll" -Recurse | Format-List FullName, Length
           
           $expected_kernels = @(
-            "install/cycles_kernel_oneapi_aot.dll",
-            "install/cycles_kernel_cuda.dll", 
-            "install/cycles_kernel_optix.dll" 
+            "install/cycles_kernel_oneapi_aot.dll", # OneAPI AOT kernel
+            "install/cycles_kernel_cuda.dll",      # CUDA kernel (may vary by architecture if specific ones are built)
+            "install/cycles_kernel_optix.dll"      # OptiX kernel
           )
           foreach ($kernel in $expected_kernels) {
             if (Test-Path $kernel) {
               $file = Get-Item $kernel
               Write-Host "FOUND: $($file.Name) - Length: $($file.Length) bytes"
-              if ($file.Length -lt 10240) { 
-                Write-Warning "WARNING: $($file.Name) is unusually small, might be an issue."
+              if ($file.Length -lt 10240) { # Kernels are typically large; this is a sanity check
+                Write-Warning "WARNING: $($file.Name) is unusually small, might be an issue (e.g., a pointer file or failed compilation)."
               }
             } else {
               Write-Warning "MISSING: $kernel"

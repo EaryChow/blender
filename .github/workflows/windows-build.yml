@@ -12,7 +12,7 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
-      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64" # For make_update.py general lib fetching
+      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
 
     steps:
       - name: Install Git LFS
@@ -51,28 +51,54 @@ jobs:
 
       - name: Download and Install NVIDIA CUDA Toolkit
         shell: pwsh
-        timeout-minutes: 15
+        timeout-minutes: 25 # Increased timeout for large installer and potential variability
         run: |
           $cuda_url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
           $cuda_installer = "cuda_installer.exe"
-          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
+          # Try a common alternative install path, or let installer pick default
+          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9" 
+          $cuda_alt_root = "C:\Program Files\NVIDIA Corporation\CUDA Toolkit\CUDA\v12.9" # Another common path
           Write-Host "Downloading CUDA Toolkit from $cuda_url"
           Invoke-WebRequest -Uri $cuda_url -OutFile $cuda_installer
-          Write-Host "Installing CUDA Toolkit silently to $cuda_root..."
+          Write-Host "Installing CUDA Toolkit silently..."
+          # Use default silent install with a path hint. The installer might choose its own path.
           Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_root" -Wait
-          Write-Host "CUDA Toolkit installation complete."
+          Write-Host "CUDA Toolkit installation complete. Verifying actual install path..."
           
-          # Prepare CUDA paths for CMake
-          $cuda_root_cmake = $cuda_root.Replace("\", "/")
-          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_PATH=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindCUDA
-          echo "CUDA_NVCC_EXECUTABLE=$cuda_root_cmake/bin/nvcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_INCLUDE_DIRS=$cuda_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_CUDART_LIBRARY=$cuda_root_cmake/lib/x64/cudart_static.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Assuming static link
-          # Or for dynamic: echo "CUDA_CUDART_LIBRARY=$cuda_root_cmake/bin/cudart64_12.dll" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          
-          $env:Path = "$cuda_root\bin;$cuda_root\libnvvp;" + $env:Path # Add to PATH for any direct calls
-          Write-Host "CUDA paths prepared."
+          $actual_cuda_root = $null
+          if (Test-Path "$cuda_root\bin\nvcc.exe") {
+              $actual_cuda_root = $cuda_root
+          } elseif (Test-Path "$cuda_alt_root\bin\nvcc.exe") {
+              $actual_cuda_root = $cuda_alt_root
+          } else {
+              # Fallback: Search common Program Files locations
+              $nvcc_path = Get-ChildItem -Path "C:\Program Files\", "C:\Program Files (x86)\" -Filter "nvcc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($nvcc_path) {
+                  $actual_cuda_root = Split-Path $nvcc_path.DirectoryName | Split-Path # Get parent of bin, then parent of that
+                  Write-Warning "nvcc.exe found at unconventional path: $($nvcc_path.FullName), inferring root: $actual_cuda_root"
+              }
+          }
+
+          if ($actual_cuda_root) {
+              $actual_cuda_root_cmake = $actual_cuda_root.Replace("\", "/")
+              echo "CUDA_TOOLKIT_ROOT_DIR=$actual_cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              echo "CUDA_PATH=$actual_cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindCUDA
+              echo "CUDA_NVCC_EXECUTABLE=$actual_cuda_root_cmake/bin/nvcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              echo "CUDA_INCLUDE_DIRS=$actual_cuda_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              echo "CUDA_CUDART_LIBRARY=$actual_cuda_root_cmake/lib/x64/cudart_static.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "CUDA paths prepared based on actual install location: $actual_cuda_root"
+              $env:Path = "$actual_cuda_root\bin;$actual_cuda_root\libnvvp;" + $env:Path # Add to PATH
+          } else {
+              Write-Error "Could not determine actual CUDA installation path. CUDA compilation will fail."
+              exit 1
+          }
+
+      - name: Debug - List CUDA Installation Contents
+        shell: pwsh
+        run: |
+          Write-Host "--- Listing CUDA Installation Dir ---"
+          Get-ChildItem -Path "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9", "C:\Program Files\NVIDIA Corporation\CUDA Toolkit\CUDA\v12.9" -Recurse -Depth 3 -ErrorAction SilentlyContinue | Format-List FullName, Length, Attributes
+          Write-Host "--- End CUDA Listing ---"
 
       - name: Download and Extract NVIDIA OptiX SDK
         shell: pwsh
@@ -84,24 +110,96 @@ jobs:
           Invoke-WebRequest -Uri $optix_url -OutFile $optix_zip
           Write-Host "Extracting OptiX SDK to $optix_root"
           Expand-Archive -Path $optix_zip -DestinationPath $optix_root -Force
-          $extracted_subfolder = Get-ChildItem -Path $optix_root | Where-Object { $_.PSIsContainer } | Select-Object -First 1
-          if ($extracted_subfolder) {
-            Write-Host "Moving contents from $($extracted_subfolder.FullName) to $optix_root"
-            Move-Item -Path "$($extracted_subfolder.FullName)\*" -Destination $optix_root -Force
-            Remove-Item -Path $extracted_subfolder.FullName -Recurse -Force
-          }
-          Write-Host "OptiX SDK extraction complete."
           
-          # Prepare OptiX paths for CMake
+          # Refined logic: Find the 'include' directory within the extraction and move its contents
+          $extracted_include_dir = Get-ChildItem -Path $optix_root -Filter "include" -Recurse -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($extracted_include_dir) {
+            Write-Host "Moving contents from $($extracted_include_dir.FullName) to $optix_root"
+            # Move all files and folders from the found 'include' directory to the root of $optix_root
+            Move-Item -Path "$($extracted_include_dir.FullName)\*" -Destination $optix_root -Force
+            Remove-Item -Path $extracted_include_dir.FullName -Recurse -Force # Clean up empty include dir
+            # Clean up the original root extracted folder if it becomes empty
+            $parent_of_include = Split-Path $extracted_include_dir.FullName
+            if ((Get-ChildItem -Path $parent_of_include | Measure-Object).Count -eq 0) {
+                Remove-Item -Path $parent_of_include -Recurse -Force
+            }
+          }
+          Write-Host "OptiX SDK extraction complete. Contents should now be directly in $optix_root."
+          
           $optix_root_cmake = $optix_root.Replace("\", "/")
           echo "OPTIX_ROOT_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "OPTIX_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindOptiX
-          echo "OPTIX_INCLUDE_DIR=$optix_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          # OptiX-Include.zip contains only headers, no lib. Assuming other components of buildbot provide it or it's implicitly handled.
-          # If linking errors appear later, we might need to find OptiX libraries.
+          echo "OPTIX_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "OPTIX_INCLUDE_DIR=$optix_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Explicitly setting include path
           Write-Host "OptiX paths prepared."
 
-      - name: Download and Place Intel OneAPI `ocloc.exe` & Setup SYCL paths
+      - name: Debug - List OptiX Extraction Contents
+        shell: pwsh
+        run: |
+          Write-Host "--- Listing OptiX Extraction Dir ---"
+          Get-ChildItem -Path "C:\OptiX_SDK_7_4" -Recurse -Depth 3 -ErrorAction SilentlyContinue | Format-List FullName, Length, Attributes
+          Write-Host "--- End OptiX Listing ---"
+
+      - name: Download and Install Intel oneAPI Base Toolkit (for dpcpp.exe)
+        shell: pwsh
+        timeout-minutes: 30 # This is a very large installer (several GBs)
+        run: |
+          $oneapi_url = "https://registrationcenter-download.intel.com/akdlm/irc_packages/204212/oneapi-tbb-2021.12.0-win.exe" # This is TBB, need DPC++
+          # The correct path for the DPC++/C++ Compiler component of the oneAPI Base Toolkit
+          # is usually found from: https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html
+          # This requires selecting offline installer and inspecting the direct link.
+          # Example (might change): https://registrationcenter-download.intel.com/akdlm/irc_packages/203923/oneapi-BaseKit-win-2023.2.0.49397.exe
+          # For a stable link that doesn't change as often:
+          # Find a specific release from Intel's archives if a direct installer for a specific version is preferred.
+          # Or, instruct the runner to use the pre-installed oneAPI if it's part of windows-latest (unlikely to be fully configured).
+          
+          # Let's try a direct link for the standalone DPC++/C++ Compiler based on common patterns.
+          # This URL is an educated guess and might need your verification if it fails.
+          # A more robust solution might be to use Intel's provided batch scripts to initialize
+          # the environment from a pre-installed oneAPI if available on the runner.
+          # Since it's not present, we need to install it.
+          $dpcpp_compiler_installer_url = "https://registrationcenter-download.intel.com/akdlm/irc_packages/203923/oneapi-BaseKit-win-2023.2.0.49397.exe" 
+          $dpcpp_installer = "oneapi_basekit_installer.exe"
+          $dpcpp_install_root = "C:\Program Files (x86)\Intel\oneAPI" # Common default install path
+
+          Write-Host "Downloading Intel oneAPI Base Toolkit from $dpcpp_compiler_installer_url"
+          Invoke-WebRequest -Uri $dpcpp_compiler_installer_url -OutFile $dpcpp_installer
+          Write-Host "Installing Intel oneAPI Base Toolkit silently..."
+          # /s for silent, /install for install, /accept_eula for EULA
+          # Check official Intel oneAPI silent install docs for exact args if this fails.
+          Start-Process -FilePath $dpcpp_installer -ArgumentList "/s /install /accept_eula" -Wait
+          Write-Host "Intel oneAPI Base Toolkit installation complete."
+
+          # Verify dpcpp.exe path after installation
+          $actual_dpcpp_path = $null
+          if (Test-Path "$dpcpp_install_root\compiler\latest\windows\bin\dpcpp.exe") {
+              $actual_dpcpp_path = "$dpcpp_install_root\compiler\latest\windows"
+          } else {
+              $dpcpp_exe_search = Get-ChildItem -Path $dpcpp_install_root -Filter "dpcpp.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($dpcpp_exe_search) {
+                  # Infer root path by going up from bin/compiler path
+                  $actual_dpcpp_path = Split-Path $dpcpp_exe_search.DirectoryName | Split-Path # Parent of bin, then parent
+                  Write-Warning "dpcpp.exe found at unconventional path: $($dpcpp_exe_search.FullName), inferring root: $actual_dpcpp_path"
+              }
+          }
+
+          if ($actual_dpcpp_path) {
+              $actual_dpcpp_path_cmake = $actual_dpcpp_path.Replace("\", "/")
+              echo "SYCL_COMPILER_PATH=$actual_dpcpp_path_cmake/bin/dpcpp.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              # We also need to set SYCL_ROOT_DIR for FindSYCL.cmake
+              echo "SYCL_ROOT_DIR=$actual_dpcpp_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "DPC++ compiler path prepared based on actual install location: $actual_dpcpp_path"
+              # Initialize oneAPI environment variables for the session
+              # This usually involves running "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
+              # This is often done by the buildbot to correctly configure PATH/LIB/INCLUDE for DPC++
+              Write-Host "Attempting to source Intel oneAPI setvars.bat..."
+              & "C:\Program Files (x86)\Intel\oneAPI\setvars.bat" -arch intel64 -platform windows -vs 2022 | Out-Null
+              Write-Host "oneAPI environment variables should now be set in PATH etc."
+          } else {
+              Write-Error "Could not find dpcpp.exe after Intel oneAPI Base Toolkit installation. OneAPI compilation will fail."
+              exit 1
+          }
+
+      - name: Download and Place Intel OneAPI `ocloc.exe` (Standalone)
         shell: pwsh
         run: |
           $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
@@ -118,58 +216,43 @@ jobs:
             New-Item -ItemType Directory -Force -Path $ocloc_tool_path
             Copy-Item -Path $ocloc_source_path -Destination $ocloc_tool_path -Force
             Write-Host "ocloc.exe placed in $ocloc_tool_path"
-            
-            # Prepare OneAPI/SYCL paths for CMake
             $ocloc_tool_path_cmake = $ocloc_tool_path.Replace("\", "/")
-            $sycl_root_path = "${{ github.workspace }}/lib/windows_x64/dpcpp" # This is where the core SYCL/DPC++ libs are found by make_update.py
-            $sycl_root_path_cmake = $sycl_root_path.Replace("\", "/")
-
-            echo "OCLOC_INSTALL_DIR=$ocloc_tool_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Used by intern/cycles/kernel/CMakeLists.txt
-            echo "SYCL_ROOT_DIR=$sycl_root_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # For FindSYCL
-            echo "SYCL_COMPILER=$sycl_root_path_cmake/bin/dpcpp.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Assuming dpcpp.exe as the compiler
-            echo "SYCL_INCLUDE_DIR=$sycl_root_path_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            echo "SYCL_LIBRARY=$sycl_root_path_cmake/lib/sycl8.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # From your logs
-            
-            Write-Host "OneAPI/SYCL paths prepared."
-            $env:Path = "$ocloc_tool_path;$sycl_root_path\bin;" + $env:Path # Add ocloc and dpcpp bin to PATH
-            Write-Host "ocloc and dpcpp bin added to PATH for this session."
+            echo "OCLOC_INSTALL_DIR=$ocloc_tool_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "OCLOC_INSTALL_DIR set for job environment."
           } else {
             Write-Error "ocloc.exe not found in extracted archive! OneAPI build will likely fail."
             exit 1
           }
 
-      - name: Debug - Print All Environment Variables
+      - name: Debug: Print All Environment Variables
         shell: pwsh
         run: |
           Write-Host "--- ALL Environment Variables for CMake ---"
           Get-ChildItem Env: | Format-List
           Write-Host "-------------------------------------"
           
-      - name: Debug - Check Specific SDK File Existence
+      - name: Debug: Check Specific SDK File Existence (Post all installs)
         shell: pwsh
         run: |
-          Write-Host "--- Verifying Key SDK Files ---"
-          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
-          $optix_root = "C:\OptiX_SDK_7_4"
-          $ocloc_tool_path = "${{ github.workspace }}\ocloc_tool"
-          $dpcpp_root = "${{ github.workspace }}\lib\windows_x64\dpcpp" # Assuming dpcpp is relative to workspace too
-          
-          # CUDA checks
+          Write-Host "--- Verifying Key SDK Files (Post all installs) ---"
+          $cuda_root = $env:CUDA_TOOLKIT_ROOT_DIR # Use resolved path
+          $optix_root = $env:OPTIX_ROOT_DIR # Use resolved path
+          $ocloc_tool_path = $env:OCLOC_INSTALL_DIR # Use resolved path
+          $sycl_compiler_path_root = Split-Path $env:SYCL_COMPILER_PATH # Use resolved path
+
           Write-Host "Checking CUDA files:"
-          Test-Path "$cuda_root\bin\nvcc.exe"
-          Test-Path "$cuda_root\include"
-          Test-Path "$cuda_root\lib\x64\cudart_static.lib"
+          Write-Host "nvcc.exe exists: $(Test-Path "$cuda_root/bin/nvcc.exe")"
+          Write-Host "include dir exists: $(Test-Path "$cuda_root/include")"
+          Write-Host "cudart_static.lib exists: $(Test-Path "$cuda_root/lib/x64/cudart_static.lib")"
           
-          # OptiX checks
           Write-Host "Checking OptiX files:"
-          Test-Path "$optix_root\include\optix.h"
+          Write-Host "optix.h exists: $(Test-Path "$optix_root/include/optix.h")"
           
-          # OneAPI/SYCL checks
           Write-Host "Checking OneAPI/SYCL files:"
-          Test-Path "$ocloc_tool_path\ocloc.exe"
-          Test-Path "$dpcpp_root\bin\dpcpp.exe" # Check if dpcpp.exe actually exists here
-          Test-Path "$dpcpp_root\lib\sycl8.lib"
-          Test-Path "$dpcpp_root\include\sycl\sycl.hpp"
+          Write-Host "ocloc.exe exists: $(Test-Path "$ocloc_tool_path/ocloc.exe")"
+          Write-Host "dpcpp.exe exists: $(Test-Path "$sycl_compiler_path_root/bin/dpcpp.exe")"
+          Write-Host "sycl8.lib exists: $(Test-Path "${{ github.workspace }}/lib/windows_x64/dpcpp/lib/sycl8.lib")" # This comes from make_update.py
+          Write-Host "sycl.hpp exists: $(Test-Path "${{ github.workspace }}/lib/windows_x64/dpcpp/include/sycl/sycl.hpp")" # This comes from make_update.py
           Write-Host "-------------------------------"
 
       - name: Configure CMake
@@ -183,6 +266,10 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON \
+            -D CUDA_TOOLKIT_ROOT_DIR="${{ env.CUDA_TOOLKIT_ROOT_DIR }}" \
+            -D OPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            -D OCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}" \
+            -D SYCL_COMPILER="${{ env.SYCL_COMPILER_PATH }}" \
             -D CYCLES_ONEAPI_INTEL_BINARIES_ARCH="" # Override default unsupported targets.
 
       - name: Build and Install

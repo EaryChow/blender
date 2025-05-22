@@ -224,14 +224,14 @@ jobs:
             exit 1
           }
 
-      - name: Debug: Print All Environment Variables
+      - name: Debug - Print All Environment Variables
         shell: pwsh
         run: |
           Write-Host "--- ALL Environment Variables for CMake ---"
           Get-ChildItem Env: | Format-List
           Write-Host "-------------------------------------"
           
-      - name: Debug: Check Specific SDK File Existence (Post all installs)
+      - name: Debug - Check Specific SDK File Existence (Post all installs)
         shell: pwsh
         run: |
           Write-Host "--- Verifying Key SDK Files (Post all installs) ---"

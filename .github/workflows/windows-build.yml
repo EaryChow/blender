@@ -122,7 +122,7 @@ jobs:
             exit 1
           }
 
-      - name: Debug: Print Relevant Environment Variables
+      - name: Debug - Print Relevant Environment Variables
         shell: pwsh
         run: |
           Write-Host "--- Environment Variables for CMake ---"

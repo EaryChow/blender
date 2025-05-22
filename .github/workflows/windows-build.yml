@@ -13,7 +13,6 @@ jobs:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
       # Set BLENDER_LIB environment variable for CMake to find general precompiled libraries
-      # (e.g., for dpcpp runtime libs, hiprt) - this path is confirmed by fetched libraries.txt
       BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
 
     steps:
@@ -61,7 +60,8 @@ jobs:
           Write-Host "Downloading CUDA Toolkit from $cuda_url"
           Invoke-WebRequest -Uri $cuda_url -OutFile $cuda_installer
           Write-Host "Installing CUDA Toolkit silently to $cuda_install_path..."
-          Start-Process -FilePath $cuda_installer -ArgumentList "/s" -Wait
+          # RESTORED: Explicitly setting /NVSDK_PATH for silent installation
+          Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_install_path" -Wait
           Write-Host "CUDA Toolkit installation complete."
           # Set CUDA_TOOLKIT_ROOT_DIR for CMake directly
           $env:CUDA_TOOLKIT_ROOT_DIR = $cuda_install_path
@@ -97,7 +97,6 @@ jobs:
           $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
           $ocloc_zip = "ocloc.zip"
           $ocloc_extract_dir = "ocloc_temp"
-          # Define a clear, direct path where ocloc.exe will reside
           $ocloc_final_path = "${{ github.workspace }}/ocloc_tool"
           Write-Host "Downloading ocloc.exe from $ocloc_url"
           Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
@@ -109,10 +108,8 @@ jobs:
             New-Item -ItemType Directory -Force -Path $ocloc_final_path
             Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_path -Force
             Write-Host "ocloc.exe placed in $ocloc_final_path"
-            # Set OCLOC_INSTALL_DIR for CMake
             $env:OCLOC_INSTALL_DIR = $ocloc_final_path
             Write-Host "OCLOC_INSTALL_DIR set to $env:OCLOC_INSTALL_DIR"
-            # Add ocloc_final_path to PATH for any direct command line calls (like ocloc ids)
             $env:Path = "$ocloc_final_path;" + $env:Path
             Write-Host "ocloc_tool added to PATH for this session."
           } else {
@@ -151,18 +148,16 @@ jobs:
           Write-Host "Checking for Cycles GPU DLLs in install directory:"
           Get-ChildItem -Path "install" -Filter "cycles_kernel_*.dll" -Recurse | Format-List FullName, Length
           
-          # Explicitly check for expected kernel DLLs
           $expected_kernels = @(
             "install/cycles_kernel_oneapi_aot.dll",
-            # Add other expected kernel DLLs based on compilation
-            "install/cycles_kernel_cuda.dll", # This might be the form if WITH_CYCLES_CUDA_BINARIES compiles to a single DLL
-            "install/cycles_kernel_optix.dll" # This might be the form if OptiX kernels are separate DLLs
+            "install/cycles_kernel_cuda.dll", 
+            "install/cycles_kernel_optix.dll" 
           )
           foreach ($kernel in $expected_kernels) {
             if (Test-Path $kernel) {
               $file = Get-Item $kernel
               Write-Host "FOUND: $($file.Name) - Length: $($file.Length) bytes"
-              if ($file.Length -lt 10240) { # Kernels are large, this is a sanity check
+              if ($file.Length -lt 10240) { 
                 Write-Warning "WARNING: $($file.Name) is unusually small, might be an issue."
               }
             } else {

@@ -63,11 +63,10 @@ jobs:
           Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_install_path" -Wait
           Write-Host "CUDA Toolkit installation complete."
           $cuda_install_path_cmake = $cuda_install_path.Replace("\", "/")
-          # Set for subsequent steps via GITHUB_ENV
-          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-          echo "CUDA_PATH=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 # Commonly used by FindCUDA
+          # FIX: Added -Append to ensure all variables are added
+          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CUDA_PATH=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "CUDA_TOOLKIT_ROOT_DIR and CUDA_PATH set for job environment."
-          # Add CUDA bin to PATH for any tools that might need it (e.g., nvcc if used directly in compilation)
           $env:Path = "$cuda_install_path\bin;$cuda_install_path\libnvvp;" + $env:Path
           Write-Host "CUDA bin and libnvvp added to PATH for this session."
 
@@ -89,9 +88,9 @@ jobs:
           }
           Write-Host "OptiX SDK extraction complete."
           $optix_install_path_cmake = $optix_install_path.Replace("\", "/")
-          # Set for subsequent steps via GITHUB_ENV
-          echo "OPTIX_ROOT_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-          echo "OPTIX_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 # Commonly used by FindOptiX
+          # FIX: Added -Append to ensure all variables are added
+          echo "OPTIX_ROOT_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "OPTIX_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "OPTIX_ROOT_DIR and OPTIX_DIR set for job environment."
 
       - name: Download and Place Intel OneAPI `ocloc.exe`
@@ -112,8 +111,8 @@ jobs:
             Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_path -Force
             Write-Host "ocloc.exe placed in $ocloc_final_path"
             $ocloc_final_path_cmake = $ocloc_final_path.Replace("\", "/")
-            # Set for subsequent steps via GITHUB_ENV
-            echo "OCLOC_INSTALL_DIR=$ocloc_final_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+            # FIX: Added -Append to ensure all variables are added
+            echo "OCLOC_INSTALL_DIR=$ocloc_final_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             Write-Host "OCLOC_INSTALL_DIR set for job environment."
             $env:Path = "$ocloc_final_path;" + $env:Path
             Write-Host "ocloc_tool added to PATH for this session."
@@ -122,10 +121,10 @@ jobs:
             exit 1
           }
 
-      - name: Debug - Print Relevant Environment Variables
+      - name: Debug: Print Relevant Environment Variables
         shell: pwsh
         run: |
-          Write-Host "--- Environment Variables for CMake ---"
+          Write-Host "--- Environment Variables for CMake (after GITHUB_ENV updates) ---"
           Write-Host "CUDA_TOOLKIT_ROOT_DIR: $env:CUDA_TOOLKIT_ROOT_DIR"
           Write-Host "CUDA_PATH: $env:CUDA_PATH"
           Write-Host "OPTIX_ROOT_DIR: $env:OPTIX_ROOT_DIR"

@@ -3,7 +3,7 @@ name: Windows Build
 on:
   push:
     branches:
-      - try_github_actions_v2
+      - try_github_actions
   workflow_dispatch:
 
 jobs:

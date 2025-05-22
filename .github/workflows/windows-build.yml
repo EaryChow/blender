@@ -39,26 +39,16 @@ jobs:
         timeout-minutes: 60
         run: |
           $url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
-          Write-Host "Starting BITS download of CUDA, this may take ~20–30min..."
           Start-BitsTransfer -Source $url -Destination cuda_installer.exe
-
-      - name: Install CUDA silently
-        shell: cmd
-        run: |
-          cuda_installer.exe -s nvcc,cuda,driver
-
             
-      - name: Install CUDA silently
-        shell: cmd
+      - name: Install CUDA silently (blocking)
+        shell: pwsh
         run: |
-          cuda_installer.exe -s nvcc,cuda,driver
-      - name: Expose CUDA env vars
-        shell: powershell
-        run: |
-          $root="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
-          echo "CUDA_TOOLKIT_ROOT_DIR=$($root -replace '\\','/')" >> $env:GITHUB_ENV
-          echo "WITH_CYCLES_CUDA_BINARIES=ON"          >> $env:GITHUB_ENV
-          echo "CYCLES_CUDA_BINARIES_ARCH=sm_50;sm_60;sm_70;sm_80;sm_86" >> $env:GITHUB_ENV
+          Write-Host "Installing CUDA Toolkit (silent)."
+          Start-Process -FilePath "$PWD\cuda_installer.exe" `
+            -ArgumentList "-s" `
+            -Wait `
+            -NoNewWindow
 
       # --- OptiX SDK ---
       - name: Download OptiX SDK 7.4

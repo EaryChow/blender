@@ -15,254 +15,100 @@ jobs:
       BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
 
     steps:
-      - name: Install Git LFS
-        run: git lfs install --skip-repo
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
-          lfs: false
 
-      - name: Fetch Main Repository LFS objects
+      - name: Install Git LFS & fetch datafiles
         shell: bash
         run: |
+          git lfs install --skip-repo
           git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
           git lfs pull
+          # sanity-check
+          test -s release/datafiles/startup.blend
 
-      - name: Verify datafiles
-        shell: pwsh
-        run: |
-          $f = "release/datafiles/startup.blend"
-          if (!(Test-Path $f)) {
-            Write-Error "$f not found—check your fork structure!"
-            exit 1
-          }
-          if ((Get-Item $f).Length -lt 10240) {
-            Write-Error "$f is too small—still a pointer file?"
-            exit 1
-          }
-
-      - name: Fetch precompiled libraries (managed by make_update.py)
+      - name: Fetch precompiled libraries (make_update.py)
         shell: powershell
         run: python build_files/utils/make_update.py --architecture="amd64"
 
-      # --- Install External SDKs for GPU Backends & Prepare Paths ---
-
-      - name: Install NVIDIA CUDA Toolkit via Chocolatey
-        shell: pwsh
-        timeout-minutes: 20 # Chocolatey can take time for large packages
+      # --- CUDA Toolkit via direct download & silent install ---
+      - name: Download CUDA 12.9 installer
+        shell: powershell
         run: |
-          # Use Chocolatey to install CUDA Toolkit.
-          # Specify version if needed, e.g., 'cuda-toolkit --version 12.4.0'
-          Write-Host "Installing CUDA Toolkit via Chocolatey..."
-          choco install cuda-toolkit -y --version 12.9.0 # Use exact version for consistency
-          Write-Host "CUDA Toolkit Chocolatey installation complete."
-          
-          # Chocolatey typically installs to C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.Y
-          # Verify and set paths
-          $cuda_root = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
-          if (-not (Test-Path "$cuda_root\bin\nvcc.exe")) {
-              # Fallback if Chocolatey installs to a different path
-              $nvcc_path = Get-ChildItem -Path "C:\Program Files\", "C:\Program Files (x86)\" -Filter "nvcc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($nvcc_path) {
-                  $cuda_root = Split-Path $nvcc_path.DirectoryName | Split-Path # Get parent of bin, then parent of that
-                  Write-Warning "nvcc.exe found at unconventional path: $($nvcc_path.FullName), inferring root: $cuda_root"
-              } else {
-                  Write-Error "Could not find nvcc.exe after Chocolatey CUDA installation."
-                  exit 1
-              }
-          }
-          
-          $cuda_root_cmake = $cuda_root.Replace("\", "/")
-          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_PATH=$cuda_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_NVCC_EXECUTABLE=$cuda_root_cmake/bin/nvcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_INCLUDE_DIRS=$cuda_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CUDA_CUDART_LIBRARY=$cuda_root_cmake/lib/x64/cudart_static.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          
-          $env:Path = "$cuda_root\bin;$cuda_root\libnvvp;" + $env:Path # Add to PATH
-          Write-Host "CUDA paths prepared and added to environment."
+          Invoke-WebRequest `
+            -Uri https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe `
+            -OutFile cuda_installer.exe
+      - name: Install CUDA silently
+        shell: cmd
+        run: |
+          cuda_installer.exe -s nvcc,cuda,driver
+      - name: Expose CUDA env vars
+        shell: powershell
+        run: |
+          $root="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
+          echo "CUDA_TOOLKIT_ROOT_DIR=$($root -replace '\\','/')" >> $env:GITHUB_ENV
+          echo "WITH_CYCLES_CUDA_BINARIES=ON"          >> $env:GITHUB_ENV
+          echo "CYCLES_CUDA_BINARIES_ARCH=sm_50;sm_60;sm_70;sm_80;sm_86" >> $env:GITHUB_ENV
 
-      - name: Download and Extract NVIDIA OptiX SDK
+      # --- OptiX SDK ---
+      - name: Download OptiX SDK 7.4
         shell: pwsh
         run: |
-          $optix_url = "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
-          $optix_zip = "OptiX-SDK.zip"
-          $optix_root = "C:\OptiX_SDK_7_4"
-          Write-Host "Downloading OptiX SDK from $optix_url"
-          Invoke-WebRequest -Uri $optix_url -OutFile $optix_zip
-          Write-Host "Extracting OptiX SDK to $optix_root"
-          Expand-Archive -Path $optix_zip -DestinationPath $optix_root -Force
-          
-          # Refined logic: Ensure optix.h is directly accessible
-          $extracted_optix_root_content = Get-ChildItem -Path $optix_root -ErrorAction SilentlyContinue | Where-Object {$_.PSIsContainer -and $_.Name -like "*OptiX-SDK*"} | Select-Object -First 1
-          if ($extracted_optix_root_content) {
-            Write-Host "Moving contents from $($extracted_optix_root_content.FullName) to $optix_root"
-            Move-Item -Path "$($extracted_optix_root_content.FullName)\*" -Destination $optix_root -Force
-            Remove-Item -Path $extracted_optix_root_content.FullName -Recurse -Force
-          }
-          
-          if (-not (Test-Path "$optix_root\include\optix.h")) {
-              Write-Error "OptiX SDK extraction failed to place optix.h in $optix_root\include"
-              exit 1
-          }
-          Write-Host "OptiX SDK extraction complete. Contents should now be directly in $optix_root."
-          
-          $optix_root_cmake = $optix_root.Replace("\", "/")
-          echo "OPTIX_ROOT_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "OPTIX_DIR=$optix_root_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "OPTIX_INCLUDE_DIR=$optix_root_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # Explicitly setting include path
-          Write-Host "OptiX paths prepared."
+          $z="OptiX.zip"; Invoke-WebRequest https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip -OutFile $z
+          Expand-Archive $z -DestinationPath C:\OptiX
+          echo "WITH_CYCLES_DEVICE_OPTIX=ON"     >> $env:GITHUB_ENV
+          echo "OPTIX_ROOT_DIR=C:/OptiX"        >> $env:GITHUB_ENV
 
-      - name: Download and Install Intel oneAPI Base Toolkit (for dpcpp.exe)
-        shell: pwsh
-        timeout-minutes: 45 # Increased timeout for very large installer
-        run: |
-          # Use Chocolatey for oneAPI BaseKit as well, as it's often more reliable.
-          # The package is 'intel-oneapi-basekit'
-          # Version can be tricky, using 'latest' or a specific one if known to be stable.
-          Write-Host "Installing Intel oneAPI Base Toolkit via Chocolatey..."
-          choco install intel-oneapi-basekit -y --version 2023.2.0.49397 # Use known working version
-          Write-Host "Intel oneAPI Base Toolkit Chocolatey installation complete."
-          
-          # Attempt to find dpcpp.exe after installation
-          $dpcpp_install_root = "C:\Program Files (x86)\Intel\oneAPI" # Common default path
-          $actual_dpcpp_exe_path = Get-ChildItem -Path $dpcpp_install_root -Filter "dpcpp.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
-          
-          if ($actual_dpcpp_exe_path) {
-              $dpcpp_bin_dir = Split-Path $actual_dpcpp_exe_path # The directory containing dpcpp.exe
-              $sycl_root_path = Split-Path $dpcpp_bin_dir | Split-Path # Go up twice to get to the compiler/latest/windows path
-              $sycl_root_path_cmake = $sycl_root_path.Replace("\", "/")
-
-              echo "SYCL_COMPILER_PATH=$dpcpp_bin_dir.Replace('\', '/')/dpcpp.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              echo "SYCL_ROOT_DIR=$sycl_root_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              echo "SYCL_INCLUDE_DIR=$sycl_root_path_cmake/include" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              echo "SYCL_LIBRARY=${{ github.workspace }}/lib/windows_x64/dpcpp/lib/sycl8.lib" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append # This comes from make_update.py
-              
-              Write-Host "DPC++ compiler path prepared based on actual install location: $sycl_root_path"
-              # Initialize oneAPI environment variables by sourcing setvars.bat
-              # This is crucial for linking and ensuring all components are found
-              Write-Host "Attempting to source Intel oneAPI setvars.bat..."
-              # Use the exact path to setvars.bat within the detected oneAPI root
-              $setvars_bat_path = Join-Path $sycl_root_path "setvars.bat"
-              if (Test-Path $setvars_bat_path) {
-                  & $setvars_bat_path -arch intel64 -platform windows -vs 2022 | Out-Null # Redirect output to avoid clutter
-                  Write-Host "oneAPI environment variables sourced via setvars.bat."
-              } else {
-                  Write-Warning "setvars.bat not found at $setvars_bat_path. Manual PATH adjustments may be needed."
-                  # Fallback to manual PATH adjustment if setvars.bat fails
-                  $env:Path = "$dpcpp_bin_dir;" + $env:Path # Add dpcpp bin to PATH
-              }
-          } else {
-              Write-Error "Could not find dpcpp.exe after Intel oneAPI Base Toolkit installation. OneAPI compilation will fail."
-              exit 1
-          }
-
-      - name: Download and Place Intel OneAPI `ocloc.exe` (Standalone)
+      # --- Intel oneAPI Offline Compiler (ocloc) ---
+      - name: Fetch Intel offline compiler
         shell: pwsh
         run: |
-          $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
-          $ocloc_zip = "ocloc.zip"
-          $ocloc_extract_dir = "ocloc_temp"
-          $ocloc_tool_path = "${{ github.workspace }}\ocloc_tool"
-          Write-Host "Downloading ocloc.exe from $ocloc_url"
-          Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
-          Write-Host "Extracting ocloc.exe to $ocloc_extract_dir"
-          Expand-Archive -Path $ocloc_zip -DestinationPath $ocloc_extract_dir -Force
-          $ocloc_source_path = Get-ChildItem -Path $ocloc_extract_dir -Filter "ocloc.exe" -Recurse | Select-Object -ExpandProperty FullName
-          
-          if ($ocloc_source_path) {
-            New-Item -ItemType Directory -Force -Path $ocloc_tool_path
-            Copy-Item -Path $ocloc_source_path -Destination $ocloc_tool_path -Force
-            Write-Host "ocloc.exe placed in $ocloc_tool_path"
-            $ocloc_tool_path_cmake = $ocloc_tool_path.Replace("\", "/")
-            echo "OCLOC_INSTALL_DIR=$ocloc_tool_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "OCLOC_INSTALL_DIR set for job environment."
-          } else {
-            Write-Error "ocloc.exe not found in extracted archive! OneAPI build will likely fail."
-            exit 1
-          }
+          $z="ocloc.zip"; Invoke-WebRequest https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip -OutFile $z
+          Expand-Archive $z -DestinationPath ocloc_tmp
+          Copy-Item ocloc_tmp/**/ocloc.exe $env:GITHUB_WORKSPACE/ocloc_tool
+          echo "OCLOC_INSTALL_DIR=${{ github.workspace }}/ocloc_tool" >> $env:GITHUB_ENV
+          echo "WITH_CYCLES_DEVICE_ONEAPI=ON"       >> $env:GITHUB_ENV
+          echo "WITH_CYCLES_ONEAPI_BINARIES=ON"     >> $env:GITHUB_ENV
+          echo "CYCLES_ONEAPI_INTEL_BINARIES_ARCH=" >> $env:GITHUB_ENV
 
-      - name: Debug - Print All Relevant Environment Variables (Before CMake)
+      - name: Debug Environment
         shell: pwsh
         run: |
-          Write-Host "--- ALL RELEVANT Environment Variables for CMake ---"
-          Get-Item Env: | Where-Object { $_.Name -like "*CUDA*" -or $_.Name -like "*OPTIX*" -or $_.Name -like "*OCLOC*" -or $_.Name -like "*SYCL*" -or $_.Name -like "*BLENDER_LIB*" -or $_.Name -like "*PATH*"} | Format-List
-          Write-Host "-------------------------------------"
-          
-      - name: Debug - Check Specific SDK File Existence (Post all installs)
-        shell: pwsh
-        run: |
-          Write-Host "--- Verifying Key SDK Files (Post all installs) ---"
-          $cuda_root = $env:CUDA_TOOLKIT_ROOT_DIR 
-          $optix_root = $env:OPTIX_ROOT_DIR
-          $ocloc_tool_path = $env:OCLOC_INSTALL_DIR
-          $sycl_root = $env:SYCL_ROOT_DIR
-
-          Write-Host "Checking CUDA files:"
-          Write-Host "nvcc.exe exists: $(Test-Path "$cuda_root/bin/nvcc.exe")"
-          Write-Host "include dir exists: $(Test-Path "$cuda_root/include")"
-          Write-Host "cudart_static.lib exists: $(Test-Path "$cuda_root/lib/x64/cudart_static.lib")"
-          
-          Write-Host "Checking OptiX files:"
-          Write-Host "optix.h exists: $(Test-Path "$optix_root/include/optix.h")"
-          
-          Write-Host "Checking OneAPI/SYCL files:"
-          Write-Host "ocloc.exe exists: $(Test-Path "$ocloc_tool_path/ocloc.exe")"
-          Write-Host "dpcpp.exe exists: $(Test-Path "$sycl_root/bin/dpcpp.exe")"
-          Write-Host "sycl8.lib exists: $(Test-Path "${{ github.workspace }}/lib/windows_x64/dpcpp/lib/sycl8.lib")" # This comes from make_update.py
-          Write-Host "sycl.hpp exists: $(Test-Path "${{ github.workspace }}/lib/windows_x64/dpcpp/include/sycl/sycl.hpp")" # This comes from make_update.py
-          Write-Host "-------------------------------"
-
-      - name: Configure CMake
+          Get-ChildItem Env:CUDA*; Get-ChildItem Env:OPTIX*; Get-ChildItem Env:OCLOC*
+      
+      # --- Configure & build with Ninja and GPU support ---
+      - name: Configure CMake (Ninja)
         shell: bash
         run: |
-          mkdir build_windows && cd build_windows
+          mkdir build && cd build
           cmake .. \
-            -C "../build_files/buildbot/config/blender_windows.cmake" \
-            -G "Visual Studio 17 2022" \
-            -A x64 \
-            -DCMAKE_INSTALL_PREFIX=../install \
+            -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -D WITH_INSTALL_PORTABLE=ON \
-            -D CYCLES_ONEAPI_INTEL_BINARIES_ARCH="" # Override default unsupported targets.
+            -DCMAKE_INSTALL_PREFIX=../install \
+            -DWITH_INSTALL_PORTABLE=ON \
+            -DWITH_CYCLES_CUDA_BINARIES=${{ env.WITH_CYCLES_CUDA_BINARIES }} \
+            -DCYCLES_CUDA_BINARIES_ARCH="${{ env.CYCLES_CUDA_BINARIES_ARCH }}" \
+            -DWITH_CYCLES_DEVICE_OPTIX=${{ env.WITH_CYCLES_DEVICE_OPTIX }} \
+            -DOPTIX_ROOT_DIR=${{ env.OPTIX_ROOT_DIR }} \
+            -DWITH_CYCLES_DEVICE_ONEAPI=${{ env.WITH_CYCLES_DEVICE_ONEAPI }} \
+            -DWITH_CYCLES_ONEAPI_BINARIES=${{ env.WITH_CYCLES_ONEAPI_BINARIES }} \
+            -DOCLOC_INSTALL_DIR=${{ env.OCLOC_INSTALL_DIR }}
 
-      - name: Build and Install
+      - name: Build & install
         shell: bash
         run: |
-          cd build_windows
-          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
+          cd build
+          ninja install
 
-      - name: Verify installation
+      - name: Verify GPU kernels in install
         shell: pwsh
         run: |
-          if (-not (Test-Path "install/blender.exe")) {
-            Write-Error "blender.exe missing!"
-            exit 1
-          }
-          Write-Host "Checking for Cycles GPU DLLs in install directory:"
-          Get-ChildItem -Path "install" -Filter "cycles_kernel_*.dll" -Recurse | Format-List FullName, Length
-          
-          $expected_kernels = @(
-            "install/cycles_kernel_oneapi_aot.dll", 
-            "install/cycles_kernel_cuda.dll",      
-            "install/cycles_kernel_optix.dll"      
-          )
-          foreach ($kernel in $expected_kernels) {
-            if (Test-Path $kernel) {
-              $file = Get-Item $kernel
-              Write-Host "FOUND: $($file.Name) - Length: $($file.Length) bytes"
-              if ($file.Length -lt 10240) { 
-                Write-Warning "WARNING: $($file.Name) is unusually small, might be an issue (e.g., a pointer file or failed compilation)."
-              }
-            } else {
-              Write-Warning "MISSING: $kernel"
-            }
-          }
+          gci install -Filter "cycles_kernel*.dll" -Recurse |
+            Format-Table Name, Length
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: blender-windows-${{ env.BLENDER_VERSION }}
           path: install

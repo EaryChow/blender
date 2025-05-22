@@ -12,6 +12,7 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
+      # BLENDER_LIB for make_update.py and other Blender scripts
       BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
 
     steps:
@@ -52,7 +53,6 @@ jobs:
       - name: Download and Install NVIDIA CUDA Toolkit
         shell: pwsh
         timeout-minutes: 15
-        id: install_cuda
         run: |
           $cuda_url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
           $cuda_installer = "cuda_installer.exe"
@@ -62,15 +62,17 @@ jobs:
           Write-Host "Installing CUDA Toolkit silently to $cuda_install_path..."
           Start-Process -FilePath $cuda_installer -ArgumentList "/s /NVSDK_PATH=$cuda_install_path" -Wait
           Write-Host "CUDA Toolkit installation complete."
-          # Convert backslashes to forward slashes for CMake compatibility
           $cuda_install_path_cmake = $cuda_install_path.Replace("\", "/")
-          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          # Set for subsequent steps via GITHUB_ENV
+          echo "CUDA_TOOLKIT_ROOT_DIR=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          echo "CUDA_PATH=$cuda_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 # Commonly used by FindCUDA
+          Write-Host "CUDA_TOOLKIT_ROOT_DIR and CUDA_PATH set for job environment."
+          # Add CUDA bin to PATH for any tools that might need it (e.g., nvcc if used directly in compilation)
           $env:Path = "$cuda_install_path\bin;$cuda_install_path\libnvvp;" + $env:Path
           Write-Host "CUDA bin and libnvvp added to PATH for this session."
 
       - name: Download and Extract NVIDIA OptiX SDK
         shell: pwsh
-        id: install_optix
         run: |
           $optix_url = "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
           $optix_zip = "OptiX-SDK.zip"
@@ -86,18 +88,19 @@ jobs:
             Remove-Item -Path $extracted_subfolder.FullName -Recurse -Force
           }
           Write-Host "OptiX SDK extraction complete."
-          # Convert backslashes to forward slashes for CMake compatibility
           $optix_install_path_cmake = $optix_install_path.Replace("\", "/")
-          echo "OPTIX_ROOT_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          # Set for subsequent steps via GITHUB_ENV
+          echo "OPTIX_ROOT_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          echo "OPTIX_DIR=$optix_install_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 # Commonly used by FindOptiX
+          Write-Host "OPTIX_ROOT_DIR and OPTIX_DIR set for job environment."
 
       - name: Download and Place Intel OneAPI `ocloc.exe`
         shell: pwsh
-        id: install_ocloc
         run: |
           $ocloc_url = "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
           $ocloc_zip = "ocloc.zip"
           $ocloc_extract_dir = "ocloc_temp"
-          $ocloc_final_path = "${{ github.workspace }}\ocloc_tool" # This path still contains backslashes
+          $ocloc_final_path = "${{ github.workspace }}\ocloc_tool"
           Write-Host "Downloading ocloc.exe from $ocloc_url"
           Invoke-WebRequest -Uri $ocloc_url -OutFile $ocloc_zip
           Write-Host "Extracting ocloc.exe to $ocloc_extract_dir"
@@ -109,13 +112,28 @@ jobs:
             Copy-Item -Path $ocloc_source_path -Destination $ocloc_final_path -Force
             Write-Host "ocloc.exe placed in $ocloc_final_path"
             $ocloc_final_path_cmake = $ocloc_final_path.Replace("\", "/")
-            echo "OCLOC_INSTALL_DIR=$ocloc_final_path_cmake" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+            # Set for subsequent steps via GITHUB_ENV
+            echo "OCLOC_INSTALL_DIR=$ocloc_final_path_cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+            Write-Host "OCLOC_INSTALL_DIR set for job environment."
             $env:Path = "$ocloc_final_path;" + $env:Path
             Write-Host "ocloc_tool added to PATH for this session."
           } else {
             Write-Error "ocloc.exe not found in extracted archive! OneAPI build will likely fail."
             exit 1
           }
+
+      - name: Debug: Print Relevant Environment Variables
+        shell: pwsh
+        run: |
+          Write-Host "--- Environment Variables for CMake ---"
+          Write-Host "CUDA_TOOLKIT_ROOT_DIR: $env:CUDA_TOOLKIT_ROOT_DIR"
+          Write-Host "CUDA_PATH: $env:CUDA_PATH"
+          Write-Host "OPTIX_ROOT_DIR: $env:OPTIX_ROOT_DIR"
+          Write-Host "OPTIX_DIR: $env:OPTIX_DIR"
+          Write-Host "OCLOC_INSTALL_DIR: $env:OCLOC_INSTALL_DIR"
+          Write-Host "BLENDER_LIB: $env:BLENDER_LIB"
+          Write-Host "PATH: $env:PATH"
+          Write-Host "-------------------------------------"
 
       - name: Configure CMake
         shell: bash
@@ -128,9 +146,10 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=../install \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -D WITH_INSTALL_PORTABLE=ON \
-            -D CUDA_TOOLKIT_ROOT_DIR="${{ steps.install_cuda.outputs.CUDA_TOOLKIT_ROOT_DIR }}" \
-            -D OPTIX_ROOT_DIR="${{ steps.install_optix.outputs.OPTIX_ROOT_DIR }}" \
-            -D OCLOC_INSTALL_DIR="${{ steps.install_ocloc.outputs.OCLOC_INSTALL_DIR }}"
+            -D CUDA_TOOLKIT_ROOT_DIR="${{ env.CUDA_TOOLKIT_ROOT_DIR }}" \
+            -D OPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            -D OCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}" \
+            -D CYCLES_ONEAPI_INTEL_BINARIES_ARCH="" 
 
       - name: Build and Install
         shell: bash

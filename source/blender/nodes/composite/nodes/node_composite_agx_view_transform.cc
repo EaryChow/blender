@@ -340,25 +340,27 @@ static void cmp_node_agx_view_transform_layout(uiLayout *layout,
                                                bContext * /*C*/,
                                                PointerRNA *ptr)
 {
-  layout->prop(ptr,
-               "working_primaries",
-               UI_ITEM_NONE,
-               "",
-               ICON_NONE);
+// Draw the "working_primaries" enum property
+layout->prop(ptr,
+             "working_primaries",
+             UI_ITEM_NONE,   // <<< Use the defined enum member for no/default flags
+             std::nullopt,   // Use RNA's ui_name for the label text
+             ICON_NONE);     // No icon
 
-  layout->prop(ptr,
-               "working_log",
-               UI_ITEM_NONE,
-               "",
-               ICON_NONE);
+// Draw the "working_log" enum property
+layout->prop(ptr,
+             "working_log",
+             UI_ITEM_NONE,
+             std::nullopt,
+             ICON_NONE);
 
-  layout->prop(ptr,
-               "display_primaries",
-               UI_ITEM_NONE,
-               "",
-               ICON_NONE);
+// Draw the "display_primaries" enum property
+layout->prop(ptr,
+             "display_primaries",
+             UI_ITEM_NONE,
+             std::nullopt,
+             ICON_NONE);
 }
-
 
 
 // Multi-function Builder

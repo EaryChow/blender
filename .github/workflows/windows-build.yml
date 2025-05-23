@@ -12,7 +12,6 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
-      # where we'll unpack the SDKs:
       CUDA_INSTALLER_URL: "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
       OPTIX_ZIP_URL:      "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
       ONEAPI_ZIP_URL:     "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
@@ -54,36 +53,49 @@ jobs:
           }
 
       # ──────────────────────────────────────────────────────────────────────────
-      # Install CUDA
-      - name: Download and install CUDA Toolkit 12.9
+      # CUDA Toolkit download with progress
+      - name: Download CUDA Toolkit 12.9 (with progress)
+        shell: bash
+        run: |
+          curl -L --progress-bar -o cuda-installer.exe "$CUDA_INSTALLER_URL"
+
+      - name: Install CUDA Toolkit 12.9 silently
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri $env:CUDA_INSTALLER_URL -OutFile cuda-installer.exe
-          Start-Process .\cuda-installer.exe -ArgumentList `
-            "-toolkit","-silent" -Wait
+          Start-Process .\cuda-installer.exe `
+            -ArgumentList "-toolkit","-silent" `
+            -Wait
 
       # ──────────────────────────────────────────────────────────────────────────
-      # Install OptiX SDK
-      - name: Download and extract OptiX SDK 7.4
+      # OptiX SDK download with progress
+      - name: Download OptiX SDK 7.4 (with progress)
+        shell: bash
+        run: |
+          curl -L --progress-bar -o optix.zip "$OPTIX_ZIP_URL"
+
+      - name: Extract OptiX SDK
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path $env:OPTIX_ROOT_DIR -Force
-          Invoke-WebRequest -Uri $env:OPTIX_ZIP_URL -OutFile optix.zip
           Expand-Archive .\optix.zip -DestinationPath $env:OPTIX_ROOT_DIR
 
       # ──────────────────────────────────────────────────────────────────────────
-      # Install Intel OneAPI offline compiler (ocloc)
-      - name: Download and extract OneAPI Offline Compiler
+      # OneAPI offline compiler download with progress
+      - name: Download OneAPI Offline Compiler (with progress)
+        shell: bash
+        run: |
+          curl -L --progress-bar -o ocloc.zip "$ONEAPI_ZIP_URL"
+
+      - name: Extract OneAPI Offline Compiler
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path $env:OCLOC_INSTALL_DIR -Force
-          Invoke-WebRequest -Uri $env:ONEAPI_ZIP_URL -OutFile ocloc.zip
           Expand-Archive .\ocloc.zip -DestinationPath $env:OCLOC_INSTALL_DIR
 
       # ──────────────────────────────────────────────────────────────────────────
       # Precompiled libs (Python helper)
       - name: Fetch precompiled libraries
-        shell: powershell
+        shell: pwsh
         run: python build_files/utils/make_update.py --architecture="amd64"
 
       # ──────────────────────────────────────────────────────────────────────────
@@ -100,9 +112,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DWITH_INSTALL_PORTABLE=ON \
             \
-            # === Cycles GPU kernel flags ===
             -DWITH_CYCLES_CUDA_BINARIES=ON \
-            -DCYCLES_CUDA_BINARIES_ARCH="sm_75" \
+            -DCYCLES_CUDA_BINARIES_ARCH="sm_75;sm_80;sm_86" \
             -DWITH_CYCLES_DEVICE_OPTIX=ON \
             -DOPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
             -DWITH_CYCLES_DEVICE_ONEAPI=ON \

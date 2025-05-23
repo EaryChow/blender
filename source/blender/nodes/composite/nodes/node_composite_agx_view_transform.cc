@@ -342,22 +342,23 @@ static void cmp_node_agx_view_transform_layout(uiLayout *layout,
 {
   layout->prop(ptr,
                "working_primaries",
-               UI_ITEM_RNA,
+               UI_ITEM_NONE,
                "",
                ICON_NONE);
 
   layout->prop(ptr,
                "working_log",
-               UI_ITEM_RNA,
+               UI_ITEM_NONE,
                "",
                ICON_NONE);
 
   layout->prop(ptr,
                "display_primaries",
-               UI_ITEM_RNA,
+               UI_ITEM_NONE,
                "",
                ICON_NONE);
 }
+
 
 
 // Multi-function Builder

@@ -12,119 +12,121 @@ jobs:
     env:
       BLENDER_VERSION: "4.5.0-alpha"
       BUILD_TYPE: "Release"
-      BLENDER_LIB: "${{ github.workspace }}/lib/windows_x64"
+      # where we'll unpack the SDKs:
+      CUDA_INSTALLER_URL: "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
+      OPTIX_ZIP_URL:      "https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip"
+      ONEAPI_ZIP_URL:     "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip"
+      OPTIX_ROOT_DIR:     "C:\\optix"
+      OCLOC_INSTALL_DIR:  "C:\\ocloc"
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Git LFS
+        run: git lfs install --skip-repo
+
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           submodules: recursive
           fetch-depth: 0
+          lfs: false
 
-      - name: Install Git LFS & fetch datafiles
+      - name: Fetch Gitea LFS objects
         shell: bash
         run: |
-          git lfs install --skip-repo
           git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
           git lfs pull
-          # sanity-check
-          test -s release/datafiles/startup.blend
+          git submodule foreach --recursive " \
+            git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs; \
+            git lfs pull \
+          "
 
-      - name: Fetch precompiled libraries (make_update.py)
-        shell: powershell
-        run: python build_files/utils/make_update.py --architecture="amd64"
-
-      # --- CUDA Toolkit via direct download & silent install ---
-      - name: Download CUDA 12.9 installer via BITS
-        shell: pwsh
-        timeout-minutes: 60
-        run: |
-          $url = "https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_576.02_windows.exe"
-          Start-BitsTransfer -Source $url -Destination cuda_installer.exe
-            
-      - name: Install CUDA silently (blocking)
+      - name: Verify datafiles
         shell: pwsh
         run: |
-          Write-Host "Installing CUDA Toolkit (silent)."
-          Start-Process -FilePath "$PWD\cuda_installer.exe" `
-            -ArgumentList "-s" `
-            -Wait `
-            -NoNewWindow
-
-      # --- OptiX SDK ---
-      - name: Download OptiX SDK 7.4
-        shell: pwsh
-        run: |
-          $z="OptiX.zip"; Invoke-WebRequest https://developer.download.nvidia.com/redist/optix/v7.4/OptiX-7.4.0-Include.zip -OutFile $z
-          Expand-Archive $z -DestinationPath C:\OptiX
-          echo "WITH_CYCLES_DEVICE_OPTIX=ON"     >> $env:GITHUB_ENV
-          echo "OPTIX_ROOT_DIR=C:/OptiX"        >> $env:GITHUB_ENV
-
-      # --- Intel oneAPI Offline Compiler (ocloc) ---
-      - name: Fetch Intel offline compiler
-        shell: pwsh
-        run: |
-          $z="ocloc.zip"; Invoke-WebRequest https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b8bd9d0d-bc17-4089-85b3-73575cde0c92/w_ocloc_p_2025.1.7.4.zip -OutFile $z
-          Expand-Archive $z -DestinationPath ocloc_tmp
-          Copy-Item ocloc_tmp/**/ocloc.exe $env:GITHUB_WORKSPACE/ocloc_tool
-          echo "OCLOC_INSTALL_DIR=${{ github.workspace }}/ocloc_tool" >> $env:GITHUB_ENV
-          echo "WITH_CYCLES_DEVICE_ONEAPI=ON"       >> $env:GITHUB_ENV
-          echo "WITH_CYCLES_ONEAPI_BINARIES=ON"     >> $env:GITHUB_ENV
-          echo "CYCLES_ONEAPI_INTEL_BINARIES_ARCH=" >> $env:GITHUB_ENV
-
-      - name: Debug Environment
-        shell: pwsh
-        run: |
-          Get-ChildItem Env:CUDA*; Get-ChildItem Env:OPTIX*; Get-ChildItem Env:OCLOC*
-      
-      # --- Configure & build with Ninja and GPU support ---
-      - name: Configure CMake (MSVC + Ninja)
-        shell: pwsh
-        run: |
-          # 1) Find the VS installation path
-          $vsInstall = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
-            -latest -products * `
-            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-            -property installationPath
-
-          if (-not $vsInstall) {
-            Write-Error "VS2022 not found via vswhere!"
+          $f = "release/datafiles/startup.blend"
+          if (!(Test-Path $f)) {
+            Write-Error "$f not found—check your fork structure!"
+            exit 1
+          }
+          if ((Get-Item $f).Length -lt 10240) {
+            Write-Error "$f is too small—still a pointer file?"
             exit 1
           }
 
-          # 2) Source the MSVC environment for x64
-                $vcvars = Join-Path $vsInstall 'VC\Auxiliary\Build\vcvars64.bat'
-          Write-Host "Sourcing MSVC environment from $vcvars"
-          & "$vcvars" x64 | Out-Null
-
-          # 3) Configure with Ninja (cl.exe is now the active compiler)
-          mkdir build; cd build
-          cmake .. `
-            -G Ninja `
-            -DCMAKE_BUILD_TYPE=$env:BUILD_TYPE `
-            -DCMAKE_INSTALL_PREFIX=../install `
-            -DWITH_INSTALL_PORTABLE=ON `
-            -DWITH_CYCLES_CUDA_BINARIES=ON `
-            -DCYCLES_CUDA_BINARIES_ARCH="sm_50;sm_60;sm_70;sm_80;sm_86" `
-            -DWITH_CYCLES_DEVICE_OPTIX=ON `
-            -DOPTIX_ROOT_DIR=$env:OPTIX_ROOT_DIR `
-            -DWITH_CYCLES_DEVICE_ONEAPI=ON `
-            -DWITH_CYCLES_ONEAPI_BINARIES=ON `
-            -DOCLOC_INSTALL_DIR=$env:OCLOC_INSTALL_DIR
-
-
-      - name: Build & install
-        shell: bash
-        run: |
-          cd build
-          ninja install
-
-      - name: Verify GPU kernels in install
+      # ──────────────────────────────────────────────────────────────────────────
+      # Install CUDA
+      - name: Download and install CUDA Toolkit 12.9
         shell: pwsh
         run: |
-          gci install -Filter "cycles_kernel*.dll" -Recurse |
-            Format-Table Name, Length
+          Invoke-WebRequest -Uri $env:CUDA_INSTALLER_URL -OutFile cuda-installer.exe
+          Start-Process .\cuda-installer.exe -ArgumentList `
+            "-toolkit","-silent" -Wait
 
-      - uses: actions/upload-artifact@v4
+      # ──────────────────────────────────────────────────────────────────────────
+      # Install OptiX SDK
+      - name: Download and extract OptiX SDK 7.4
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path $env:OPTIX_ROOT_DIR -Force
+          Invoke-WebRequest -Uri $env:OPTIX_ZIP_URL -OutFile optix.zip
+          Expand-Archive .\optix.zip -DestinationPath $env:OPTIX_ROOT_DIR
+
+      # ──────────────────────────────────────────────────────────────────────────
+      # Install Intel OneAPI offline compiler (ocloc)
+      - name: Download and extract OneAPI Offline Compiler
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path $env:OCLOC_INSTALL_DIR -Force
+          Invoke-WebRequest -Uri $env:ONEAPI_ZIP_URL -OutFile ocloc.zip
+          Expand-Archive .\ocloc.zip -DestinationPath $env:OCLOC_INSTALL_DIR
+
+      # ──────────────────────────────────────────────────────────────────────────
+      # Precompiled libs (Python helper)
+      - name: Fetch precompiled libraries
+        shell: powershell
+        run: python build_files/utils/make_update.py --architecture="amd64"
+
+      # ──────────────────────────────────────────────────────────────────────────
+      # Configure CMake with GPU support
+      - name: Configure CMake
+        shell: bash
+        run: |
+          mkdir build_windows && cd build_windows
+          cmake .. \
+            -C "../build_files/buildbot/config/blender_windows.cmake" \
+            -G "Visual Studio 17 2022" \
+            -A x64 \
+            -DCMAKE_INSTALL_PREFIX=../install \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DWITH_INSTALL_PORTABLE=ON \
+            \
+            # === Cycles GPU kernel flags ===
+            -DWITH_CYCLES_CUDA_BINARIES=ON \
+            -DCYCLES_CUDA_BINARIES_ARCH="sm_75" \
+            -DWITH_CYCLES_DEVICE_OPTIX=ON \
+            -DOPTIX_ROOT_DIR="${{ env.OPTIX_ROOT_DIR }}" \
+            -DWITH_CYCLES_DEVICE_ONEAPI=ON \
+            -DWITH_CYCLES_ONEAPI_BINARIES=ON \
+            -DOCLOC_INSTALL_DIR="${{ env.OCLOC_INSTALL_DIR }}"
+
+      # ──────────────────────────────────────────────────────────────────────────
+      # Build & install
+      - name: Build and Install
+        shell: bash
+        run: |
+          cd build_windows
+          cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
+
+      - name: Verify installation
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "install/blender.exe")) {
+            Write-Error "blender.exe missing!"
+            exit 1
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: blender-windows-${{ env.BLENDER_VERSION }}
           path: install

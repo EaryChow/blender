@@ -552,7 +552,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.updatefunc = nullptr;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
-  ntype.draw_buttons_ex = file_ns::cmp_node_agx_view_transform_layout;
+  ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(
       ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);

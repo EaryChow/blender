@@ -71,21 +71,6 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-// Storage Structure
-struct NodeAgxViewTransform {
-  AGXPrimaries working_primaries;
-  AGXWorkingLog working_log;
-  AGXPrimaries display_primaries;
-};
-NODE_STORAGE_FUNCS(NodeAgxViewTransform);
-
-// Storage free/copy functions
-static void node_free_agx_storage(bNode *node) {
-    MEM_SAFE_FREE(node->storage);
-}
-
-static void node_copy_agx_storage(
-    bNodeTree * /*dest_ntree*/,
     bNode *dest_node,
     const bNode *src_node)
 {
@@ -97,92 +82,43 @@ static void node_copy_agx_storage(
   }
 }
 
-// --- Custom Accessor Functions for Enum Properties ---
-static int rna_AgxNode_working_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).working_primaries);
-}
-static void rna_AgxNode_working_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
-  bNode &node = *static_cast<bNode *>(ptr->data);
-  node_storage(node).working_primaries = static_cast<AGXPrimaries>(value); // Explicit cast
-}
-
-static int rna_AgxNode_working_log_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).working_log);
-}
-static void rna_AgxNode_working_log_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
-  bNode &node = *static_cast<bNode *>(ptr->data);
-  node_storage(node).working_log = static_cast<AGXWorkingLog>(value);
-}
-
-static int rna_AgxNode_display_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).display_primaries);
-}
-static void rna_AgxNode_display_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
-  bNode &node = *static_cast<bNode *>(ptr->data);
-  node_storage(node).display_primaries = static_cast<AGXPrimaries>(value);
-}
-// --- End of Custom Accessor Functions ---
-
 // RNA functions for node properties
 static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
   PropertyRNA *prop;
 
-  // For working_primaries using custom accessors
-  EnumRNAAccessors working_primaries_accessors(
-      rna_AgxNode_working_primaries_get,
-      rna_AgxNode_working_primaries_set
-  );
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items,
-      working_primaries_accessors,
-      AGX_PRIMARIES_REC2020
-  );
+      NOD_inline_enum_accessors(custom1),
+      AGX_PRIMARIES_REC2020);
 
-  // For working_log using custom accessors
-  EnumRNAAccessors working_log_accessors(
-      rna_AgxNode_working_log_get,
-      rna_AgxNode_working_log_set
-  );
   prop = RNA_def_node_enum(
       srna,
       "working_log",
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
-      working_log_accessors,
-      AGX_WORKING_LOG_GENERIC_LOG2
-  );
+      NOD_inline_enum_accessors(custom2),
+      AGX_WORKING_LOG_GENERIC_LOG2);
 
-  // For display_primaries using custom accessors
-  EnumRNAAccessors display_primaries_accessors(
-      rna_AgxNode_display_primaries_get,
-      rna_AgxNode_display_primaries_set
-  );
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
       "Display Primaries",
       "The primaries of the target display device",
       agx_primaries_items,
-      display_primaries_accessors,
-      AGX_PRIMARIES_REC709
-  );
+      NOD_inline_enum_accessors(custom3),
+      AGX_PRIMARIES_REC709);
 }
 
 // initialize
 static void cmp_node_agx_view_transform_init(bNodeTree * /*tree*/, bNode *node) {
-  NodeAgxViewTransform *data = MEM_callocN<NodeAgxViewTransform>(__func__);
-  data->working_primaries = AGX_PRIMARIES_REC2020;
-  data->working_log = AGX_WORKING_LOG_GENERIC_LOG2;
-  data->display_primaries = AGX_PRIMARIES_REC709;
-  node->storage = data;
+  node->custom1 = AGX_PRIMARIES_REC2020;
+  node->custom2 = AGX_WORKING_LOG_GENERIC_LOG2;
+  node->custom3 = AGX_PRIMARIES_REC709;
 }
 
 // Node Declaration
@@ -366,16 +302,15 @@ layout->prop(ptr,
 // Multi-function Builder
 class AgXViewTransformFunction : public mf::MultiFunction {
  public:
-  // Members for "baked-in" settings (enums from node storage)
   AGXPrimaries p_working_primaries;
   AGXWorkingLog p_working_log;
   AGXPrimaries p_display_primaries;
 
   explicit AgXViewTransformFunction(const bNode &node) {
-    const NodeAgxViewTransform *s = static_cast<const NodeAgxViewTransform *>(node.storage);
-    p_working_primaries = s->working_primaries;
-    p_working_log = s->working_log;
-    p_display_primaries = s->display_primaries;
+    // Get the enum values from node storage
+    p_working_primaries = static_cast<AGXPrimaries>(node.custom1);
+    p_working_log = static_cast<AGXWorkingLog>(node.custom2);
+    p_display_primaries = static_cast<AGXPrimaries>(node.custom3);
 
     static const mf::Signature signature = []() {
       mf::Signature sig;
@@ -554,8 +489,6 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
-  blender::bke::node_type_storage(
-      ntype, "NodeAgxViewTransform", file_ns::node_free_agx_storage, file_ns::node_copy_agx_storage);
   blender::bke::node_register_type(ntype);
   file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
 }

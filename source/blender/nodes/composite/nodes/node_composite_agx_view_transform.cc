@@ -99,29 +99,65 @@ static void node_copy_agx_storage(
 
 // --- Custom Accessor Functions for Enum Properties ---
 static int rna_AgxNode_working_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).working_primaries);
+  if (!ptr || !ptr->data) {
+    return static_cast<int>(AGX_PRIMARIES_REC2020);
+  }
+  const bNode *node = static_cast<const bNode *>(ptr->data);
+  if (!node->storage) {
+    return static_cast<int>(AGX_PRIMARIES_REC2020); 
+  }
+  return static_cast<int>(node_storage(*node).working_primaries);
 }
 static void rna_AgxNode_working_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  if (!ptr || !ptr->data) {
+    return;
+  }
   bNode &node = *static_cast<bNode *>(ptr->data);
+  if (!node.storage) {
+    return;
+  }
   node_storage(node).working_primaries = static_cast<AGXPrimaries>(value); // Explicit cast
 }
 
 static int rna_AgxNode_working_log_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).working_log);
+  if (!ptr || !ptr->data) {
+    return static_cast<int>(AGX_WORKING_LOG_GENERIC_LOG2);
+  }
+  const bNode *node = static_cast<const bNode *>(ptr->data);
+  if (!node->storage) {
+    return static_cast<int>(AGX_WORKING_LOG_GENERIC_LOG2);
+  }
+  return static_cast<int>(node_storage(*node).working_log);
 }
 static void rna_AgxNode_working_log_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  if (!ptr || !ptr->data) {
+    return;
+  }
   bNode &node = *static_cast<bNode *>(ptr->data);
+  if (!node.storage) {
+    return;
+  }
   node_storage(node).working_log = static_cast<AGXWorkingLog>(value);
 }
 
 static int rna_AgxNode_display_primaries_get(PointerRNA *ptr, PropertyRNA * /*prop*/) {
-  const bNode &node = *static_cast<const bNode *>(ptr->data);
-  return static_cast<int>(node_storage(node).display_primaries);
+  if (!ptr || !ptr->data) {
+    return static_cast<int>(AGX_PRIMARIES_REC709);
+  }
+  const bNode *node = static_cast<const bNode *>(ptr->data);
+  if (!node->storage) {
+    return static_cast<int>(AGX_PRIMARIES_REC709);
+  }
+  return static_cast<int>(node_storage(*node).display_primaries);
 }
 static void rna_AgxNode_display_primaries_set(PointerRNA *ptr, PropertyRNA * /*prop*/, const int value) {
+  if (!ptr || !ptr->data) {
+    return;
+  }
   bNode &node = *static_cast<bNode *>(ptr->data);
+  if (!node.storage) {
+    return;
+  }
   node_storage(node).display_primaries = static_cast<AGXPrimaries>(value);
 }
 // --- End of Custom Accessor Functions ---
@@ -552,7 +588,6 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.updatefunc = nullptr;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
-  ntype.initfunc_api = nullptr;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_type_storage(

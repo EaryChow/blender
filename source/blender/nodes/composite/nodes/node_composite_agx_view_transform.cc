@@ -467,7 +467,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", NODE_CUSTOM);
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.nclass = NODE_CLASS_OP_COLOR;

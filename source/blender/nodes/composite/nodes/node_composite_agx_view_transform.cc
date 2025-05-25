@@ -71,6 +71,7 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static void cmp_node_agx_view_transform_copy_storage(
     bNode *dest_node,
     const bNode *src_node)
 {
@@ -91,9 +92,9 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "working_primaries",
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items,
+      agx_primaries_items, 
       NOD_inline_enum_accessors(custom1),
-      AGX_PRIMARIES_REC2020);
+      AGX_PRIMARIES_REC2020); 
 
   prop = RNA_def_node_enum(
       srna,
@@ -102,7 +103,7 @@ static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
       NOD_inline_enum_accessors(custom2),
-      AGX_WORKING_LOG_GENERIC_LOG2);
+      AGX_WORKING_LOG_GENERIC_LOG2); 
 
   prop = RNA_def_node_enum(
       srna,

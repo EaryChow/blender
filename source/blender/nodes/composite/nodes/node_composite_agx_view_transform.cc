@@ -473,7 +473,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
-  ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
+  // ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
   blender::bke::node_register_type(ntype);
   file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);

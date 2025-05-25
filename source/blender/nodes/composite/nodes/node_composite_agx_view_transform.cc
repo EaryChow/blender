@@ -71,18 +71,6 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void cmp_node_agx_view_transform_copy_storage(
-    bNode *dest_node,
-    const bNode *src_node)
-{
-  if (src_node->storage) {
-    dest_node->storage = MEM_dupallocN(src_node->storage);
-  }
-  else {
-    dest_node->storage = nullptr;
-  }
-}
-
 // RNA functions for node properties
 static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
   PropertyRNA *prop;
@@ -308,7 +296,6 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AGXPrimaries p_display_primaries;
 
   explicit AgXViewTransformFunction(const bNode &node) {
-    // Get the enum values from node storage
     p_working_primaries = static_cast<AGXPrimaries>(node.custom1);
     p_working_log = static_cast<AGXWorkingLog>(node.custom2);
     p_display_primaries = static_cast<AGXPrimaries>(node.custom3);

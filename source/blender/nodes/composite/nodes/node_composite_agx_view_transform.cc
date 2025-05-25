@@ -471,11 +471,10 @@ static void register_node_type_cmp_node_agx_view_transform()
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.nclass = NODE_CLASS_OP_COLOR;
-  ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
+  // ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
   ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
   ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
   ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
-  blender::bke::node_type_size(&ntype, 250, 100, 400);
   blender::bke::node_register_type(ntype);
   file_ns::cmp_node_agx_view_transform_rna(ntype.rna_ext.srna);
 }

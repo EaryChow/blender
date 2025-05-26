@@ -462,7 +462,6 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
 // Registration Function
 static void node_register()
 {
-  namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", NODE_CUSTOM);
@@ -476,6 +475,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

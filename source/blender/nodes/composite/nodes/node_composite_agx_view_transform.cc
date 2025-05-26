@@ -104,14 +104,14 @@ static void node_rna(StructRNA *srna) {
 }
 
 // initialize
-static void cmp_node_agx_view_transform_init(bNodeTree * /*tree*/, bNode *node) {
+static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom1 = AGX_PRIMARIES_REC2020;
   node->custom2 = AGX_WORKING_LOG_GENERIC_LOG2;
   node->custom3 = AGX_PRIMARIES_REC709;
 }
 
 // Node Declaration
-static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b) {
+static void node_declare(NodeDeclarationBuilder &b) {
   b.add_input<decl::Color>("Color")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
@@ -261,7 +261,7 @@ static void cmp_node_agx_view_transform_declare(NodeDeclarationBuilder &b) {
 }
 
 // Put Enums on UI Layout
-static void cmp_node_agx_view_transform_layout(uiLayout *layout,
+static void node_layout(uiLayout *layout,
                                                bContext * /*C*/,
                                                PointerRNA *ptr)
 {
@@ -455,7 +455,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 };
 
 // Multi-function Builder
-static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBuilder &builder) {
+static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
   builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
 }
 
@@ -465,17 +465,16 @@ static void node_register()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  node_type_base_custom(ntype,
-    "CompositorNodeAgXViewTransform",
-    "AgX View Transform",
-    "AGX_VIEW_TRANSFORM",
-    NODE_CLASS_OP_COLOR);
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", NODE_CUSTOM);
+  ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
-  ntype.declare = file_ns::cmp_node_agx_view_transform_declare;
-  ntype.initfunc = file_ns::cmp_node_agx_view_transform_init;
+  ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
+  ntype.nclass = NODE_CLASS_OP_COLOR;
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
-  ntype.draw_buttons = file_ns::cmp_node_agx_view_transform_layout;
-  ntype.build_multi_function = file_ns::cmp_node_agx_view_transform_build_multi_function;
+  ntype.draw_buttons = node_layout;
+  ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
   node_rna(ntype.rna_ext.srna);
 }

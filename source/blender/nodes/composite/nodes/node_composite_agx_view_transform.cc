@@ -479,6 +479,6 @@ static void node_register()
   blender::bke::node_register_type(ntype);
   node_rna(ntype.rna_ext.srna);
 }
-NOD_REGISTER_NODE(register_node_type_cmp_node_agx_view_transform)
+NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_composite_agx_view_transform_cc

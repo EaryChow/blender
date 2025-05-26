@@ -72,7 +72,7 @@ static const EnumPropertyItem agx_working_log_items[] = {
 };
 
 // RNA functions for node properties
-static void cmp_node_agx_view_transform_rna(StructRNA *srna) {
+static void node_rna(StructRNA *srna) {
   PropertyRNA *prop;
 
   prop = RNA_def_node_enum(
@@ -459,10 +459,8 @@ static void cmp_node_agx_view_transform_build_multi_function(NodeMultiFunctionBu
   builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
 }
 
-}  // namespace blender::nodes::node_composite_agx_view_transform_cc
-
 // Registration Function
-static void register_node_type_cmp_node_agx_view_transform()
+static void node_register()
 {
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
@@ -482,3 +480,5 @@ static void register_node_type_cmp_node_agx_view_transform()
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(register_node_type_cmp_node_agx_view_transform)
+
+}  // namespace blender::nodes::node_composite_agx_view_transform_cc

@@ -467,7 +467,7 @@ static void register_node_type_cmp_node_agx_view_transform()
   namespace file_ns = blender::nodes::node_composite_agx_view_transform_cc;
   static blender::bke::bNodeType ntype;
 
-  node_type_base_custom(&ntype,
+  node_type_base_custom(ntype,
     "CompositorNodeAgXViewTransform",
     "AgX View Transform",
     "AGX_VIEW_TRANSFORM",

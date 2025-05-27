@@ -82,7 +82,7 @@ static void node_rna(StructRNA *srna) {
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items, 
       NOD_inline_enum_accessors(custom1),
-      AGX_PRIMARIES_REC2020); 
+      int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
 
   prop = RNA_def_node_enum(
       srna,
@@ -91,7 +91,7 @@ static void node_rna(StructRNA *srna) {
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
       NOD_inline_enum_accessors(custom2),
-      AGX_WORKING_LOG_GENERIC_LOG2); 
+      int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)); 
 
   prop = RNA_def_node_enum(
       srna,
@@ -100,7 +100,7 @@ static void node_rna(StructRNA *srna) {
       "The primaries of the target display device",
       agx_primaries_items,
       NOD_inline_enum_accessors(custom3),
-      AGX_PRIMARIES_REC709);
+      int(AGXPrimaries::AGX_PRIMARIES_REC709));
 }
 
 // initialize

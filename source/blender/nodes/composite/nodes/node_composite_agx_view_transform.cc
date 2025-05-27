@@ -51,23 +51,23 @@ enum class AGXWorkingLog : int16_t {
 };
 
 static const EnumPropertyItem agx_primaries_items[] = {
-    {AGX_PRIMARIES_AP0, "ap0", 0, "ACES2065-1 (AP0)", ""},
-    {AGX_PRIMARIES_AP1, "ap1", 0, "ACEScg (AP1)", ""},
-    {AGX_PRIMARIES_P3D65, "p3d65", 0, "P3-D65", ""},
-    {AGX_PRIMARIES_REC709, "rec709", 0, "Rec.709", ""},
-    {AGX_PRIMARIES_REC2020, "rec2020", 0, "Rec.2020", ""},
-    {AGX_PRIMARIES_AWG3, "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
-    {AGX_PRIMARIES_AWG4, "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
-    {AGX_PRIMARIES_EGAMUT, "egamut", 0, "FilmLight E-Gamut", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AP1), "ap1", 0, "ACEScg (AP1)", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem agx_working_log_items[] = {
-    {AGX_WORKING_LOG_LINEAR, "linear", 0, "Linear", ""},
-    {AGX_WORKING_LOG_ACESCCT, "acescct", 0, "ACEScct", ""},
-    {AGX_WORKING_LOG_ARRI_LOGC3, "arri_logc3", 0, "ARRI LogC3", ""},
-    {AGX_WORKING_LOG_ARRI_LOGC4, "arri_logc4", 0, "ARRI LogC4", ""},
-    {AGX_WORKING_LOG_GENERIC_LOG2, "generic_log2", 0, "Generic Log2", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
+    {int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

@@ -254,7 +254,7 @@
 #define CMP_NODE_COMBINE_COLOR 332
 #define CMP_NODE_SEPARATE_COLOR 333
 #define CMP_NODE_IMAGE_INFO 334
-
+#define AGX_VIEW_TRANSFORM 335
 /* channel toggles */
 #define CMP_CHAN_RGB 1
 #define CMP_CHAN_A 2

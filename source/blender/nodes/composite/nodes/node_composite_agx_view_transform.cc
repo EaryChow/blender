@@ -105,9 +105,9 @@ static void node_rna(StructRNA *srna) {
 
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {
-  node->custom1 = AGX_PRIMARIES_REC2020;
-  node->custom2 = AGX_WORKING_LOG_GENERIC_LOG2;
-  node->custom3 = AGX_PRIMARIES_REC709;
+  node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
+  node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+  node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
 }
 
 // Node Declaration

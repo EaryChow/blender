@@ -261,30 +261,27 @@ static void node_declare(NodeDeclarationBuilder &b) {
 }
 
 // Put Enums on UI Layout
-static void node_layout(uiLayout *layout,
-                                               bContext * /*C*/,
-                                               PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
 // Draw the "working_primaries" enum property
 layout->prop(ptr,
-             "working_primaries",
-             UI_ITEM_NONE,   // <<< Use the defined enum member for no/default flags
-             std::nullopt,   // Use RNA's ui_name for the label text
-             ICON_NONE);     // No icon
-
+  "working_primaries",
+  UI_ITEM_NONE,
+  "",
+  ICON_NONE);
 // Draw the "working_log" enum property
 layout->prop(ptr,
-             "working_log",
-             UI_ITEM_NONE,
-             std::nullopt,
-             ICON_NONE);
+  "working_log",
+  UI_ITEM_NONE,
+  "",
+  ICON_NONE);
 
 // Draw the "display_primaries" enum property
 layout->prop(ptr,
-             "display_primaries",
-             UI_ITEM_NONE,
-             std::nullopt,
-             ICON_NONE);
+  "display_primaries",
+  UI_ITEM_NONE,
+  "",
+  ICON_NONE);
 }
 
 

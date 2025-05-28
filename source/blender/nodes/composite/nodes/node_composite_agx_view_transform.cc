@@ -101,6 +101,8 @@ static void node_rna(StructRNA *srna) {
       agx_primaries_items,
       NOD_inline_enum_accessors(custom3),
       int(AGXPrimaries::AGX_PRIMARIES_REC709));
+
+  RNA_def_property_boolean(srna, "use_same_settings_for_purity_restoration", PROP_BOOLEAN, PROP_NONE);
 }
 
 // initialize
@@ -108,6 +110,22 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
   node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
+  RNA_property_boolean_set(RNA_property_get(node->id.properties, "use_same_settings_for_purity_restoration"), false);
+}
+
+// Update function to handle dynamic UI elements
+static void node_update(bNodeTree * /*tree*/, bNode *node)
+{
+  bool use_same_settings = RNA_property_boolean_get(RNA_property_get(node->id.properties, "use_same_settings_for_purity_restoration"));
+  AGXWorkingLog working_log = static_cast<AGXWorkingLog>(node->custom2);
+
+  // Hide/show the 'Purity Restoration' panel based on the checkbox
+  BKE_node_panel_set_hidden(node, "Purity Restoration", use_same_settings);
+
+  // Hide/show the 'Log2 Minimum Exposure' and 'Log2 Maximum Exposure' inputs
+  bool hide_log2_settings = (working_log != AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+  BKE_node_input_set_hidden(node, "Log2 Minimum Exposure", hide_log2_settings);
+  BKE_node_input_set_hidden(node, "Log2 Maximum Exposure", hide_log2_settings);
 }
 
 // Node Declaration
@@ -195,12 +213,13 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales inwards before curve");
 
+  inset_panel.add_input<decl::Bool>("Use Same Settings for Purity Restoration")
+    .default_value(false)
+    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use")
+    .use_property_rna("use_same_settings_for_purity_restoration"); // Link to RNA property
+
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
-
-  outset_panel.add_input<decl::Bool>("Use Same Settings as Attenuation")
-    .default_value(false)
-    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use");
 
   outset_panel.add_input<decl::Vector>("Reverse Hue Flights")
     .default_value({0.0f, 0.0f, 0.0f})
@@ -470,6 +489,7 @@ static void node_register()
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
   ntype.draw_buttons = node_layout;
+  ntype.update = node_update;
   ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
 

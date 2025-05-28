@@ -269,20 +269,20 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 layout->prop(ptr,
   "working_primaries",
   UI_ITEM_R_SPLIT_EMPTY_NAME,
-  "",
+  std::nullopt,
   ICON_NONE);
 // Draw the "working_log" enum property
 layout->prop(ptr,
   "working_log",
   UI_ITEM_R_SPLIT_EMPTY_NAME,
-  "",
+  std::nullopt,
   ICON_NONE);
 
 // Draw the "display_primaries" enum property
 layout->prop(ptr,
   "display_primaries",
   UI_ITEM_R_SPLIT_EMPTY_NAME,
-  "",
+  std::nullopt,
   ICON_NONE);
 }
 

@@ -290,33 +290,32 @@ static void node_update(bNodeTree *ntree, bNode *node)
 {
   // Find the boolean input socket
   bNodeSocket *use_same_settings_socket = blender::bke::node_find_socket(*node, SOCK_IN, "Use Same Settings for Restoration");
-  if (use_same_settings_socket) {
-    // Get the value from the boolean socket
-    bool use_same_settings = ((bNodeSocketValueBoolean *)use_same_settings_socket->default_value)->value;
-    bool outset_panel_sockets_available = !use_same_settings;
-    // Find and set the availability of each related socket
-    bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
-    if (reverse_hue_flights) {
-      blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
-    }
+  // Get the value from the boolean socket
+  PointerRNA use_same_settings_ptr = RNA_pointer_create_discrete((ID *)ntree, &RNA_NodeSocket, use_same_settings_socket);
+  bool use_same_settings = RNA_boolean_get(&use_same_settings_ptr, "default_value");
+  bool outset_panel_sockets_available = !use_same_settings;
+  // Find and set the availability of each related socket
+  bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+  if (reverse_hue_flights) {
+    blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
+  }
 
-    bNodeSocket *restore_purity = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
-    if (restore_purity) {
-      blender::bke::node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
-    }
+  bNodeSocket *restore_purity = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+  if (restore_purity) {
+    blender::bke::node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
+  }
 
-    // Get the value of the enum property
-    bool log2_settings_available = node->custom2 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
-    // Find and set the availability of each related socket
-    bNodeSocket *log2_exposure_min = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
-    if (log2_exposure_min) {
-      blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
-    }
+  // Get the value of the enum property
+  bool log2_settings_available = node->custom2 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+  // Find and set the availability of each related socket
+  bNodeSocket *log2_exposure_min = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+  if (log2_exposure_min) {
+     blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
+  }
 
-    bNodeSocket *log2_exposure_max = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
-    if (log2_exposure_max) {
-      blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
-    }
+  bNodeSocket *log2_exposure_max = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+  if (log2_exposure_max) {
+    blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
   }
 
 }

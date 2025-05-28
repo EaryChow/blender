@@ -101,8 +101,6 @@ static void node_rna(StructRNA *srna) {
       agx_primaries_items,
       NOD_inline_enum_accessors(custom3),
       int(AGXPrimaries::AGX_PRIMARIES_REC709));
-
-  RNA_def_property_boolean(srna, "use_same_settings_for_purity_restoration", PROP_BOOLEAN, PROP_NONE);
 }
 
 // initialize
@@ -110,30 +108,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
   node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
-  RNA_property_boolean_set(RNA_property_get(node->id.properties, "use_same_settings_for_purity_restoration"), false);
-}
-
-// Update function to handle dynamic UI elements
-static void node_update(bNodeTree * /*tree*/, bNode *node)
-{
-  bool use_same_settings = RNA_property_boolean_get(RNA_property_get(node->id.properties, "use_same_settings_for_purity_restoration"));
-  AGXWorkingLog working_log = static_cast<AGXWorkingLog>(node->custom2);
-
-  // Hide/show the 'Purity Restoration' panel based on the checkbox
-  BKE_node_panel_set_hidden(node, "Purity Restoration", use_same_settings);
-
-  // Hide/show the 'Log2 Minimum Exposure' and 'Log2 Maximum Exposure' inputs
-  bool hide_log2_settings = (working_log != AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
-  BKE_node_input_set_hidden(node, "Log2 Minimum Exposure", hide_log2_settings);
-  BKE_node_input_set_hidden(node, "Log2 Maximum Exposure", hide_log2_settings);
 }
 
 // Node Declaration
 static void node_declare(NodeDeclarationBuilder &b) {
+  b.use_custom_socket_order();
+  b.allow_any_socket_order();
+  b.add_default_layout();
+
   b.add_input<decl::Color>("Color")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-
 
   /* Panel for log and sigmoid curve settings. */
   PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
@@ -215,8 +200,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
   inset_panel.add_input<decl::Bool>("Use Same Settings for Purity Restoration")
     .default_value(false)
-    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use")
-    .use_property_rna("use_same_settings_for_purity_restoration"); // Link to RNA property
+    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use");
 
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
@@ -226,7 +210,6 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .min(-10.0f)
     .max(10.0f)
     .subtype(PROP_NONE)
-    .short_label("Rotation")
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries after curve."
         "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.");
@@ -285,20 +268,20 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 // Draw the "working_primaries" enum property
 layout->prop(ptr,
   "working_primaries",
-  UI_ITEM_NONE,
+  UI_ITEM_R_SPLIT_EMPTY_NAME,
   "",
   ICON_NONE);
 // Draw the "working_log" enum property
 layout->prop(ptr,
   "working_log",
-  UI_ITEM_NONE,
+  UI_ITEM_R_SPLIT_EMPTY_NAME,
   "",
   ICON_NONE);
 
 // Draw the "display_primaries" enum property
 layout->prop(ptr,
   "display_primaries",
-  UI_ITEM_NONE,
+  UI_ITEM_R_SPLIT_EMPTY_NAME,
   "",
   ICON_NONE);
 }
@@ -489,7 +472,6 @@ static void node_register()
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
   ntype.draw_buttons = node_layout;
-  ntype.update = node_update;
   ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
 

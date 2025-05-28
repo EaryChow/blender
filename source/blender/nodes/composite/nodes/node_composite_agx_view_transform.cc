@@ -116,6 +116,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
   b.allow_any_socket_order();
   b.add_default_layout();
 
+  b.add_output<decl::Color>("Color");
+
   b.add_input<decl::Color>("Color")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
@@ -198,7 +200,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales inwards before curve");
 
-  inset_panel.add_input<decl::Bool>("Use Same Settings for Purity Restoration")
+  inset_panel.add_input<decl::Bool>("Use Same Settings for Restoration")
     .default_value(false)
     .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use");
 
@@ -258,8 +260,6 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
         "Done in both pre-curve and post-curve state.");
-
-  b.add_output<decl::Color>("Color");
 }
 
 // Put Enums on UI Layout
@@ -286,6 +286,37 @@ layout->prop(ptr,
   ICON_NONE);
 }
 
+static void node_update(bNodeTree *ntree, bNode *node)
+{
+  // Find the boolean input socket
+  bNodeSocket *use_same_settings_socket = bke::node_find_socket(*node, SOCK_IN, "Use Same Settings for Restoration");
+  if (use_same_settings_socket) {
+    // Get the boolean value from the socket
+    bool use_same_settings = bke::node_socket_get_bool(*use_same_settings_socket);
+    bool outset_panel_sockets_available = !use_same_settings;
+    // Find and set the availability of each socket in the Outset panel
+    bNodeSocket *reverse_hue_flights = node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+    if (reverse_hue_flights {
+      node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
+    }
+
+    bNodeSocket *restore_purity = bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+    if (restore_purity) {
+      node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
+    }
+
+    bool log2_settings_available = node->custom2 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+    bNodeSocket *log2_exposure_min = node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+    if (log2_exposure_min {
+      node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
+    }
+
+    bNodeSocket *log2_exposure_max = node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+    if (log2_exposure_max {
+      node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
+    }
+
+}
 
 // Multi-function Builder
 class AgXViewTransformFunction : public mf::MultiFunction {
@@ -469,6 +500,7 @@ static void node_register()
   ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
+  ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
   ntype.draw_buttons = node_layout;

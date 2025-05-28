@@ -291,12 +291,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
   // Find the boolean input socket
   bNodeSocket *use_same_settings_socket = bke::node_find_socket(*node, SOCK_IN, "Use Same Settings for Restoration");
   if (use_same_settings_socket) {
-    // Get the boolean value from the socket
-    bool use_same_settings = bke::node_socket_get_bool(*use_same_settings_socket);
+    // Get the value from the boolean socket
+    bool use_same_settings = ((bNodeSocketValueBoolean *)use_same_settings_socket->default_value)->value;
     bool outset_panel_sockets_available = !use_same_settings;
-    // Find and set the availability of each socket in the Outset panel
-    bNodeSocket *reverse_hue_flights = node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
-    if (reverse_hue_flights {
+    // Find and set the availability of each related socket
+    bNodeSocket *reverse_hue_flights = bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+    if (reverse_hue_flights) {
       node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
     }
 
@@ -305,16 +305,19 @@ static void node_update(bNodeTree *ntree, bNode *node)
       node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
     }
 
+    // Get the value of the enum property
     bool log2_settings_available = node->custom2 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
-    bNodeSocket *log2_exposure_min = node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
-    if (log2_exposure_min {
+    // Find and set the availability of each related socket
+    bNodeSocket *log2_exposure_min = bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+    if (log2_exposure_min) {
       node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
     }
 
-    bNodeSocket *log2_exposure_max = node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
-    if (log2_exposure_max {
+    bNodeSocket *log2_exposure_max = bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+    if (log2_exposure_max) {
       node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
     }
+  }
 
 }
 

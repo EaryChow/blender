@@ -346,7 +346,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       builder.single_input<float>("Log2 Maximum Exposure");             // Index 6
       builder.single_input<float3>("Hue Flights");                      // Index 7
       builder.single_input<float3>("Attenuation Rates");                // Index 8
-      builder.single_input<bool>("Use Same Settings as Attenuation");   // Index 9
+      builder.single_input<bool>("Use Same Settings for Restoration");   // Index 9
       builder.single_input<float3>("Reverse Hue Flights");              // Index 10
       builder.single_input<float3>("Restore Purity");                   // Index 11
       builder.single_input<float>("Per-Channel Hue Flight");            // Index 12
@@ -370,7 +370,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     const VArray<float> log2_max_in = params.readonly_single_input<float>(6, "Log2 Maximum Exposure");
     const VArray<float3> hue_flights_in = params.readonly_single_input<float3>(7, "Hue Flights");
     const VArray<float3> attenuation_rates_in = params.readonly_single_input<float3>(8, "Attenuation Rates");
-    const VArray<bool> use_inverse_inset_in = params.readonly_single_input<bool>(9, "Use Same Settings as Attenuation");
+    const VArray<bool> use_inverse_inset_in = params.readonly_single_input<bool>(9, "Use Same Settings for Restoration");
     const VArray<float3> reverse_hue_flights_in = params.readonly_single_input<float3>(10, "Reverse Hue Flights");
     const VArray<float3> restore_purity_in = params.readonly_single_input<float3>(11, "Restore Purity");
     const VArray<float> per_channel_hue_flight_in = params.readonly_single_input<float>(12, "Per-Channel Hue Flight");

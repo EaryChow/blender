@@ -108,7 +108,7 @@ static void node_rna(StructRNA *srna) {
       "Use Same Settings for Restoration",
       "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
       NOD_inline_enum_accessors(custom4),
-      bool false);
+      false);
 }
 
 // initialize
@@ -116,7 +116,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
   node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
-  node->custom4 = bool false;
+  node->custom4 = false;
 }
 
 // Node Declaration
@@ -291,21 +291,20 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
     ICON_NONE);
   // Draw the "sync_outset_to_inset" bool property
-  inset_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-    layout->prop(ptr,
+  if (uiLayout *attenuation_panel_layout = layout->panel(C, "Attenuation", false, IFACE_("Attenuation"))) {
+    attenuation_panel_layout->prop(ptr,
       "sync_outset_to_inset",
       UI_ITEM_R_SPLIT_EMPTY_NAME,
       std::nullopt,
       ICON_NONE);
   }
-  );
 
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   // Get the value of the boolean property
-  bool use_same_settings = node->custom4
+  bool use_same_settings = node->custom4;
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
   bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
@@ -448,7 +447,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
       // generate outset matrix
       float3x3 outsetmat;
-      if (p_use_inverse_inset_in[i]) {
+      if (p_use_inverse_inset_in) {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
             attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings

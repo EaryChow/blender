@@ -267,7 +267,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Done in both pre-curve and post-curve state.");
 }
 
-// Put Enums on UI Layout
+// Put Properties on UI Layout
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   // Draw the "working_primaries" enum property
@@ -288,8 +288,9 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
     "display_primaries",
     UI_ITEM_R_SPLIT_EMPTY_NAME,
     std::nullopt,
+
     ICON_NONE);
-  
+  // Draw the "sync_outset_to_inset" bool property
   inset_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
     layout->prop(ptr,
       "sync_outset_to_inset",

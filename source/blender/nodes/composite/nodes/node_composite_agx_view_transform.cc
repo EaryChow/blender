@@ -101,6 +101,14 @@ static void node_rna(StructRNA *srna) {
       agx_primaries_items,
       NOD_inline_enum_accessors(custom3),
       int(AGXPrimaries::AGX_PRIMARIES_REC709));
+
+  prop = RNA_def_node_boolean(
+      srna,
+      "sync_outset_to_inset",
+      "Use Same Settings for Restoration",
+      "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
+      NOD_inline_enum_accessors(custom4),
+      bool false);
 }
 
 // initialize
@@ -108,6 +116,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
   node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
+  node->custom4 = bool false;
 }
 
 // Node Declaration
@@ -200,10 +209,6 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales inwards before curve");
 
-  inset_panel.add_input<decl::Bool>("Use Same Settings for Restoration")
-    .default_value(false)
-    .description("Use the same settings as Attenuation section for Purity Restoration, for ease of use");
-
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
 
@@ -265,33 +270,41 @@ static void node_declare(NodeDeclarationBuilder &b) {
 // Put Enums on UI Layout
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-// Draw the "working_primaries" enum property
-layout->prop(ptr,
-  "working_primaries",
-  UI_ITEM_R_SPLIT_EMPTY_NAME,
-  std::nullopt,
-  ICON_NONE);
-// Draw the "working_log" enum property
-layout->prop(ptr,
-  "working_log",
-  UI_ITEM_R_SPLIT_EMPTY_NAME,
-  std::nullopt,
-  ICON_NONE);
+  // Draw the "working_primaries" enum property
+  layout->prop(ptr,
+    "working_primaries",
+    UI_ITEM_R_SPLIT_EMPTY_NAME,
+    std::nullopt,
+    ICON_NONE);
+  // Draw the "working_log" enum property
+  layout->prop(ptr,
+    "working_log",
+    UI_ITEM_R_SPLIT_EMPTY_NAME,
+    std::nullopt,
+    ICON_NONE);
 
-// Draw the "display_primaries" enum property
-layout->prop(ptr,
-  "display_primaries",
-  UI_ITEM_R_SPLIT_EMPTY_NAME,
-  std::nullopt,
-  ICON_NONE);
+  // Draw the "display_primaries" enum property
+  layout->prop(ptr,
+    "display_primaries",
+    UI_ITEM_R_SPLIT_EMPTY_NAME,
+    std::nullopt,
+    ICON_NONE);
+  
+  inset_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr,
+      "sync_outset_to_inset",
+      UI_ITEM_R_SPLIT_EMPTY_NAME,
+      std::nullopt,
+      ICON_NONE);
+  }
+  );
+
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
-  // Find the boolean input socket
-  bNodeSocket *use_same_settings_socket = blender::bke::node_find_socket(*node, SOCK_IN, "Use Same Settings for Restoration");
-  // Get the value from the boolean socket
-  bool use_same_settings = use_same_settings_socket->default_value_typed<bNodeSocketValueBoolean>()->value;
+  // Get the value of the boolean property
+  bool use_same_settings = node->custom4
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
   bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
@@ -325,12 +338,14 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AGXPrimaries p_working_primaries;
   AGXWorkingLog p_working_log;
   AGXPrimaries p_display_primaries;
+  bool p_use_inverse_inset_in;
 
   explicit AgXViewTransformFunction(const bNode &node) {
     p_working_primaries = static_cast<AGXPrimaries>(node.custom1);
     p_working_log = static_cast<AGXWorkingLog>(node.custom2);
     p_display_primaries = static_cast<AGXPrimaries>(node.custom3);
-
+    p_use_inverse_inset_in = node.custom4;
+    
     static const mf::Signature signature = []() {
       mf::Signature sig;
       mf::SignatureBuilder builder("AgXViewTransform", sig);
@@ -344,15 +359,14 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       builder.single_input<float>("Log2 Maximum Exposure");             // Index 6
       builder.single_input<float3>("Hue Flights");                      // Index 7
       builder.single_input<float3>("Attenuation Rates");                // Index 8
-      builder.single_input<bool>("Use Same Settings for Restoration");   // Index 9
-      builder.single_input<float3>("Reverse Hue Flights");              // Index 10
-      builder.single_input<float3>("Restore Purity");                   // Index 11
-      builder.single_input<float>("Per-Channel Hue Flight");            // Index 12
-      builder.single_input<float>("Tinting Scale");                     // Index 13
-      builder.single_input<float>("Tinting Hue");                       // Index 14
-      builder.single_input<bool>("Compensate for the Negatives");       // Index 15
+      builder.single_input<float3>("Reverse Hue Flights");              // Index 9
+      builder.single_input<float3>("Restore Purity");                   // Index 10
+      builder.single_input<float>("Per-Channel Hue Flight");            // Index 11
+      builder.single_input<float>("Tinting Scale");                     // Index 12
+      builder.single_input<float>("Tinting Hue");                       // Index 13
+      builder.single_input<bool>("Compensate for the Negatives");       // Index 14
       // Output:
-      builder.single_output<float4>("Color");                           // Index 16
+      builder.single_output<float4>("Color");                           // Index 15
       return sig;
     }();
     this->set_signature(&signature);
@@ -368,15 +382,14 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     const VArray<float> log2_max_in = params.readonly_single_input<float>(6, "Log2 Maximum Exposure");
     const VArray<float3> hue_flights_in = params.readonly_single_input<float3>(7, "Hue Flights");
     const VArray<float3> attenuation_rates_in = params.readonly_single_input<float3>(8, "Attenuation Rates");
-    const VArray<bool> use_inverse_inset_in = params.readonly_single_input<bool>(9, "Use Same Settings for Restoration");
-    const VArray<float3> reverse_hue_flights_in = params.readonly_single_input<float3>(10, "Reverse Hue Flights");
-    const VArray<float3> restore_purity_in = params.readonly_single_input<float3>(11, "Restore Purity");
-    const VArray<float> per_channel_hue_flight_in = params.readonly_single_input<float>(12, "Per-Channel Hue Flight");
-    const VArray<float> tinting_scale_in = params.readonly_single_input<float>(13, "Tinting Scale");
-    const VArray<float> tinting_hue_in = params.readonly_single_input<float>(14, "Tinting Hue");
-    const VArray<bool> compensate_negatives_in = params.readonly_single_input<bool>(15, "Compensate for the Negatives");
+    const VArray<float3> reverse_hue_flights_in = params.readonly_single_input<float3>(9, "Reverse Hue Flights");
+    const VArray<float3> restore_purity_in = params.readonly_single_input<float3>(10, "Restore Purity");
+    const VArray<float> per_channel_hue_flight_in = params.readonly_single_input<float>(11, "Per-Channel Hue Flight");
+    const VArray<float> tinting_scale_in = params.readonly_single_input<float>(12, "Tinting Scale");
+    const VArray<float> tinting_hue_in = params.readonly_single_input<float>(13, "Tinting Hue");
+    const VArray<bool> compensate_negatives_in = params.readonly_single_input<bool>(14, "Compensate for the Negatives");
 
-    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(16, "Color");
+    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(15, "Color");
 
     mask.foreach_index([&](const int64_t i) {
       float4 col = in_color[i];
@@ -434,7 +447,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
       // generate outset matrix
       float3x3 outsetmat;
-      if (use_inverse_inset_in[i]) {
+      if (p_use_inverse_inset_in[i]) {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
             attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings

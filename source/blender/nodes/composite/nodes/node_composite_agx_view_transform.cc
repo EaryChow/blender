@@ -81,7 +81,7 @@ static void node_rna(StructRNA *srna) {
       "Working Primaries",
       "The working primaries that the AgX mechanism applies to",
       agx_primaries_items, 
-      NOD_inline_enum_accessors(custom1),
+      NOD_inline_enum_accessors(custom2),
       int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
 
   prop = RNA_def_node_enum(
@@ -90,7 +90,7 @@ static void node_rna(StructRNA *srna) {
       "Working Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
-      NOD_inline_enum_accessors(custom2),
+      NOD_inline_enum_accessors(custom3),
       int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)); 
 
   prop = RNA_def_node_enum(
@@ -99,7 +99,7 @@ static void node_rna(StructRNA *srna) {
       "Display Primaries",
       "The primaries of the target display device",
       agx_primaries_items,
-      NOD_inline_enum_accessors(custom3),
+      NOD_inline_enum_accessors(custom4),
       int(AGXPrimaries::AGX_PRIMARIES_REC709));
 
   prop = RNA_def_node_boolean(
@@ -107,16 +107,16 @@ static void node_rna(StructRNA *srna) {
       "sync_outset_to_inset",
       "Use Same Settings for Restoration",
       "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
-      NOD_inline_boolean_accessors(custom4, 1),
+      NOD_inline_boolean_accessors(custom1, 1),
       false);
 }
 
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {
-  node->custom1 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
-  node->custom2 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
-  node->custom3 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
-  node->custom4 = false;
+  node->custom2 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
+  node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+  node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
+  node->custom1 = false;
 }
 
 // Node Declaration
@@ -304,7 +304,7 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   // Get the value of the boolean property
-  bool use_same_settings = node->custom4;
+  bool use_same_settings = node->custom1;
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
   bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
@@ -318,7 +318,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   }
 
   // Get the value of the enum property
-  bool log2_settings_available = node->custom2 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+  bool log2_settings_available = node->custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   // Find and set the availability of each related socket
   bNodeSocket *log2_exposure_min = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
   if (log2_exposure_min) {
@@ -341,10 +341,10 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   bool p_use_inverse_inset_in;
 
   explicit AgXViewTransformFunction(const bNode &node) {
-    p_working_primaries = static_cast<AGXPrimaries>(node.custom1);
-    p_working_log = static_cast<AGXWorkingLog>(node.custom2);
-    p_display_primaries = static_cast<AGXPrimaries>(node.custom3);
-    p_use_inverse_inset_in = node.custom4;
+    p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
+    p_working_log = static_cast<AGXWorkingLog>(node.custom3);
+    p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
+    p_use_inverse_inset_in = node.custom1;
     
     static const mf::Signature signature = []() {
       mf::Signature sig;

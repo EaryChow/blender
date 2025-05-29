@@ -291,8 +291,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   // Find the boolean input socket
   bNodeSocket *use_same_settings_socket = blender::bke::node_find_socket(*node, SOCK_IN, "Use Same Settings for Restoration");
   // Get the value from the boolean socket
-  PointerRNA use_same_settings_ptr = RNA_pointer_create_discrete((ID *)ntree, &bNodeSocket, use_same_settings_socket);
-  bool use_same_settings = RNA_boolean_get(&use_same_settings_ptr, "default_value");
+  bool use_same_settings = (bool)node_socket_get_float(ntree, node, use_same_settings_socket);
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
   bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");

@@ -107,7 +107,7 @@ static void node_rna(StructRNA *srna) {
       "sync_outset_to_inset",
       "Use Same Settings for Restoration",
       "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
-      NOD_inline_boolean_accessors(custom4),
+      NOD_inline_boolean_accessors(custom4, 0),
       false);
 }
 

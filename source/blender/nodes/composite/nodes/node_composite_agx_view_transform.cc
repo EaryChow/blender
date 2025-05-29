@@ -268,7 +268,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
 }
 
 // Put Properties on UI Layout
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   // Draw the "working_primaries" enum property
   layout->prop(ptr,

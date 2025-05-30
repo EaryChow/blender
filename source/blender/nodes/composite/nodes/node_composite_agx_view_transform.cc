@@ -91,24 +91,6 @@ static void node_rna(StructRNA *srna) {
       NOD_inline_enum_accessors(custom2),
       int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
 
-  prop = RNA_def_node_enum(
-      srna,
-      "working_log",
-      "Log",
-      "The Log curve applied before the sigmoid in the AgX mechanism",
-      agx_working_log_items,
-      NOD_inline_enum_accessors(custom3),
-      int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)); 
-
-  prop = RNA_def_node_enum(
-      srna,
-      "display_primaries",
-      "Display",
-      "The primaries of the target display device",
-      agx_display_primaries_items,
-      NOD_inline_enum_accessors(custom4),
-      int(AGXPrimaries::AGX_PRIMARIES_REC709));
-
   prop = RNA_def_node_boolean(
       srna,
       "sync_outset_to_inset",

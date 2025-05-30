@@ -90,14 +90,6 @@ static void node_rna(StructRNA *srna) {
       agx_working_primaries_items, 
       NOD_inline_enum_accessors(custom2),
       int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
-
-  prop = RNA_def_node_boolean(
-      srna,
-      "sync_outset_to_inset",
-      "Use Same Settings for Restoration",
-      "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
-      NOD_inline_boolean_accessors(custom1, 1),
-      false);
 }
 
 // Node Declaration

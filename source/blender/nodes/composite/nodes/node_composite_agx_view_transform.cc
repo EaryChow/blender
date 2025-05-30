@@ -78,20 +78,6 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-// RNA functions for node properties
-static void node_rna(StructRNA *srna) {
-  PropertyRNA *prop;
-
-  prop = RNA_def_node_enum(
-      srna,
-      "working_primaries",
-      "Working",
-      "The working primaries that the AgX mechanism applies to",
-      agx_working_primaries_items, 
-      NOD_inline_enum_accessors(custom2),
-      int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
-}
-
 // Node Declaration
 static void node_declare(NodeDeclarationBuilder &b) {
   b.use_custom_socket_order();

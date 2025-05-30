@@ -319,77 +319,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 }
 
-// Multi-function Builder
-class AgXViewTransformFunction : public mf::MultiFunction {
- public:
-  AGXPrimaries p_working_primaries;
-  AGXWorkingLog p_working_log;
-  AGXPrimaries p_display_primaries;
-  bool p_use_inverse_inset_in;
-
-  explicit AgXViewTransformFunction(const bNode &node) {
-    p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
-    p_working_log = static_cast<AGXWorkingLog>(node.custom3);
-    p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
-    p_use_inverse_inset_in = node.custom1;
-    
-    static const mf::Signature signature = []() {
-      mf::Signature sig;
-      mf::SignatureBuilder builder("AgXViewTransform", sig);
-      // Socket Inputs:
-      builder.single_input<float4>("Color");                            // Index 0
-      builder.single_input<float>("General Contrast");                  // Index 1
-      builder.single_input<float>("Toe Contrast");                      // Index 2
-      builder.single_input<float>("Shoulder Contrast");                 // Index 3
-      builder.single_input<float>("Contrast Pivot Offset");             // Index 4
-      builder.single_input<float>("Log2 Minimum Exposure");             // Index 5
-      builder.single_input<float>("Log2 Maximum Exposure");             // Index 6
-      builder.single_input<float3>("Hue Flights");                      // Index 7
-      builder.single_input<float3>("Attenuation Rates");                // Index 8
-      builder.single_input<float3>("Reverse Hue Flights");              // Index 9
-      builder.single_input<float3>("Restore Purity");                   // Index 10
-      builder.single_input<float>("Per-Channel Hue Flight");            // Index 11
-      builder.single_input<float>("Tinting Scale");                     // Index 12
-      builder.single_input<float>("Tinting Hue");                       // Index 13
-      builder.single_input<bool>("Compensate for the Negatives");       // Index 14
-      // Output:
-      builder.single_output<float4>("Color");                           // Index 15
-      return sig;
-    }();
-    this->set_signature(&signature);
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override {
-    const VArray<float4> in_color = params.readonly_single_input<float4>(0, "Color");
-    const VArray<float> general_contrast_in = params.readonly_single_input<float>(1, "General Contrast");
-    const VArray<float> toe_contrast_in = params.readonly_single_input<float>(2, "Toe Contrast");
-    const VArray<float> shoulder_contrast_in = params.readonly_single_input<float>(3, "Shoulder Contrast");
-    const VArray<float> pivot_offset_in = params.readonly_single_input<float>(4, "Contrast Pivot Offset");
-    const VArray<float> log2_min_in = params.readonly_single_input<float>(5, "Log2 Minimum Exposure");
-    const VArray<float> log2_max_in = params.readonly_single_input<float>(6, "Log2 Maximum Exposure");
-    const VArray<float3> hue_flights_in = params.readonly_single_input<float3>(7, "Hue Flights");
-    const VArray<float3> attenuation_rates_in = params.readonly_single_input<float3>(8, "Attenuation Rates");
-    const VArray<float3> reverse_hue_flights_in = params.readonly_single_input<float3>(9, "Reverse Hue Flights");
-    const VArray<float3> restore_purity_in = params.readonly_single_input<float3>(10, "Restore Purity");
-    const VArray<float> per_channel_hue_flight_in = params.readonly_single_input<float>(11, "Per-Channel Hue Flight");
-    const VArray<float> tinting_scale_in = params.readonly_single_input<float>(12, "Tinting Scale");
-    const VArray<float> tinting_hue_in = params.readonly_single_input<float>(13, "Tinting Hue");
-    const VArray<bool> compensate_negatives_in = params.readonly_single_input<bool>(14, "Compensate for the Negatives");
-
-    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(15, "Color");
-
-    mask.foreach_index([&](const int64_t i) {
-      float4 col = in_color[i];
-      out_color[i] = col;
-    });
-  }
-};
-
-// Multi-function Builder
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
-}
-
 // Registration Function
 static void node_register()
 {
@@ -404,7 +333,6 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
-  ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
 
   node_rna(ntype.rna_ext.srna);

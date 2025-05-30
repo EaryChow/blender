@@ -272,19 +272,19 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Adjusts the direction in which the white point shifts in the outset."
         "influencing the overall hue of the tint applied after curve");
 
-  b.add_input<decl::Bool>("Compensate for the Negatives")
+  /* Panel for primaries settings. */
+  PanelDeclarationBuilder &primaries_panel = b.add_panel("Primaries").default_closed(true);
+
+  primaries_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr, "working_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
+    layout->prop(ptr, "display_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
+  });
+
+  primaries_panel.add_input<decl::Bool>("Compensate for the Negatives")
     .default_value(true)
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
         "Done in both pre-curve and post-curve state.");
-
-  /* Panel for primaries settings. */
-  PanelDeclarationBuilder &primaires_panel = b.add_panel("Primaries").default_closed(true);
-
-  primaires_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-    layout->prop(ptr, "working_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
-    layout->prop(ptr, "display_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
-  });
 
 }
 

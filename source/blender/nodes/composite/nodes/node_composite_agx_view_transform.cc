@@ -123,7 +123,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
 static void node_declare(NodeDeclarationBuilder &b) {
   b.use_custom_socket_order();
   b.allow_any_socket_order();
-  b.add_default_layout();
 
   b.add_output<decl::Color>("Color");
 
@@ -170,6 +169,9 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .description(
         "Controls the pivot point for all contrast adjustments");
 
+  curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr, "working_log", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
+
   curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
     .default_value(-10.0f)
     .min(-15.0f)
@@ -208,6 +210,9 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .description(
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales inwards before curve");
+
+  inset_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr, "sync_outset_to_inset", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
 
   /* Panel for outset matrix settings. */
   PanelDeclarationBuilder &outset_panel = b.add_panel("Purity Restoration").default_closed(true);
@@ -265,39 +270,15 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
         "Done in both pre-curve and post-curve state.");
-}
 
-// Put Properties on UI Layout
-static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
-{
-  // Draw the "working_primaries" enum property
-  layout->prop(ptr,
-    "working_primaries",
-    UI_ITEM_R_SPLIT_EMPTY_NAME,
-    std::nullopt,
-    ICON_NONE);
-  // Draw the "working_log" enum property
-  layout->prop(ptr,
-    "working_log",
-    UI_ITEM_R_SPLIT_EMPTY_NAME,
-    std::nullopt,
-    ICON_NONE);
+  /* Panel for primaries settings. */
+  PanelDeclarationBuilder &primaires_panel = b.add_panel("Primaries").default_closed(true);
 
-  // Draw the "display_primaries" enum property
-  layout->prop(ptr,
-    "display_primaries",
-    UI_ITEM_R_SPLIT_EMPTY_NAME,
-    std::nullopt,
-
-    ICON_NONE);
-  // Draw the "sync_outset_to_inset" bool property
-  if (uiLayout *attenuation_panel_layout = layout->panel(C, "Attenuation", false, IFACE_("Attenuation"))) {
-    attenuation_panel_layout->prop(ptr,
-      "sync_outset_to_inset",
-      UI_ITEM_R_SPLIT_EMPTY_NAME,
-      std::nullopt,
-      ICON_NONE);
+  primaires_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr, "working_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
+    layout->prop(ptr, "display_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
   }
+  );
 
 }
 
@@ -517,7 +498,6 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
-  ntype.draw_buttons = node_layout;
   ntype.build_multi_function = node_build_multi_function;
   blender::bke::node_register_type(ntype);
 

@@ -29,54 +29,6 @@
 // Namespace Declaration
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
-// define enums
-enum class AGXPrimaries : int16_t {
-  AGX_PRIMARIES_AP0 = 0,
-  AGX_PRIMARIES_AP1 = 1,
-  AGX_PRIMARIES_P3D65 = 2,
-  AGX_PRIMARIES_REC709 = 3,
-  AGX_PRIMARIES_REC2020 = 4,
-  AGX_PRIMARIES_AWG3 = 5,
-  AGX_PRIMARIES_AWG4 = 6,
-  AGX_PRIMARIES_EGAMUT = 7,
-};
-
-enum class AGXWorkingLog : int16_t {
-  AGX_WORKING_LOG_LINEAR = 0,
-  AGX_WORKING_LOG_ACESCCT = 1,
-  AGX_WORKING_LOG_ARRI_LOGC3 = 2,
-  AGX_WORKING_LOG_ARRI_LOGC4 = 3,
-  AGX_WORKING_LOG_GENERIC_LOG2 = 4,
-};
-
-static const EnumPropertyItem agx_working_primaries_items[] = {
-    {int(AGXPrimaries::AGX_PRIMARIES_AP0), "ap0", 0, "AP0", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_AP1), "ap1", 0, "AP1", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_AWG3), "awg3", 0, "ARRI Alexa Wide Gamut 3", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
-static const EnumPropertyItem agx_display_primaries_items[] = {
-  {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
-  {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
-  {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
-  {0, nullptr, 0, nullptr, nullptr},
-};
-
-static const EnumPropertyItem agx_working_log_items[] = {
-    {int(AGXWorkingLog::AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
-    {int(AGXWorkingLog::AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
-    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
-    {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
-    {int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2), "generic_log2", 0, "Generic Log2", ""},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 // Node Declaration
 static void node_declare(NodeDeclarationBuilder &b) {
   b.use_custom_socket_order();

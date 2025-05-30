@@ -50,9 +50,9 @@ enum class AGXWorkingLog : int16_t {
   AGX_WORKING_LOG_GENERIC_LOG2 = 4,
 };
 
-static const EnumPropertyItem agx_primaries_items[] = {
-    {int(AGXPrimaries::AGX_PRIMARIES_AP0), "ap0", 0, "ACES2065-1 (AP0)", ""},
-    {int(AGXPrimaries::AGX_PRIMARIES_AP1), "ap1", 0, "ACEScg (AP1)", ""},
+static const EnumPropertyItem agx_working_primaries_items[] = {
+    {int(AGXPrimaries::AGX_PRIMARIES_AP0), "ap0", 0, "AP0", ""},
+    {int(AGXPrimaries::AGX_PRIMARIES_AP1), "ap1", 0, "AP1", ""},
     {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
     {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
     {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
@@ -60,6 +60,13 @@ static const EnumPropertyItem agx_primaries_items[] = {
     {int(AGXPrimaries::AGX_PRIMARIES_AWG4), "awg4", 0, "ARRI Alexa Wide Gamut 4", ""},
     {int(AGXPrimaries::AGX_PRIMARIES_EGAMUT), "egamut", 0, "FilmLight E-Gamut", ""},
     {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem agx_display_primaries_items[] = {
+  {int(AGXPrimaries::AGX_PRIMARIES_P3D65), "p3d65", 0, "P3-D65", ""},
+  {int(AGXPrimaries::AGX_PRIMARIES_REC709), "rec709", 0, "Rec.709", ""},
+  {int(AGXPrimaries::AGX_PRIMARIES_REC2020), "rec2020", 0, "Rec.2020", ""},
+  {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem agx_working_log_items[] = {
@@ -78,16 +85,16 @@ static void node_rna(StructRNA *srna) {
   prop = RNA_def_node_enum(
       srna,
       "working_primaries",
-      "Working Primaries",
+      "Working",
       "The working primaries that the AgX mechanism applies to",
-      agx_primaries_items, 
+      agx_working_primaries_items, 
       NOD_inline_enum_accessors(custom2),
       int(AGXPrimaries::AGX_PRIMARIES_REC2020)); 
 
   prop = RNA_def_node_enum(
       srna,
       "working_log",
-      "Working Log",
+      "Log",
       "The Log curve applied before the sigmoid in the AgX mechanism",
       agx_working_log_items,
       NOD_inline_enum_accessors(custom3),
@@ -96,9 +103,9 @@ static void node_rna(StructRNA *srna) {
   prop = RNA_def_node_enum(
       srna,
       "display_primaries",
-      "Display Primaries",
+      "Display",
       "The primaries of the target display device",
-      agx_primaries_items,
+      agx_display_primaries_items,
       NOD_inline_enum_accessors(custom4),
       int(AGXPrimaries::AGX_PRIMARIES_REC709));
 
@@ -277,8 +284,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
   primaires_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
     layout->prop(ptr, "working_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
     layout->prop(ptr, "display_primaries", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);
-  }
-  );
+  });
 
 }
 

@@ -118,14 +118,6 @@ static void node_rna(StructRNA *srna) {
       false);
 }
 
-// initialize
-static void node_init(bNodeTree * /*tree*/, bNode *node) {
-  node->custom2 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
-  node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
-  node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
-  node->custom1 = false;
-}
-
 // Node Declaration
 static void node_declare(NodeDeclarationBuilder &b) {
   b.use_custom_socket_order();
@@ -150,7 +142,6 @@ static void node_register()
   ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
-  ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);
   blender::bke::node_register_type(ntype);
 

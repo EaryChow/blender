@@ -51,7 +51,6 @@ static void node_register()
   cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
-  ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Large);

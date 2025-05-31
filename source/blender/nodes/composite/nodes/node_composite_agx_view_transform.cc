@@ -495,9 +495,10 @@ static void node_register()
 {
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform", NODE_CUSTOM);
+  cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
   ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
+  ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;

@@ -69,6 +69,17 @@ static float4 brightness_and_contrast(const float4 &color,
   return float4(color.xyz() * multiplier + offset, color.w);
 }
 
+static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
+{
+  static auto function = mf::build::SI3_SO<float4, float, float, float4>(
+      "Bright And Contrast",
+      [](const float4 &color, const float brightness, const float contrast) -> float4 {
+        return brightness_and_contrast(color, brightness, contrast);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
+  builder.set_matching_fn(function);
+}
+
 }  // namespace blender::nodes::node_composite_brightness_cc
 
 static void register_node_type_cmp_brightcontrast()
@@ -77,13 +88,13 @@ static void register_node_type_cmp_brightcontrast()
 
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeBrightContrast", CMP_NODE_BRIGHTCONTRAST);
+  cmp_node_type_base(&ntype, "CompositorNodeBrightContrast");
   ntype.ui_name = "Brightness/Contrast";
   ntype.ui_description = "Adjust brightness and contrast";
-  ntype.enum_name_legacy = "BRIGHTCONTRAST";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_brightcontrast_declare;
   ntype.gpu_fn = file_ns::node_gpu_material;
+  ntype.build_multi_function = file_ns::node_build_multi_function;
 
   blender::bke::node_register_type(ntype);
 }

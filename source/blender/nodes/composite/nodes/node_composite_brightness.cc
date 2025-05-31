@@ -45,41 +45,40 @@ static int node_gpu_material(GPUMaterial *material,
   return GPU_stack_link(material, node, "node_composite_bright_contrast", inputs, outputs);
 }
 
-// Debug test: replace Multi-function Builder with AgX's code
-class brightness_and_contrast_Function : public mf::MultiFunction {
- public:
-  brightness_and_contrast_Function(const bNode &node) {
-    static const mf::Signature signature = []() {
-      mf::Signature signature;
-      mf::SignatureBuilder builder{"brightness_and_contrast", signature};
-      // Socket Inputs:
-      builder.single_input<float4>("In Color");                         // Index 0
-      builder.single_input<float>("Bright");                  // Index 1
-      builder.single_input<float>("Contrast");                      // Index 2
-      // Output:
-      builder.single_output<float4>("Out Color");                        // Index 15
-      return signature;
-    }();
-    this->set_signature(&signature);
+/* The algorithm is by Werner D. Streidt, extracted of OpenCV `demhist.c`:
+ *   http://visca.com/ffactory/archives/5-99/msg00021.html */
+static float4 brightness_and_contrast(const float4 &color,
+                                      const float brightness,
+                                      const float contrast)
+{
+  float scaled_brightness = brightness / 100.0f;
+  float delta = contrast / 200.0f;
+
+  float multiplier, offset;
+  if (contrast > 0.0f) {
+    multiplier = 1.0f - delta * 2.0f;
+    multiplier = 1.0f / math::max(multiplier, std::numeric_limits<float>::epsilon());
+    offset = multiplier * (scaled_brightness - delta);
+  }
+  else {
+    delta *= -1.0f;
+    multiplier = math::max(1.0f - delta * 2.0f, 0.0f);
+    offset = multiplier * scaled_brightness + delta;
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override {
-    const VArray<float4> in_color = params.readonly_single_input<float4>(0, "In Color");
-    const VArray<float> general_contrast_in = params.readonly_single_input<float>(1, "Bright");
-    const VArray<float> toe_contrast_in = params.readonly_single_input<float>(2, "Contrast");
-    MutableSpan<float4> out_color = params.uninitialized_single_output<float4>(3, "Out Color");
-
-    mask.foreach_index([&](const int64_t i) {
-      float4 col = in_color[i];
-      out_color[i] = col;
-    });
-  }
-};
-
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  builder.construct_and_set_matching_fn<brightness_and_contrast_Function>(builder.node());
+  return float4(color.xyz() * multiplier + offset, color.w);
 }
 
+static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
+{
+  static auto function = mf::build::SI3_SO<float4, float, float, float4>(
+      "Bright And Contrast",
+      [](const float4 &color, const float brightness, const float contrast) -> float4 {
+        return brightness_and_contrast(color, brightness, contrast);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
+  builder.set_matching_fn(function);
+}
 
 }  // namespace blender::nodes::node_composite_brightness_cc
 
@@ -89,7 +88,7 @@ static void register_node_type_cmp_brightcontrast()
 
   static blender::bke::bNodeType ntype;
 
-  cmp_node_type_base(&ntype, "CompositorNodeBrightContrast", CMP_NODE_BRIGHTCONTRAST);
+  cmp_node_type_base(&ntype, "CompositorNodeBrightContrast");
   ntype.ui_name = "Brightness/Contrast";
   ntype.ui_description = "Adjust brightness and contrast";
   ntype.enum_name_legacy = "BRIGHTCONTRAST";

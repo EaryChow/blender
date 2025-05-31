@@ -327,11 +327,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AGXPrimaries p_display_primaries;
   bool p_use_inverse_inset_in;
 
-  explicit AgXViewTransformFunction(const bNode &node) {
-    p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
-    p_working_log = static_cast<AGXWorkingLog>(node.custom3);
-    p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
-    p_use_inverse_inset_in = node.custom1;
+  AgXViewTransformFunction() {
+
     
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -359,7 +356,12 @@ class AgXViewTransformFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override {
+  void call(const IndexMask &mask, mf::Params params, mf::Context context) const override {
+    const bNode &node = context.node();
+    const AGXPrimaries p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
+    const AGXWorkingLog p_working_log = static_cast<AGXWorkingLog>(node.custom3);
+    const AGXPrimaries p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
+    const bool p_use_inverse_inset_in = node.custom1;
     const VArray<float4> in_color = params.readonly_single_input<float4>(0, "Color");
     const VArray<float> general_contrast_in = params.readonly_single_input<float>(1, "General Contrast");
     const VArray<float> toe_contrast_in = params.readonly_single_input<float>(2, "Toe Contrast");
@@ -436,10 +438,10 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       float3x3 outsetmat;
       if (p_use_inverse_inset_in) {
         Chromaticities outset_chromaticities = InsetPrimaries(
-            COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-            attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings
-            hue_flights_in[i].x, hue_flights_in[i].y, hue_flights_in[i].z,         // Uses attenuation settings
-            tinting_hue_in[i] + 180, tinting_scale_in[i]);
+          COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
+          attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, /* Uses attenuation settings */
+          hue_flights_in[i].x, hue_flights_in[i].y, hue_flights_in[i].z,         /* Uses attenuation settings */
+          tinting_hue_in[i] + 180, tinting_scale_in[i]);
         outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
       }
       else {
@@ -487,8 +489,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
 // Multi-function Builder
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  const static AgXViewTransformFunction function{builder.node()};
-  builder.set_matching_fn(function);
+  builder.construct_and_set_matching_fn<AgXViewTransformFunction>();
 }
 
 // Registration Function

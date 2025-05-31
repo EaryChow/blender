@@ -322,46 +322,34 @@ static void node_update(bNodeTree *ntree, bNode *node)
 // Multi-function Builder
 class AgXViewTransformFunction : public mf::MultiFunction {
  public:
-  AGXPrimaries p_working_primaries;
-  AGXWorkingLog p_working_log;
-  AGXPrimaries p_display_primaries;
-  bool p_use_inverse_inset_in;
-
-  AgXViewTransformFunction() {
-
-    
-    static const mf::Signature signature = []() {
-      mf::Signature signature;
-      mf::SignatureBuilder builder("AgXViewTransform", signature);
-      // Socket Inputs:
-      builder.single_input<float4>("Color");                            // Index 0
-      builder.single_input<float>("General Contrast");                  // Index 1
-      builder.single_input<float>("Toe Contrast");                      // Index 2
-      builder.single_input<float>("Shoulder Contrast");                 // Index 3
-      builder.single_input<float>("Contrast Pivot Offset");             // Index 4
-      builder.single_input<float>("Log2 Minimum Exposure");             // Index 5
-      builder.single_input<float>("Log2 Maximum Exposure");             // Index 6
-      builder.single_input<float3>("Hue Flights");                      // Index 7
-      builder.single_input<float3>("Attenuation Rates");                // Index 8
-      builder.single_input<float3>("Reverse Hue Flights");              // Index 9
-      builder.single_input<float3>("Restore Purity");                   // Index 10
-      builder.single_input<float>("Per-Channel Hue Flight");            // Index 11
-      builder.single_input<float>("Tinting Scale");                     // Index 12
-      builder.single_input<float>("Tinting Hue");                       // Index 13
-      builder.single_input<bool>("Compensate for the Negatives");       // Index 14
-      // Output:
-      builder.single_output<float4>("Color");                           // Index 15
-      return signature;
-    }();
-    this->set_signature(&signature);
+  AgXViewTransformFunction(const bNode &node)
+      : mf::MultiFunction(mf::Signature::create(
+            {
+                "Color",
+                "General Contrast",
+                "Toe Contrast",
+                "Shoulder Contrast",
+                "Contrast Pivot Offset",
+                "Log2 Minimum Exposure",
+                "Log2 Maximum Exposure",
+                "Hue Flights",
+                "Attenuation Rates",
+                "Reverse Hue Flights",
+                "Restore Purity",
+                "Per-Channel Hue Flight",
+                "Tinting Scale",
+                "Tinting Hue",
+                "Compensate for the Negatives",
+            },
+            {"Color"})),
+        p_working_primaries(static_cast<AGXPrimaries>(node.custom2)),
+        p_working_log(static_cast<AGXWorkingLog>(node.custom3)),
+        p_display_primaries(static_cast<AGXPrimaries>(node.custom4)),
+        p_use_inverse_inset_in(node.custom1)
+  {
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context context) const override {
-    const bNode &node = context.node();
-    const AGXPrimaries p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
-    const AGXWorkingLog p_working_log = static_cast<AGXWorkingLog>(node.custom3);
-    const AGXPrimaries p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
-    const bool p_use_inverse_inset_in = node.custom1;
     const VArray<float4> in_color = params.readonly_single_input<float4>(0, "Color");
     const VArray<float> general_contrast_in = params.readonly_single_input<float>(1, "General Contrast");
     const VArray<float> toe_contrast_in = params.readonly_single_input<float>(2, "Toe Contrast");
@@ -488,9 +476,16 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 };
 
 // Multi-function Builder
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  builder.construct_and_set_matching_fn<AgXViewTransformFunction>();
+static void node_build_multi_function(bNodeBuilder &builder)
+{
+  builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
 }
+
+ private:
+  const AGXPrimaries p_working_primaries;
+  const AGXWorkingLog p_working_log;
+  const AGXPrimaries p_display_primaries;
+  const bool p_use_inverse_inset_in;
 
 // Registration Function
 static void node_register()

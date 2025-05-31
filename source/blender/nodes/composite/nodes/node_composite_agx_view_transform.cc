@@ -487,7 +487,8 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
 // Multi-function Builder
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
-  builder.construct_and_set_matching_fn<AgXViewTransformFunction>(builder.node());
+  const static AgXViewTransformFunction function{builder.node()};
+  builder.set_matching_fn(function);
 }
 
 // Registration Function

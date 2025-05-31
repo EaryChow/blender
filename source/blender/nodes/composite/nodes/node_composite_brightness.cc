@@ -76,7 +76,6 @@ class brightness_and_contrast_Function : public mf::MultiFunction {
   }
 };
 
-// Multi-function Builder
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder) {
   builder.construct_and_set_matching_fn<brightness_and_contrast_Function>(builder.node());
 }

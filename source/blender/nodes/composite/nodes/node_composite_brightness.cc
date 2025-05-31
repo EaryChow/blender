@@ -36,6 +36,39 @@ static void cmp_node_brightcontrast_declare(NodeDeclarationBuilder &b)
 
 using namespace blender::compositor;
 
+static int node_gpu_material(GPUMaterial *material,
+                             bNode *node,
+                             bNodeExecData * /*execdata*/,
+                             GPUNodeStack *inputs,
+                             GPUNodeStack *outputs)
+{
+  return GPU_stack_link(material, node, "node_composite_bright_contrast", inputs, outputs);
+}
+
+/* The algorithm is by Werner D. Streidt, extracted of OpenCV `demhist.c`:
+ *   http://visca.com/ffactory/archives/5-99/msg00021.html */
+static float4 brightness_and_contrast(const float4 &color,
+                                      const float brightness,
+                                      const float contrast)
+{
+  float scaled_brightness = brightness / 100.0f;
+  float delta = contrast / 200.0f;
+
+  float multiplier, offset;
+  if (contrast > 0.0f) {
+    multiplier = 1.0f - delta * 2.0f;
+    multiplier = 1.0f / math::max(multiplier, std::numeric_limits<float>::epsilon());
+    offset = multiplier * (scaled_brightness - delta);
+  }
+  else {
+    delta *= -1.0f;
+    multiplier = math::max(1.0f - delta * 2.0f, 0.0f);
+    offset = multiplier * scaled_brightness + delta;
+  }
+
+  return float4(color.xyz() * multiplier + offset, color.w);
+}
+
 }  // namespace blender::nodes::node_composite_brightness_cc
 
 static void register_node_type_cmp_brightcontrast()
@@ -50,6 +83,7 @@ static void register_node_type_cmp_brightcontrast()
   ntype.enum_name_legacy = "BRIGHTCONTRAST";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = file_ns::cmp_node_brightcontrast_declare;
+  ntype.gpu_fn = file_ns::node_gpu_material;
 
   blender::bke::node_register_type(ntype);
 }

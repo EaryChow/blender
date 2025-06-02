@@ -3,7 +3,7 @@ name: Windows Build
 on:
   push:
     branches:
-      - brightness_style_multifunction
+      - colorcorrection_style_multifunction
   workflow_dispatch:
 
 jobs:

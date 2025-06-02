@@ -28,6 +28,8 @@
 
 
 // Namespace Declaration
+using namespace blender::compositor;
+
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 // define enums
@@ -288,8 +290,6 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
 }
 
-using namespace blender::compositor;
-
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   // Get the value of the boolean property
@@ -447,47 +447,45 @@ static float4 agx_image_formation(float4 color,
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  static auto function = SI19_SO<float4,
-                                           float,
-                                           float,
-                                           float,
-                                           float,
-                                           float,
-                                           float,
-                                           float3,
-                                           float3,
-                                           float3,
-                                           float3,
-                                           float,
-                                           float,
-                                           float,
-                                           bool,
-                                           int,
-                                           int,
-                                           int,
-                                           bool,
-                                           float4>(
-
-      "AgX View Transform",
-      [](float4 color,
-        float general_contrast_in,
-        float toe_contrast_in,
-        float shoulder_contrast_in,
-        float pivot_offset_in,                     
-        float log2_min_in,
-        float log2_max_in,
-        float3 hue_flights_in,
-        float3 attenuation_rates_in,
-        float3 reverse_hue_flights_in,
-        float3 restore_purity_in,
-        float per_channel_hue_flight_in,
-        float tinting_scale_in,
-        float tinting_hue_in,
-        bool compensate_negatives_in,
-        int p_working_primaries,
-        int p_working_log,
-        int p_display_primaries,
-        bool p_use_inverse_inset) -> float4 {
+  static auto function = mf::build::SI19_SO<float4,
+                                  float,
+                                  float,
+                                  float,
+                                  float,
+                                  float,
+                                  float,
+                                  float3,
+                                  float3,
+                                  float3,
+                                  float3,
+                                  float,
+                                  float,
+                                  float,
+                                  bool,
+                                  int,
+                                  int,
+                                  int,
+                                  bool>(
+        "AgX View Transform",
+      [](const float4 &color,
+        const float general_contrast_in,
+        const float toe_contrast_in,
+        const float shoulder_contrast_in,
+        const float pivot_offset_in,                     
+        const float log2_min_in,
+        const float log2_max_in,
+        const float3 &hue_flights_in,
+        const float3 &attenuation_rates_in,
+        const float3 &reverse_hue_flights_in,
+        const float3 &restore_purity_in,
+        const float per_channel_hue_flight_in,
+        const float tinting_scale_in,
+        const float tinting_hue_in,
+        const bool compensate_negatives_in,
+        const int p_working_primaries,
+        const int p_working_log,
+        const int p_display_primaries,
+        const bool p_use_inverse_inset) -> float4 {
         return agx_image_formation(color,
           general_contrast_in,
           toe_contrast_in,
@@ -509,7 +507,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
           p_use_inverse_inset
         );
       },
-      exec_presets::SomeSpanOrSingle<0>());
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
   builder.set_matching_fn(function);
 }
 

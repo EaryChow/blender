@@ -447,7 +447,7 @@ static float4 agx_image_formation(float4 color,
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  static auto function = blender::fn::multi_function::build::SI19_SO<float4,
+  static auto function = SI19_SO<float4,
                                            float,
                                            float,
                                            float,
@@ -509,7 +509,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
           p_use_inverse_inset
         );
       },
-      blender::fn::multi_function::build::exec_presets::SomeSpanOrSingle<0>());
+      exec_presets::SomeSpanOrSingle<0>());
   builder.set_matching_fn(function);
 }
 

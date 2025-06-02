@@ -288,6 +288,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
 }
 
+using namespace blender::compositor;
+
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   // Get the value of the boolean property
@@ -445,7 +447,7 @@ static float4 agx_image_formation(float4 color,
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  static auto function = mf::build::SI19_SO<float4,
+  static auto function = blender::fn::multi_function::build::SI19_SO<float4,
                                            float,
                                            float,
                                            float,
@@ -507,7 +509,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
           p_use_inverse_inset
         );
       },
-      mf::build::exec_presets::SomeSpanOrSingle<0>());
+      blender::fn::multi_function::build::exec_presets::SomeSpanOrSingle<0>());
   builder.set_matching_fn(function);
 }
 

@@ -445,7 +445,7 @@ static float4 agx_image_formation(float4 color,
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  static auto function = mf::build::SI3_SO<float4,
+  static auto function = mf::build::SI19_SO<float4,
                                            float,
                                            float,
                                            float,
@@ -463,7 +463,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                            int,
                                            int,
                                            int,
-                                           bool>(
+                                           bool,
+                                           float4>(
 
       "AgX View Transform",
       [](float4 color,

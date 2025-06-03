@@ -23,6 +23,152 @@ jobs:
           fetch-depth: 0
           lfs: false
 
+      - name: Check projects.blender.org connectivity and Git access
+        shell: powershell
+        run: |
+          Write-Host "--- Starting network and Git checks for projects.blender.org ---"
+          $ErrorEncountered = $false
+          $ErrorEncounteredDuringGit = $false # Initialize this flag
+
+          Write-Host "`n[Diagnostic] 1. Testing DNS resolution for projects.blender.org"
+          try {
+            $dnsResult = Resolve-DnsName -Name projects.blender.org -ErrorAction Stop
+            Write-Host "DNS resolution for projects.blender.org: SUCCESS"
+            Write-Host "IP Addresses: $($dnsResult.IPAddress -join ', ')"
+          } catch {
+            Write-Host "DNS resolution for projects.blender.org: FAILED"
+            Write-Error "Failed to resolve projects.blender.org: $($_.Exception.Message)"
+            $ErrorEncountered = $true
+          }
+
+          Write-Host "`n[Diagnostic] 2. Testing TCP connection to projects.blender.org:443"
+          if (-not $ErrorEncountered) {
+            try {
+              # REMOVED -ConnectTimeoutSeconds as it's not available in older PowerShell
+              $tcpResult = Test-NetConnection -ComputerName projects.blender.org -Port 443 -InformationLevel Detailed -ErrorAction Stop -WarningAction SilentlyContinue
+              if ($tcpResult.TcpTestSucceeded) {
+                Write-Host "TCP connection to projects.blender.org:443: SUCCESS"
+              } else {
+                Write-Host "TCP connection to projects.blender.org:443: FAILED (TcpTestSucceeded was $($tcpResult.TcpTestSucceeded))"
+                Write-Error "TCP connection test to projects.blender.org:443 did not report success. PingSucceeded: $($tcpResult.PingSucceeded), PingReplyDetails: $($tcpResult.PingReplyDetails.StatusCode)"
+                $ErrorEncountered = $true
+              }
+            } catch {
+              Write-Host "TCP connection to projects.blender.org:443: FAILED (Exception)"
+              Write-Error "Failed to connect to projects.blender.org on port 443: $($_.Exception.Message)"
+              $ErrorEncountered = $true
+            }
+          } else {
+            Write-Host "[Diagnostic] Skipping TCP connection test due to previous DNS failure."
+          }
+
+          Write-Host "`n[Diagnostic] 3. Testing anonymous Git access to a public repository on projects.blender.org"
+          if (-not $ErrorEncountered) {
+            $TestGitRepoUrl = "https://projects.blender.org/blender/blender.git" # Main Blender Gitea mirror
+            Write-Host "Attempting 'git ls-remote ${TestGitRepoUrl} HEAD'"
+            
+            $TempGitTestDir = Join-Path $env:RUNNER_TEMP "gittest_projects_blender_org"
+            if (Test-Path $TempGitTestDir) {
+              Remove-Item $TempGitTestDir -Recurse -Force | Out-Null
+            }
+            New-Item -ItemType Directory -Path $TempGitTestDir -Force | Out-Null
+            
+            Push-Location $TempGitTestDir
+            try {
+              Write-Host "[Sub-Test 3a] Standard 'git ls-remote ${TestGitRepoUrl} HEAD'"
+              $GitOutput = git ls-remote $TestGitRepoUrl HEAD 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Standard Git ls-remote to ${TestGitRepoUrl}: SUCCESS"
+              } else {
+                Write-Host "Standard Git ls-remote to ${TestGitRepoUrl}: FAILED (Exit code: $LASTEXITCODE)"
+                Write-Warning "git ls-remote $TestGitRepoUrl failed. Output: $GitOutput"
+                $ErrorEncounteredDuringGit = $true 
+              }
+              
+              Write-Host "[Sub-Test 3b] 'git ls-remote' with explicit credential helper reset: git -c credential.helper= ls-remote ${TestGitRepoUrl} HEAD"
+              $GitOutputOverride = git -c credential.helper= ls-remote $TestGitRepoUrl HEAD 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Git ls-remote (with credential.helper=) to ${TestGitRepoUrl}: SUCCESS"
+                if ($ErrorEncounteredDuringGit) {
+                  Write-Host "This success (after prior failure) strongly suggests a configured credential helper is causing issues for normal git operations to this host."
+                }
+              } else {
+                Write-Host "Git ls-remote (with credential.helper=) to ${TestGitRepoUrl}: FAILED (Exit code: $LASTEXITCODE)"
+                Write-Error "git -c credential.helper= ls-remote $TestGitRepoUrl failed. Output: $GitOutputOverride"
+                $ErrorEncountered = $true 
+              }
+
+              if ($ErrorEncounteredDuringGit) {
+                  $ErrorEncountered = $true
+              }
+
+            } catch { 
+              Write-Host "PowerShell error during Git ls-remote test."
+              Write-Error "Exception during git ls-remote test for ${TestGitRepoUrl}: $($_.Exception.Message)"
+              $ErrorEncountered = $true
+            } finally {
+              Pop-Location
+              if (Test-Path $TempGitTestDir) {
+                Remove-Item $TempGitTestDir -Recurse -Force | Out-Null
+              }
+            }
+          } else {
+            Write-Host "[Diagnostic] Skipping Git access test due to previous network failures."
+          }
+          
+          Write-Host "`n[Diagnostic] 4. Dumping Git configuration and relevant environment variables"
+          try {
+            Write-Host "--- Global Git Config ---"
+            git config --global --list --show-origin
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Could not list global git config (or it's empty/not found). Exit code: $LASTEXITCODE" }
+
+            Write-Host "--- System Git Config ---"
+            git config --system --list --show-origin
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Could not list system git config (or it's empty/not found). Exit code: $LASTEXITCODE" }
+            
+            Write-Host "--- Local Git Config (if any in ${{ github.workspace }}) ---"
+            git -C "${{ github.workspace }}" config --local --list --show-origin
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Could not list local git config in ${{ github.workspace }} (or it's empty/not found/not a git repo). Exit code: $LASTEXITCODE" }
+            
+            Write-Host "--- All Git Config (effective) ---"
+            git config --list --show-origin --show-scope
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Could not list all effective git config. Exit code: $LASTEXITCODE" }
+            
+            Write-Host "`n--- GIT_ASKPASS environment variable ---"
+            if (Test-Path Env:GIT_ASKPASS) {
+              Write-Host "GIT_ASKPASS is set to: $env:GIT_ASKPASS"
+            } else {
+              Write-Host "GIT_ASKPASS is not set."
+            }
+            Write-Host "--- GIT_TERMINAL_PROMPT environment variable ---"
+            if (Test-Path Env:GIT_TERMINAL_PROMPT) {
+              Write-Host "GIT_TERMINAL_PROMPT is set to: $env:GIT_TERMINAL_PROMPT"
+            } else {
+              Write-Host "GIT_TERMINAL_PROMPT is not set (or inherits default behavior)."
+            }
+            Write-Host "--- GCM_INTERACTIVE environment variable ---"
+            if (Test-Path Env:GCM_INTERACTIVE) {
+              Write-Host "GCM_INTERACTIVE is set to: $env:GCM_INTERACTIVE"
+            } else {
+              Write-Host "GCM_INTERACTIVE is not set."
+            }
+          } catch {
+            Write-Warning "PowerShell error while trying to dump Git configuration parts: $($_.Exception.Message)"
+          }
+
+          Write-Host "`n--- Network and Git checks complete ---"
+          if ($ErrorEncountered) {
+            Write-Host "RESULT: One or more diagnostic checks FAILED or encountered issues. This indicates potential problems with network connectivity to projects.blender.org, its server configuration, or the Git client configuration on the runner."
+            Write-Host "Review the FAILED steps, WARNINGS, and Git configuration above. The most common cause for your original error (if network is OK) is a misconfigured Git credential helper or GIT_ASKPASS script."
+            exit 1 
+          } else {
+            Write-Host "RESULT: All basic diagnostic checks PASSED (or encountered non-critical issues like missing optional config files)."
+            Write-Host "If the 'Fetch precompiled libraries' step still fails with Git authentication errors, consider these possibilities:"
+            Write-Host "1. The specific repository URL used by 'make_update.py' on 'projects.blender.org' might be different from the test URL, and could be private or require specific authentication."
+            Write-Host "2. 'make_update.py' (or Python's subprocess handling) might be invoking Git in a way that triggers problematic credential helpers not caught by the 'credential.helper=' override (e.g., through specific environment variables it sets)."
+            Write-Host "3. There could be an intermittent issue not caught by this single diagnostic run."
+          }
+
       - name: Fetch Gitea LFS objects
         shell: bash
         run: |

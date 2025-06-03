@@ -469,7 +469,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const int p_working_log,
          const int p_display_primaries,
          const bool p_use_inverse_inset) -> float4 {
-        return agx_view_transform(
+        return agx_image_formation(
             color,
             general_contrast_in,
             toe_contrast_in,

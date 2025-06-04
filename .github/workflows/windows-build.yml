@@ -3,7 +3,7 @@ name: Windows Build
 on:
   push:
     branches:
-      - colorcorrection_style_multifunction
+      - try_debug_build
   workflow_dispatch:
 
 jobs:
@@ -11,11 +11,12 @@ jobs:
     runs-on: windows-latest
     env:
       BLENDER_VERSION: "4.5.0-alpha"
-      BUILD_TYPE: "Release"
+      BUILD_TYPE: "Debug"   # ← changed from "Release" to "Debug"
 
     steps:
       - name: Install Git LFS
         run: git lfs install --skip-repo
+
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -44,7 +45,6 @@ jobs:
           Write-Host "`n[Diagnostic] 2. Testing TCP connection to projects.blender.org:443"
           if (-not $ErrorEncountered) {
             try {
-              # REMOVED -ConnectTimeoutSeconds as it's not available in older PowerShell
               $tcpResult = Test-NetConnection -ComputerName projects.blender.org -Port 443 -InformationLevel Detailed -ErrorAction Stop -WarningAction SilentlyContinue
               if ($tcpResult.TcpTestSucceeded) {
                 Write-Host "TCP connection to projects.blender.org:443: SUCCESS"
@@ -64,7 +64,7 @@ jobs:
 
           Write-Host "`n[Diagnostic] 3. Testing anonymous Git access to a public repository on projects.blender.org"
           if (-not $ErrorEncountered) {
-            $TestGitRepoUrl = "https://projects.blender.org/blender/blender.git" # Main Blender Gitea mirror
+            $TestGitRepoUrl = "https://projects.blender.org/blender/blender.git"
             Write-Host "Attempting 'git ls-remote ${TestGitRepoUrl} HEAD'"
             
             $TempGitTestDir = Join-Path $env:RUNNER_TEMP "gittest_projects_blender_org"
@@ -168,72 +168,17 @@ jobs:
             Write-Host "2. 'make_update.py' (or Python's subprocess handling) might be invoking Git in a way that triggers problematic credential helpers not caught by the 'credential.helper=' override (e.g., through specific environment variables it sets)."
             Write-Host "3. There could be an intermittent issue not caught by this single diagnostic run."
           }
-    
-      - name: Install Git LFS
-        run: git lfs install --skip-repo
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-          fetch-depth: 0
-          lfs: false
 
       - name: Fetch Gitea LFS objects
         shell: bash
         run: |
-          set -e
-          handle_lfs_pull_with_fatal_detection() {
-            local context_name="$1"
-            shift # Remove context_name, remaining args are the command
-
-            echo "--- Starting LFS pull for: ${context_name} ---"
-            coproc LFS_PULL_COPROC { GIT_TERMINAL_PROMPT=0 "$@"; }
-
-            local fatal_detected=0
-            while IFS= read -r line <&"${LFS_PULL_COPROC[0]}"; do
-              echo "$line" # Print the line to the job log
-              if [[ "$line" == *"fatal:"* ]]; then
-                echo "::error::Fatal error detected during LFS pull for ${context_name}!"
-                echo "::error::Offending line: $line"
-                echo ">>> Killing LFS pull process (PID: ${LFS_PULL_COPROC_PID}) for ${context_name}..."
-                # Kill the LFS pull coprocess. Suppress errors from kill itself.
-                kill "${LFS_PULL_COPROC_PID}" 2>/dev/null || true
-                fatal_detected=1
-                break # Exit the read loop
-              fi
-            done
-
-            wait "${LFS_PULL_COPROC_PID}" || true
-            local lfs_pull_exit_code=$? # Capture the actual exit code if it wasn't killed.
-
-            if [[ "$fatal_detected" -eq 1 ]]; then
-              echo ">>> LFS pull for ${context_name} was terminated due to 'fatal:' detection. Forcing step failure."
-              exit 1 # Explicitly fail the script step.
-            fi
-
-            if [[ "$lfs_pull_exit_code" -ne 0 ]]; then
-              echo "::error::LFS pull for ${context_name} failed with exit code ${lfs_pull_exit_code} (no 'fatal:' string detected in output)."
-              exit "$lfs_pull_exit_code" # Fail with the LFS process's exit code.
-            fi
-
-            echo "--- LFS pull for ${context_name} completed successfully. ---"
-          }
-
-          echo "=== Processing LFS for main repository ==="
           git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
-          handle_lfs_pull_with_fatal_detection "ROOT repository" git lfs pull
+          git lfs pull
+          git submodule foreach --recursive " \
+            git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs; \
+            git lfs pull \
+          "
 
-          echo
-          echo "=== Processing LFS for submodules ==="
-          export -f handle_lfs_pull_with_fatal_detection
-          
-          git submodule foreach --recursive '
-            set -e
-            echo "--- Submodule: $name (Path: $path) ---"
-            git config lfs.url https://projects.blender.org/blender/blender.git/info/lfs
-            bash -c "handle_lfs_pull_with_fatal_detection \"Submodule: $path\" git lfs pull"
-          '
-          echo "--- All LFS operations completed. ---"
       - name: Verify datafiles
         shell: pwsh
         run: |
@@ -260,14 +205,15 @@ jobs:
             -G "Visual Studio 17 2022" \
             -A x64 \
             -DCMAKE_INSTALL_PREFIX=../install \
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -D WITH_INSTALL_PORTABLE=ON
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build and Install
         shell: bash
         run: |
           cd build_windows
           cmake --build . --config ${{ env.BUILD_TYPE }} --target install --parallel
+          #                                                   ^^^^^^^^
+          # This picks up “Debug” instead of “Release”
 
       - name: Verify installation
         shell: pwsh
@@ -280,5 +226,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: blender-windows-${{ env.BLENDER_VERSION }}
+          name: blender-windows-${{ env.BLENDER_VERSION }}-debug
           path: install

@@ -463,7 +463,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
   builder.construct_and_set_matching_fn_cb([=]() {
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
-      [](const float4 &color,
+      [=](const float4 &color,
          const float general_contrast_in,
          const float toe_contrast_in,
          const float shoulder_contrast_in,

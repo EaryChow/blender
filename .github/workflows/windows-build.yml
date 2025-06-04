@@ -11,8 +11,8 @@ jobs:
     runs-on: windows-latest
     env:
       BLENDER_VERSION: "4.5.0-alpha"
-      BUILD_TYPE: "Debug"   # ← changed from "Release" to "Debug"
-
+      BUILD_TYPE: "RelWithDebInfo"
+      
     steps:
       - name: Install Git LFS
         run: git lfs install --skip-repo

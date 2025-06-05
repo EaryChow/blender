@@ -461,10 +461,6 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   builder.construct_and_set_matching_fn_cb([&]() {
-    const int p_working_primaries = builder.node().custom2;
-    const int p_working_log = builder.node().custom3;
-    const int p_display_primaries = builder.node().custom4;
-    const bool p_use_inverse_inset = builder.node().custom1;
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
       [=](const float4 &color,
@@ -482,10 +478,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float tinting_scale_in,
          const float tinting_hue_in,
          const bool compensate_negatives_in,
-         const int p_working_primaries,
-         const int p_working_log,
-         const int p_display_primaries,
-         const bool p_use_inverse_inset
+         const int p_working_primaries = builder.node().custom2,
+         const int p_working_log = builder.node().custom3,
+         const int p_display_primaries = builder.node().custom4,
+         const bool p_use_inverse_inset = builder.node().custom1
          ) -> float4 {
         return agx_image_formation(
             color,

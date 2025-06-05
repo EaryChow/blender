@@ -340,13 +340,13 @@ class AgXViewTransformFunction : public mf::MultiFunction {
   AGXPrimaries p_working_primaries;
   AGXWorkingLog p_working_log;
   AGXPrimaries p_display_primaries;
-  bool p_use_inverse_inset_in;
+  bool p_use_inverse_inset;
 
   explicit AgXViewTransformFunction(const bNode &node) {
     p_working_primaries = static_cast<AGXPrimaries>(node.custom2);
     p_working_log = static_cast<AGXWorkingLog>(node.custom3);
     p_display_primaries = static_cast<AGXPrimaries>(node.custom4);
-    p_use_inverse_inset_in = node.custom1;
+    p_use_inverse_inset = node.custom1;
     
     static const mf::Signature signature = []() {
       mf::Signature sig;
@@ -428,10 +428,20 @@ class AgXViewTransformFunction : public mf::MultiFunction {
       rgb_to_hsv_v(rgb, pre_curve_hsv);
 
       // encode to working log
-      rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]);
+      if (p_working_log == AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2) {
+        rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]);
+      }
+      else {
+        rgb = lin2log(rgb, static_cast<int>(p_working_log));
+      }
 
       // apply sigmoid, the image is formed at this point
-      float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]).x;
+      if (p_working_log == AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2) {
+        float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in[i], log2_max_in[i]).x;
+      }
+      else {
+        float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log)).x;
+      }
       float image_native_power = 2.4f;
       float midgray = pow(0.18f, 1.0f / image_native_power);
       rgb.x = sigmoid(rgb.x, shoulder_contrast_in[i], toe_contrast_in[i], general_contrast_in[i], log_midgray + pivot_offset_in[i], midgray);
@@ -449,7 +459,7 @@ class AgXViewTransformFunction : public mf::MultiFunction {
 
       // generate outset matrix
       float3x3 outsetmat;
-      if (p_use_inverse_inset_in) {
+      if (p_use_inverse_inset) {
         Chromaticities outset_chromaticities = InsetPrimaries(
             COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
             attenuation_rates_in[i].x, attenuation_rates_in[i].y, attenuation_rates_in[i].z, // Uses attenuation settings

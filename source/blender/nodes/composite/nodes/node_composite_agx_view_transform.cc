@@ -473,16 +473,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float toe_contrast_in,
          const float shoulder_contrast_in,
          const float pivot_offset_in,
-         if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
-           const float log2_min_in,
-           const float log2_max_in,
-         }
+         const float log2_min_in,
+         const float log2_max_in,
          const float3 hue_flights_in,
          const float3 attenuation_rates_in,
-         if (!p_use_inverse_inset) {
-           const float3 reverse_hue_flights_in,
-           const float3 restore_purity_in,
-         }
+         const float3 reverse_hue_flights_in,
+         const float3 restore_purity_in,
          const float per_channel_hue_flight_in,
          const float tinting_scale_in,
          const float tinting_hue_in,
@@ -497,24 +493,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             toe_contrast_in,
             shoulder_contrast_in,
             pivot_offset_in,
-            if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
-              log2_min_in,
-              log2_max_in,
-            }
-            else {
-              -10f,
-              6.5f,
-            }
+            (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
+            (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
             hue_flights_in,
             attenuation_rates_in,
-            if (!p_use_inverse_inset) {
-              reverse_hue_flights_in,
-              restore_purity_in,
-            }
-            else {
-              make_float3(0, 0, 0),
-              make_float3(0, 0, 0),
-            }
+            (!p_use_inverse_inset) ? reverse_hue_flights_in : make_float3(0, 0, 0),
+            (!p_use_inverse_inset) ? restore_purity_in : make_float3(0, 0, 0),
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,
@@ -530,16 +514,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
-                   if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
-                     float,
-                     float,
-                   }
+                   float,
+                   float,
                    float3,
                    float3,
-                   if (!p_use_inverse_inset) {
-                     float3,
-                     float3,
-                   }
+                   float3,
+                   float3,
                    float,
                    float,
                    float,

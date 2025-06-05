@@ -530,12 +530,16 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
-                   float,
-                   float,
+                   if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
+                     float,
+                     float,
+                   }
                    float3,
                    float3,
-                   float3,
-                   float3,
+                   if (!p_use_inverse_inset) {
+                     float3,
+                     float3,
+                   }
                    float,
                    float,
                    float,

@@ -460,12 +460,9 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder, bNode *node)
 {
-  const int p_working_primaries = node->custom2;
-  const int p_working_log = node->custom3;
-  const int p_display_primaries = node->custom4;
-  const bool p_use_inverse_inset = node->custom1;
+
   
-  builder.construct_and_set_matching_fn_cb([=]() {
+  builder.construct_and_set_matching_fn_cb([&, node]() {
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
       [=](const float4 &color,
@@ -483,10 +480,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float tinting_scale_in,
          const float tinting_hue_in,
          const bool compensate_negatives_in,
-         const int p_working_primaries,
-         const int p_working_log,
-         const int p_display_primaries,
-         const bool p_use_inverse_inset) -> float4 {
+         ) -> float4 {
         return agx_image_formation(
             color,
             general_contrast_in,
@@ -497,16 +491,16 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
             hue_flights_in,
             attenuation_rates_in,
-            (!p_use_inverse_inset) ? reverse_hue_flights_in : make_float3(0, 0, 0),
-            (!p_use_inverse_inset) ? restore_purity_in : make_float3(0, 0, 0),
+            (node->custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
+            (node->custom1) ? make_float3(0, 0, 0) : restore_purity_in,
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,
             compensate_negatives_in,
-            p_working_primaries,
-            p_working_log,
-            p_display_primaries,
-            p_use_inverse_inset);
+            node->custom2,
+            node->custom3,
+            node->custom4,
+            node->custom1);
       },
       mf::build::exec_presets::SomeSpanOrSingle<0>(),
       TypeSequence<float4,
@@ -524,10 +518,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    bool,
-                   int,
-                   int,
-                   int,
-                   bool>());
+);
     });
 }
 

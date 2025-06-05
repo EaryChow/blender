@@ -461,6 +461,10 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   builder.construct_and_set_matching_fn_cb([&]() {
+    const int p_working_primaries = builder.node().custom2;
+    const int p_working_log = builder.node().custom3;
+    const int p_display_primaries = builder.node().custom4;
+    const bool p_use_inverse_inset = builder.node().custom1;
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
       [=](const float4 &color,
@@ -477,7 +481,11 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float per_channel_hue_flight_in,
          const float tinting_scale_in,
          const float tinting_hue_in,
-         const bool compensate_negatives_in
+         const bool compensate_negatives_in,
+         const int p_working_primaries,
+         const int p_working_log,
+         const int p_display_primaries,
+         const bool p_use_inverse_inset
          ) -> float4 {
         return agx_image_formation(
             color,
@@ -485,20 +493,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             toe_contrast_in,
             shoulder_contrast_in,
             pivot_offset_in,
-            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
-            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
+            (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
+            (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
             hue_flights_in,
             attenuation_rates_in,
-            (builder.node().custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
-            (builder.node().custom1) ? make_float3(0, 0, 0) : restore_purity_in,
+            (p_use_inverse_inset) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
+            (p_use_inverse_inset) ? make_float3(0, 0, 0) : restore_purity_in,
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,
             compensate_negatives_in,
-            builder.node().custom2,
-            builder.node().custom3,
-            builder.node().custom4,
-            builder.node().custom1);
+            p_working_primaries,
+            p_working_log,
+            p_display_primaries,
+            p_use_inverse_inset);
       },
       mf::build::exec_presets::SomeSpanOrSingle<0>(),
       TypeSequence<float4,
@@ -515,6 +523,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
+                   bool,
+                   int,
+                   int,
+                   int,
                    bool>());
   });
 }

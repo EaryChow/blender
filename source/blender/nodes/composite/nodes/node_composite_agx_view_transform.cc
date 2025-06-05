@@ -458,11 +458,9 @@ static int node_gpu_material(GPUMaterial *material,
 return GPU_stack_link(material, node, "node_composite_agx_view_transform", inputs, outputs);
 }
 
-static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder, bNode *node)
+static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-
-  
-  builder.construct_and_set_matching_fn_cb([&, node]() {
+  builder.construct_and_set_matching_fn_cb([&]() {
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
       [=](const float4 &color,
@@ -487,20 +485,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             toe_contrast_in,
             shoulder_contrast_in,
             pivot_offset_in,
-            (node->custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
-            (node->custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
+            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
+            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
             hue_flights_in,
             attenuation_rates_in,
-            (node->custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
-            (node->custom1) ? make_float3(0, 0, 0) : restore_purity_in,
+            (builder.node().custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
+            (builder.node().custom1) ? make_float3(0, 0, 0) : restore_purity_in,
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,
             compensate_negatives_in,
-            node->custom2,
-            node->custom3,
-            node->custom4,
-            node->custom1);
+            builder.node().custom2,
+            builder.node().custom3,
+            builder.node().custom4,
+            builder.node().custom1);
       },
       mf::build::exec_presets::SomeSpanOrSingle<0>(),
       TypeSequence<float4,

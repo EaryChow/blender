@@ -517,9 +517,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
-                   bool
-);>
-    });
+                   bool>());
+  });
 }
 
 // Registration Function

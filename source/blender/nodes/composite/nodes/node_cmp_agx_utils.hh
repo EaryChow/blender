@@ -38,7 +38,7 @@ static const Chromaticities AP0_PRI = {
 // AP1 white point changed to D65 for simplicity
 static const Chromaticities AP1_PRI = {
     /* r: */ {0.713016f, 0.292962f},
-    /* g: */ {0.713016f, 0.292962f},
+    /* g: */ {0.158021f, 0.835539f},
     /* b: */ {0.129469f, 0.045065f},
     /* w: */ {0.312727f, 0.329023f}
 };

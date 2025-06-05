@@ -458,8 +458,13 @@ static int node_gpu_material(GPUMaterial *material,
 return GPU_stack_link(material, node, "node_composite_agx_view_transform", inputs, outputs);
 }
 
-static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
+static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder, bNode *node)
 {
+  const int p_working_primaries = node->custom2;
+  const int p_working_log = node->custom3;
+  const int p_display_primaries = node->custom4;
+  const bool p_use_inverse_inset = node->custom1;
+  
   builder.construct_and_set_matching_fn_cb([=]() {
     return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
       "AgX View Transform",
@@ -468,12 +473,16 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float toe_contrast_in,
          const float shoulder_contrast_in,
          const float pivot_offset_in,
-         const float log2_min_in,
-         const float log2_max_in,
+         if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
+           const float log2_min_in,
+           const float log2_max_in,
+         }
          const float3 hue_flights_in,
          const float3 attenuation_rates_in,
-         const float3 reverse_hue_flights_in,
-         const float3 restore_purity_in,
+         if (!p_use_inverse_inset) {
+           const float3 reverse_hue_flights_in,
+           const float3 restore_purity_in,
+         }
          const float per_channel_hue_flight_in,
          const float tinting_scale_in,
          const float tinting_hue_in,
@@ -488,12 +497,24 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             toe_contrast_in,
             shoulder_contrast_in,
             pivot_offset_in,
-            log2_min_in,
-            log2_max_in,
+            if (p_working_log == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) {
+              log2_min_in,
+              log2_max_in,
+            }
+            else {
+              -10f,
+              6.5f,
+            }
             hue_flights_in,
             attenuation_rates_in,
-            reverse_hue_flights_in,
-            restore_purity_in,
+            if (!p_use_inverse_inset) {
+              reverse_hue_flights_in,
+              restore_purity_in,
+            }
+            else {
+              make_float3(0, 0, 0),
+              make_float3(0, 0, 0),
+            }
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,

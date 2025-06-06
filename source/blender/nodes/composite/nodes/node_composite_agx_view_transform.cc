@@ -477,11 +477,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float per_channel_hue_flight_in,
          const float tinting_scale_in,
          const float tinting_hue_in,
-         const bool compensate_negatives_in,
-         const int p_working_primaries,
-         const int p_working_log,
-         const int p_display_primaries,
-         const bool p_use_inverse_inset
+         const bool compensate_negatives_in
          ) -> float4 {
         return agx_image_formation(
             color,
@@ -519,10 +515,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
-                   bool,
-                   int,
-                   int,
-                   int,
                    bool>());
   });
 }

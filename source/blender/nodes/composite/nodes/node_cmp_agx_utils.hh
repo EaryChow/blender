@@ -2,6 +2,7 @@
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_matrix.hh"
 
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 

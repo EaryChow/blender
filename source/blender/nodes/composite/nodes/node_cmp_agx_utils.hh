@@ -129,24 +129,6 @@ static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, 
 
 
 
-// Calculate inverse of 3x3 matrix
-static inline float3x3 inv_f33(float3x3 m) {
-  float d = m.col_x.x * (m.col_y.y * m.col_z.z - m.col_z.y * m.col_y.z) -
-            m.col_y.x * (m.col_x.y * m.col_z.z - m.col_z.y * m.col_x.z) +
-            m.col_z.x * (m.col_x.y * m.col_y.z - m.col_y.y * m.col_x.z);
-  float id = 1.0f / d;
-  float3x3 c = identity_mtx;
-  c.col_x.x = id * (m.col_y.y * m.col_z.z - m.col_z.y * m.col_y.z);
-  c.col_x.y = id * (m.col_z.y * m.col_x.z - m.col_x.y * m.col_z.z);
-  c.col_x.z = id * (m.col_x.y * m.col_y.z - m.col_y.y * m.col_x.z);
-  c.col_y.x = id * (m.col_y.z * m.col_z.x - m.col_z.z * m.col_y.x);
-  c.col_y.y = id * (m.col_x.x * m.col_z.z - m.col_z.x * m.col_x.z);
-  c.col_y.z = id * (m.col_z.x * m.col_x.y - m.col_x.x * m.col_y.z);
-  c.col_z.x = id * (m.col_y.x * m.col_z.y - m.col_z.x * m.col_y.y);
-  c.col_z.y = id * (m.col_z.x * m.col_x.y - m.col_x.x * m.col_z.y);
-  c.col_z.z = id * (m.col_x.x * m.col_y.y - m.col_y.x * m.col_x.y);
-  return c;
-}
 
 static inline float3 clampf3(float3 a, float mn, float mx) {
   return float3{
@@ -286,7 +268,7 @@ static inline float3x3 RGBtoXYZ( Chromaticities N) {
   float3 wh = float3(
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
-  wh = inv_f33(M) * wh;
+  wh = blender::math::invert(M) * wh;
   M = float3x3(
     float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
     float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
@@ -296,7 +278,7 @@ static inline float3x3 RGBtoXYZ( Chromaticities N) {
 }
 
 static inline float3x3 XYZtoRGB( Chromaticities N) {
-  float3x3 M = inv_f33(RGBtoXYZ(N));
+  float3x3 M = blender::math::invert(RGBtoXYZ(N));
   return M;
 }
 

@@ -6,6 +6,7 @@
 #include "BLI_math_color.h"
 #include "BLI_math_color.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -406,7 +407,7 @@ static float4 agx_image_formation(float4 color,
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, // Uses attenuation settings
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,         // Uses attenuation settings
         tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
@@ -414,7 +415,7 @@ static float4 agx_image_formation(float4 color,
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
   }
 
   // apply outset matrix

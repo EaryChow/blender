@@ -10,8 +10,6 @@ namespace blender::nodes::node_composite_agx_view_transform_cc {
     ---------------------------
 */
 
-
-
 // A struct holding xy for R, G, B, and White point.
 struct Chromaticities {
   float2 red;
@@ -129,14 +127,7 @@ static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, 
   return E;
 }
 
-// Multiply float3 vector a and 3x3 matrix m
-static inline float3 mult_f3_f33(float3 a, float3x3 m) {
-  return float3(
-    m.col_x.x * a.x + m.col_y.x * a.y + m.col_z.x * a.z,
-    m.col_x.y * a.x + m.col_y.y * a.y + m.col_z.y * a.z,
-    m.col_x.z * a.x + m.col_y.z * a.y + m.col_z.z * a.z
-  );
-}
+
 
 // Calculate inverse of 3x3 matrix
 static inline float3x3 inv_f33(float3x3 m) {
@@ -295,7 +286,7 @@ static inline float3x3 RGBtoXYZ( Chromaticities N) {
   float3 wh = float3(
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
-  wh = mult_f3_f33(wh, inv_f33(M));
+  wh = inv_f33(M) * wh;
   M = float3x3(
     float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
     float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
@@ -319,11 +310,7 @@ static inline float3x3 transpose_f33( float3x3 A) {
 }
 
 static inline float3x3 mult_f33_f33( float3x3 A, float3x3 B) {
-  float3x3 C;
-  C.col_x = mult_f3_f33(B.col_x, A);
-  C.col_y = mult_f3_f33(B.col_y, A);
-  C.col_z = mult_f3_f33(B.col_z, A);
-  return C;
+  return B * A;
 }
 
 static inline float3x3 RGBtoRGB(Chromaticities N,Chromaticities M){
@@ -350,7 +337,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     // Convert RGB to Rec.2020 for luminance calculation
     float3x3 working_to_rec2020 = RGBtoRGB(working_chrom, rec2020);
-    float3 rgb_rec2020 = mult_f3_f33(rgb, working_to_rec2020);
+    float3 rgb_rec2020 = working_to_rec2020 * rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -365,7 +352,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     float max_inv_rgb = fmaxf(inverse_rgb.x, fmaxf(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    float3 inverse_rec2020 = mult_f3_f33(inverse_rgb, working_to_rec2020);
+    float3 inverse_rec2020 = working_to_rec2020 * inverse_rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -386,7 +373,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     float max_offset = fmaxf(rgb_offset.x, fmaxf(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    float3 offset_rec2020 = mult_f3_f33(rgb_offset, working_to_rec2020);
+    float3 offset_rec2020 = working_to_rec2020 * rgb_offset;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
@@ -399,7 +386,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     // Calculate max of the inverse
     float max_inv_offset = fmaxf(inverse_offset.x, fmaxf(inverse_offset.y, inverse_offset.z));
 
-    float3 inverse_offset_rec2020 = mult_f3_f33(inverse_offset, working_to_rec2020);
+    float3 inverse_offset_rec2020 = working_to_rec2020 * inverse_offset;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;

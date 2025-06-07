@@ -353,7 +353,7 @@ static float4 agx_image_formation(float4 color,
   float3 in_xyz = make_float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  float3 rgb = mult_f3_f33(in_xyz, xyz_to_working);
+  float3 rgb = xyz_to_working * in_xyz;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -372,7 +372,7 @@ static float4 agx_image_formation(float4 color,
   float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
 
   // apply inset matrix
-  rgb = mult_f3_f33(rgb, insetmat);
+  rgb = insetmat * rgb;
 
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
@@ -418,12 +418,12 @@ static float4 agx_image_formation(float4 color,
   }
 
   // apply outset matrix
-  img = mult_f3_f33(img, outsetmat);
+  img = outsetmat * img;
 
   // convert from working primaries to target display primaries
   float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
                                          COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  img = mult_f3_f33(img, working_to_display);
+  img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -435,7 +435,7 @@ static float4 agx_image_formation(float4 color,
 
   // convert linearized formed image back to OCIO's scene_linear role space
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  float3 out_xyz = mult_f3_f33(img, display_to_xyz);
+  float3 out_xyz = display_to_xyz * img;
   float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
   float img_array[3];
   IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);

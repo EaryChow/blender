@@ -150,15 +150,9 @@ static inline float3 minf3(float b, float3 a) {
   return float3(fminf(a.x, b), fminf(a.y, b), fminf(a.z, b));
 }
 
-static inline float3 powf3(float3 a, float b) {
-  // Raise each component of float3 a to power b
-  return float3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
-}
-
 static inline float3 log2f3(float3 RGB) {
   return float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
 }
-
 
 static inline float spowf(float a, float b) {
   // Compute "safe" power of float a, reflected over the origin

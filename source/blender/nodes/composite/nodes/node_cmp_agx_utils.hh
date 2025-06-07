@@ -251,9 +251,9 @@ static inline float3x3 RGBtoXYZ( Chromaticities N) {
   );
   wh = blender::math::invert(M) * wh;
   M = float3x3(
-    float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
-    float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
-    float3(M.col_x.z*wh.x,M.col_y.z*wh.y,M.col_z.z*wh.z)
+    float3(M[0][0]*wh.x , M[1][0]*wh.y , M[2][0]*wh.z),
+    float3(M[0][1]*wh.x, M[1][1]*wh.y, M[2][1]*wh.z),
+    float3(M[0][2]*wh.x,M[1][2]*wh.y,M[2][2]*wh.z)
   );
   return M;
 }

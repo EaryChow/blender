@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_math_matrix_types.hh"
 
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
@@ -9,12 +10,7 @@ namespace blender::nodes::node_composite_agx_view_transform_cc {
     ---------------------------
 */
 
-// A struct holding 3x3 matrix
-struct float3x3 {
-  float3 col_x;
-  float3 col_y;
-  float3 col_z;
-};
+
 
 // A struct holding xy for R, G, B, and White point.
 struct Chromaticities {
@@ -125,12 +121,7 @@ static inline float degrees(float r) {return r * (180.0f / pi);}
 
 
 
-// Helper function to create a float3x3
-static inline float3x3 make_float3x3(float3 a, float3 b, float3 c) {
-  float3x3 d;
-  d.col_x = a, d.col_y = b, d.col_z = c;
-  return d;
-}
+
 
 static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, float2 D) {
   Chromaticities E;
@@ -296,7 +287,7 @@ static inline float sigmoid(float in, float sp, float tp, float Pslope, float px
 }
 
 static inline float3x3 RGBtoXYZ( Chromaticities N) {
-  float3x3 M = make_float3x3(
+  float3x3 M = float3x3(
     float3(N.red.x/N.red.y, 1.0, (1-N.red.x-N.red.y) / N.red.y),
     float3(N.green.x / N.green.y, 1.0, (1-N.green.x-N.green.y) / N.green.y),
     float3(N.blue.x / N.blue.y, 1.0, (1-N.blue.x-N.blue.y)/N.blue.y)
@@ -305,7 +296,7 @@ static inline float3x3 RGBtoXYZ( Chromaticities N) {
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
   wh = mult_f3_f33(wh, inv_f33(M));
-  M = make_float3x3(
+  M = float3x3(
     float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
     float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
     float3(M.col_x.z*wh.x,M.col_y.z*wh.y,M.col_z.z*wh.z)
@@ -328,14 +319,11 @@ static inline float3x3 transpose_f33( float3x3 A) {
 }
 
 static inline float3x3 mult_f33_f33( float3x3 A, float3x3 B) {
-  A = transpose_f33(A);
-  float3x3 C = B;
-  B.col_x= mult_f3_f33(A.col_x,C);
-  B.col_y= mult_f3_f33(A.col_y,C);
-  B.col_z= mult_f3_f33(A.col_z,C);
-  B = transpose_f33(B);
-
-  return B;
+  float3x3 C;
+  C.col_x = mult_f3_f33(B.col_x, A);
+  C.col_y = mult_f3_f33(B.col_y, A);
+  C.col_z = mult_f3_f33(B.col_z, A);
+  return C;
 }
 
 static inline float3x3 RGBtoRGB(Chromaticities N,Chromaticities M){

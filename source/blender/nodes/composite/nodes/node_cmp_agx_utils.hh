@@ -265,9 +265,9 @@ static inline float3x3 XYZtoRGB( Chromaticities N) {
 
 static inline float3x3 transpose_f33( float3x3 A) {
   float3x3 B = A;
-  A.col_x=float3(B.col_x.x,B.col_y.x,B.col_z.x);
-  A.col_y=float3(B.col_x.y,B.col_y.y,B.col_z.y);
-  A.col_z=float3(B.col_x.z,B.col_y.z,B.col_z.z);
+  A[0]=float3(B[0].x,B[1].x,B[2].x);
+  A[1]=float3(B[0].y,B[1].y,B[2].y);
+  A[2]=float3(B[0].z,B[1].z,B[2].z);
 
   return A;
 }

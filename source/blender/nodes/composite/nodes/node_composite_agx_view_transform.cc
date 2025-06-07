@@ -351,7 +351,7 @@ static float4 agx_image_formation(float4 color,
   float in_rgb_array[3] = {color.x, color.y, color.z};
   float in_xyz_array[3];
   IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
-  float3 in_xyz = make_float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
+  float3 in_xyz = float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
   float3 rgb = xyz_to_working * in_xyz;
@@ -383,7 +383,7 @@ static float4 agx_image_formation(float4 color,
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
+  float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
   float image_native_power = 2.4f;
   float midgray = pow(0.18f, 1.0f / image_native_power);
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);

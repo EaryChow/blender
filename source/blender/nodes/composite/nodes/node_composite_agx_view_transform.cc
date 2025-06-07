@@ -115,7 +115,7 @@ static void node_rna(StructRNA *srna) {
   prop = RNA_def_node_boolean(
       srna,
       "sync_outset_to_inset",
-      "Use Same Settings for Restoration",
+      "Use for Restoration",
       "Use the same settings as Attenuation section for Purity Restoration, for ease of use",
       NOD_inline_boolean_accessors(custom1, 1),
       false);
@@ -532,7 +532,7 @@ static void node_register()
   ntype.declare = node_declare;
   // ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
-  blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Middle);
+  blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;
   ntype.gpu_fn = node_gpu_material;
   blender::bke::node_register_type(ntype);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 /* ##########################################################################
@@ -119,10 +121,7 @@ static const Chromaticities COLOR_SPACE_PRI[] = {
 static inline float radians(float d) {return d * (pi / 180.0f);}
 static inline float degrees(float r) {return r * (180.0f / pi);}
 
-// Helper function to create a float2
-static inline float2 make_float2(const float x, const float y) {
-  return float2{x, y};
-}
+
 
 // Helper function to create a float3
 static inline float3 make_float3(float x, float y, float z) {
@@ -457,12 +456,12 @@ static inline float2 cartesian_to_polar2(float2 a) {
   float2 b = a;
   b.y = atan2(a.y,a.x);
 
-  return make_float2(sqrt(a.x*a.x+ a.y*a.y),b.y);
+  return float2{sqrt(a.x*a.x+ a.y*a.y),b.y};
 }
 
 static inline float2 polar_to_cartesian2(float2 a) {
 
-  return make_float2(a.x * cos(a.y), a.x * sin(a.y));
+  return float2{a.x * cos(a.y), a.x * sin(a.y)};
 }
 
 static inline Chromaticities RotatePrimary(Chromaticities N,float rrot,float grot,float brot){
@@ -493,9 +492,9 @@ static inline Chromaticities RotatePrimary(Chromaticities N,float rrot,float gro
 static inline Chromaticities ScalePrim(Chromaticities N,float rs,float gs,float bs){
   N = CenterPrimaries(N);
 
-  N.red = make_float2(N.red.x*rs,N.red.y*rs);
-  N.green = make_float2(N.green.x*gs,N.green.y*gs);
-  N.blue = make_float2(N.blue.x*bs,N.blue.y*bs);
+  N.red = float2{N.red.x*rs,N.red.y*rs};
+  N.green = float2{N.green.x*gs,N.green.y*gs};
+  N.blue = float2{N.blue.x*bs,N.blue.y*bs};
 
   N = DeCenterPrimaries(N);
 
@@ -508,11 +507,11 @@ static inline float2 Line_equation(float2 a, float2 b)
     if (fabsf(dx) < 1e-6f) {
         /* vertical line → slope = +∞, intercept = x */
         const float kInf = 1e30f * 1e30f;
-        return make_float2(kInf, a.x);
+        return float2{kInf, a.x};
     }
     float m = (b.y - a.y) / dx;
     float c = a.y - m * a.x;
-    return make_float2(m, c);
+    return float2{m, c};
 }
 
 static inline Chromaticities Polygon(Chromaticities N){
@@ -561,7 +560,7 @@ static inline float2 intersection(float2 l1, float2 l2) {
     x = (c2 - c1) / (m1 - m2);
     y = m1 * x + c1;
   }
-  return make_float2(x, y);
+  return float2{x, y};
 }
 
 static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float cpg, float cpb, float ored, float og, float ob, float achromatic_rotate = 0, float achromatic_outset = 0) {
@@ -580,9 +579,9 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
 
   // compute the line eqns from each rotated‐primary → whitepoint
   float2 wp = original_N.white;
-  float2 lr = Line_equation( make_float2(N.red.x,   N.red.y),   wp );
-  float2 lg = Line_equation( make_float2(N.green.x, N.green.y), wp );
-  float2 lb = Line_equation( make_float2(N.blue.x,  N.blue.y),  wp );
+  float2 lr = Line_equation( float2{N.red.x,   N.red.y},   wp );
+  float2 lg = Line_equation( float2{N.green.x, N.green.y}, wp );
+  float2 lb = Line_equation( float2{N.blue.x,  N.blue.y},  wp );
 
   // intersect each with the chosen triangle edge
   float2 Pr = intersection(lr, redline);
@@ -605,17 +604,17 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
   const float arbitrary_scale = 4.0f;
 
   // Scale & rotate the achromatic point
-  float2 scaled_achromatic = make_float2(
+  float2 scaled_achromatic = float2{
       original_white.x,
       original_white.y * arbitrary_scale
-  );
+  };
   float achromatic_rotate_radians = radians(achromatic_rotate);
   float dx = scaled_achromatic.x - original_white.x;
   float dy = scaled_achromatic.y - original_white.y;
-  float2 rotated_achromatic = make_float2(
+  float2 rotated_achromatic = float2{
       original_white.x + dx * cos(achromatic_rotate_radians) - dy * sin(achromatic_rotate_radians),
       original_white.y + dx * sin(achromatic_rotate_radians) + dy * cos(achromatic_rotate_radians)
-  );
+  };
 
   // Build the infinite achromatic ray and triangle edges
   float2 la = Line_equation(rotated_achromatic, original_white);
@@ -646,10 +645,10 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
   else if (on_segment(i3, original_N.blue,  original_N.red  )) hull_achromatic = i3;
 
   // Move whitepoint towards hull_achromatic by achromatic_outset
-  float2 interp = make_float2(
+  float2 interp = float2{
       (original_white.x - hull_achromatic.x) * (1.0f - achromatic_outset),
       (original_white.y - hull_achromatic.y) * (1.0f - achromatic_outset)
-  );
+  };
   N.white.x = hull_achromatic.x + interp.x;
   N.white.y = hull_achromatic.y + interp.y;
 

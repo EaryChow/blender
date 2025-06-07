@@ -117,20 +117,11 @@ static const Chromaticities COLOR_SPACE_PRI[] = {
 static inline float radians(float d) {return d * (pi / 180.0f);}
 static inline float degrees(float r) {return r * (180.0f / pi);}
 
-
-
-
-
-
-
 static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, float2 D) {
   Chromaticities E;
   E.red = A; E.green = B; E.blue = C; E.white = D;
   return E;
 }
-
-
-
 
 static inline float3 clampf3(float3 a, float mn, float mx) {
   return float3{

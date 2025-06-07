@@ -142,12 +142,12 @@ static inline float3 clampf3(float3 a, float mn, float mx) {
 
 static inline float3 maxf3(float b, float3 a) {
   // For each component of float3 a, return max of component and float b
-  return float3(fmaxf(a.x, b), fmaxf(a.y, b), fmaxf(a.z, b));
+  return float3(blender::math::max(a.x, b), blender::math::max(a.y, b), blender::math::max(a.z, b));
 }
 
 static inline float3 minf3(float b, float3 a) {
   // For each component of float3 a, return min of component and float b
-  return float3(fminf(a.x, b), fminf(a.y, b), fminf(a.z, b));
+  return float3(blender::math::min(a.x, b), blender::math::min(a.y, b), blender::math::min(a.z, b));
 }
 
 static inline float3 log2f3(float3 RGB) {

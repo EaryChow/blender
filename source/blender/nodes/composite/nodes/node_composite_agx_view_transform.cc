@@ -468,12 +468,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
          const float toe_contrast_in,
          const float shoulder_contrast_in,
          const float pivot_offset_in,
-         const std::optional<float> log2_min_in,
-         const std::optional<float> log2_max_in,
+         const float log2_min_in,
+         const float log2_max_in,
          const float3 hue_flights_in,
          const float3 attenuation_rates_in,
-         const std::optional<float3> reverse_hue_flights_in,
-         const std::optional<float3> restore_purity_in,
+         const float3 reverse_hue_flights_in,
+         const float3 restore_purity_in,
          const float per_channel_hue_flight_in,
          const float tinting_scale_in,
          const float tinting_hue_in,
@@ -485,12 +485,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             toe_contrast_in,
             shoulder_contrast_in,
             pivot_offset_in,
-            log2_min_in.value_or(-10.0f),
-            log2_max_in.value_or(6.5f),
+            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
+            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
             hue_flights_in,
             attenuation_rates_in,
-            reverse_hue_flights_in.value_or(make_float3(0, 0, 0)),
-            restore_purity_in.value_or(make_float3(0, 0, 0)),
+            (builder.node().custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
+            (builder.node().custom1) ? make_float3(0, 0, 0) : restore_purity_in,
             per_channel_hue_flight_in,
             tinting_scale_in,
             tinting_hue_in,
@@ -506,12 +506,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                    float,
                    float,
                    float,
-                   std::optional<float>,
-                   std::optional<float>,
+                   float,
+                   float,
                    float3,
                    float3,
-                   std::optional<float3>,
-                   std::optional<float3>,
+                   float3,
+                   float3,
                    float,
                    float,
                    float,
@@ -530,7 +530,7 @@ static void node_register()
   ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
-  ntype.updatefunc = node_update;
+  // ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.build_multi_function = node_build_multi_function;

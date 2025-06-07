@@ -46,11 +46,10 @@ enum class AGXPrimaries : int16_t {
 };
 
 enum class AGXWorkingLog : int16_t {
-  AGX_WORKING_LOG_LINEAR = 0,
-  AGX_WORKING_LOG_ACESCCT = 1,
-  AGX_WORKING_LOG_ARRI_LOGC3 = 2,
-  AGX_WORKING_LOG_ARRI_LOGC4 = 3,
-  AGX_WORKING_LOG_GENERIC_LOG2 = 4,
+  AGX_WORKING_LOG_ACESCCT = 0,
+  AGX_WORKING_LOG_ARRI_LOGC3 = 1,
+  AGX_WORKING_LOG_ARRI_LOGC4 = 2,
+  AGX_WORKING_LOG_GENERIC_LOG2 = 3,
 };
 
 static const EnumPropertyItem agx_working_primaries_items[] = {
@@ -73,7 +72,6 @@ static const EnumPropertyItem agx_display_primaries_items[] = {
 };
 
 static const EnumPropertyItem agx_working_log_items[] = {
-    {int(AGXWorkingLog::AGX_WORKING_LOG_LINEAR), "linear", 0, "Linear", ""},
     {int(AGXWorkingLog::AGX_WORKING_LOG_ACESCCT), "acescct", 0, "ACEScct", ""},
     {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC3), "arri_logc3", 0, "ARRI LogC3", ""},
     {int(AGXWorkingLog::AGX_WORKING_LOG_ARRI_LOGC4), "arri_logc4", 0, "ARRI LogC4", ""},
@@ -325,6 +323,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 }
 
+// CPU processing logic
 static float4 agx_image_formation(float4 color,
                                   float general_contrast_in,
                                   float toe_contrast_in,
@@ -449,6 +448,7 @@ static float4 agx_image_formation(float4 color,
   return color;
 }
 
+// GPU Processing
 static int node_gpu_material(GPUMaterial *material,
   bNode *node,
   bNodeExecData * /*execdata*/,
@@ -458,6 +458,7 @@ static int node_gpu_material(GPUMaterial *material,
 return GPU_stack_link(material, node, "node_composite_agx_view_transform", inputs, outputs);
 }
 
+// Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   const bool use_inverse_inset = builder.node().custom1;

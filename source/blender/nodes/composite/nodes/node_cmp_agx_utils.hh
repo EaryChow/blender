@@ -225,16 +225,15 @@ static inline float log10f(float x) {
 }
 
 static inline float3 log2lin(float3 rgb, int tf, float generic_log2_min_expo = -10, float generic_log2_max_expo = 6.5) {
-  if (tf == 0) return rgb;
-  else if (tf == 1) { // ACEScct
+  if (tf == 0) { // ACEScct
     rgb.x = rgb.x > 0.155251141552511f ? pow(2.0f, rgb.x * 17.52f - 9.72f) : (rgb.x - 0.0729055341958355f) / 10.5402377416545f;
     rgb.y = rgb.y > 0.155251141552511f ? pow(2.0f, rgb.y * 17.52f - 9.72f) : (rgb.y - 0.0729055341958355f) / 10.5402377416545f;
     rgb.z = rgb.z > 0.155251141552511f ? pow(2.0f, rgb.z * 17.52f - 9.72f) : (rgb.z - 0.0729055341958355f) / 10.5402377416545f;
-  } else if (tf == 2) { // Arri LogC3 EI 800
+  } else if (tf == 1) { // Arri LogC3 EI 800
     rgb.x = rgb.x > 0.149658f ? (pow(10.0f, (rgb.x - 0.385537f) / 0.24719f) - 0.052272f) / 5.555556f : (rgb.x - 0.092809f) / 5.367655f;
     rgb.y = rgb.y > 0.149658f ? (pow(10.0f, (rgb.y - 0.385537f) / 0.24719f) - 0.052272f) / 5.555556f : (rgb.y - 0.092809f) / 5.367655f;
     rgb.z = rgb.z > 0.149658f ? (pow(10.0f, (rgb.z - 0.385537f) / 0.24719f) - 0.052272f) / 5.555556f : (rgb.z - 0.092809f) / 5.367655f;
-  } else if (tf == 3){  // Arri LogC 4
+  } else if (tf == 2){  // Arri LogC 4
     const float a = (pow(2.0f, 18.0f) - 16.0f) / 117.45f;
     const float b = (1023.0f - 95.0f) / 1023.0f;
     const float c = 95.0f / 1023.f;
@@ -244,7 +243,7 @@ static inline float3 log2lin(float3 rgb, int tf, float generic_log2_min_expo = -
     rgb.x = rgb.x < 0.0f ? rgb.x * s + t : (pow(2.0f, (14.0f * (rgb.x - c) / b + 6.0f)) - 64.0f) / a;
     rgb.y = rgb.y < 0.0f ? rgb.y * s + t : (pow(2.0f, (14.0f * (rgb.y - c) / b + 6.0f)) - 64.0f) / a;
     rgb.z = rgb.z < 0.0f ? rgb.z * s + t : (pow(2.0f, (14.0f * (rgb.z - c) / b + 6.0f)) - 64.0f) / a;
-  } else if (tf == 4){ // User controlled PureLog2
+  } else if (tf == 3){ // User controlled PureLog2
     float mx = generic_log2_max_expo;
     float mn = generic_log2_min_expo;
 
@@ -256,16 +255,15 @@ static inline float3 log2lin(float3 rgb, int tf, float generic_log2_min_expo = -
 }
 
 static inline float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo = -10, float generic_log2_max_expo = 6.5) {
-  if (tf == 0) return rgb;
-  else if (tf == 1) { // ACEScct
+  if (tf == 0) { // ACEScct
     rgb.x = rgb.x > 0.0078125f ? (log2f(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
     rgb.y = rgb.y > 0.0078125f ? (log2f(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
     rgb.z = rgb.z > 0.0078125f ? (log2f(rgb.z) + 9.72f) / 17.52f : 10.5402377416545f * rgb.z + 0.0729055341958355f;
-  } else if (tf == 2) { // Arri LogC3 EI 800
+  } else if (tf == 1) { // Arri LogC3 EI 800
     rgb.x = rgb.x > 0.010591f ? 0.24719f * log10f(5.555556f * rgb.x + 0.052272f) + 0.385537f : 5.367655f * rgb.x + 0.092809f;
     rgb.y = rgb.y > 0.010591f ? 0.24719f * log10f(5.555556f * rgb.y + 0.052272f) + 0.385537f : 5.367655f * rgb.y + 0.092809f;
     rgb.z = rgb.z > 0.010591f ? 0.24719f * log10f(5.555556f * rgb.z + 0.052272f) + 0.385537f : 5.367655f * rgb.z + 0.092809f;
-  } else if (tf == 3){  // Arri LogC 4
+  } else if (tf == 2){  // Arri LogC 4
     const float a = (pow(2.0f, 18.0f) - 16.0f) / 117.45f;
     const float b = (1023.0f - 95.0f) / 1023.0f;
     const float c = 95.0f / 1023.f;
@@ -275,7 +273,7 @@ static inline float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo = -
     rgb.x = rgb.x >= t ? ((log2f(a * rgb.x + 64.f) - 6.f) / 14.f) * b + c : (rgb.x - t) / s;
     rgb.y = rgb.y >= t ? ((log2f(a * rgb.y + 64.f) - 6.f) / 14.f) * b + c : (rgb.y - t) / s;
     rgb.z = rgb.z >= t ? ((log2f(a * rgb.z + 64.f) - 6.f) / 14.f) * b + c : (rgb.z - t) / s;
-  } else if (tf == 4) { // User controlled PureLog2
+  } else if (tf == 3) { // User controlled PureLog2
     rgb = log2f3(rgb / 0.18f);
     rgb = clampf3(rgb, generic_log2_min_expo, generic_log2_max_expo);
 

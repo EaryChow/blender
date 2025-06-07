@@ -123,10 +123,7 @@ static inline float degrees(float r) {return r * (180.0f / pi);}
 
 
 
-// Helper function to create a float3
-static inline float3 make_float3(float x, float y, float z) {
-  return float3{x, y, z};
-}
+
 
 // Helper function to create a float3x3
 static inline float3x3 make_float3x3(float3 a, float3 b, float3 c) {
@@ -143,7 +140,7 @@ static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, 
 
 // Multiply float3 vector a and 3x3 matrix m
 static inline float3 mult_f3_f33(float3 a, float3x3 m) {
-  return make_float3(
+  return float3(
     m.col_x.x * a.x + m.col_y.x * a.y + m.col_z.x * a.z,
     m.col_x.y * a.x + m.col_y.y * a.y + m.col_z.y * a.z,
     m.col_x.z * a.x + m.col_y.z * a.y + m.col_z.z * a.z
@@ -179,21 +176,21 @@ static inline float3 clampf3(float3 a, float mn, float mx) {
 
 static inline float3 maxf3(float b, float3 a) {
   // For each component of float3 a, return max of component and float b
-  return make_float3(fmaxf(a.x, b), fmaxf(a.y, b), fmaxf(a.z, b));
+  return float3(fmaxf(a.x, b), fmaxf(a.y, b), fmaxf(a.z, b));
 }
 
 static inline float3 minf3(float b, float3 a) {
   // For each component of float3 a, return min of component and float b
-  return make_float3(fminf(a.x, b), fminf(a.y, b), fminf(a.z, b));
+  return float3(fminf(a.x, b), fminf(a.y, b), fminf(a.z, b));
 }
 
 static inline float3 powf3(float3 a, float b) {
   // Raise each component of float3 a to power b
-  return make_float3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
+  return float3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
 }
 
 static inline float3 log2f3(float3 RGB) {
-  return make_float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
+  return float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
 }
 
 static inline float sign(float x) {
@@ -212,7 +209,7 @@ static inline float spowf(float a, float b) {
 
 static inline float3 spowf3(float3 a, float b) {
   // Compute "safe" power of float3 a, reflected over the origin
-  return make_float3(
+  return float3(
     sign(a.x)*pow(fabsf(a.x), b),
     sign(a.y)*pow(fabsf(a.y), b),
     sign(a.z)*pow(fabsf(a.z), b)
@@ -300,18 +297,18 @@ static inline float sigmoid(float in, float sp, float tp, float Pslope, float px
 
 static inline float3x3 RGBtoXYZ( Chromaticities N) {
   float3x3 M = make_float3x3(
-    make_float3(N.red.x/N.red.y, 1.0, (1-N.red.x-N.red.y) / N.red.y),
-    make_float3(N.green.x / N.green.y, 1.0, (1-N.green.x-N.green.y) / N.green.y),
-    make_float3(N.blue.x / N.blue.y, 1.0, (1-N.blue.x-N.blue.y)/N.blue.y)
+    float3(N.red.x/N.red.y, 1.0, (1-N.red.x-N.red.y) / N.red.y),
+    float3(N.green.x / N.green.y, 1.0, (1-N.green.x-N.green.y) / N.green.y),
+    float3(N.blue.x / N.blue.y, 1.0, (1-N.blue.x-N.blue.y)/N.blue.y)
   );
-  float3 wh = make_float3(
+  float3 wh = float3(
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
   wh = mult_f3_f33(wh, inv_f33(M));
   M = make_float3x3(
-    make_float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
-    make_float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
-    make_float3(M.col_x.z*wh.x,M.col_y.z*wh.y,M.col_z.z*wh.z)
+    float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
+    float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
+    float3(M.col_x.z*wh.x,M.col_y.z*wh.y,M.col_z.z*wh.z)
   );
   return M;
 }
@@ -323,9 +320,9 @@ static inline float3x3 XYZtoRGB( Chromaticities N) {
 
 static inline float3x3 transpose_f33( float3x3 A) {
   float3x3 B = A;
-  A.col_x=make_float3(B.col_x.x,B.col_y.x,B.col_z.x);
-  A.col_y=make_float3(B.col_x.y,B.col_y.y,B.col_z.y);
-  A.col_z=make_float3(B.col_x.z,B.col_y.z,B.col_z.z);
+  A.col_x=float3(B.col_x.x,B.col_y.x,B.col_z.x);
+  A.col_y=float3(B.col_x.y,B.col_y.y,B.col_z.y);
+  A.col_z=float3(B.col_x.z,B.col_y.z,B.col_z.z);
 
   return A;
 }
@@ -360,7 +357,7 @@ static inline float lerp_chromaticity_angle(float h1, float h2, float t) {
 
 static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chromaticities working_chrom) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
-    const float3 luminance_coeffs = make_float3(0.265818f, 0.59846986f, 0.1357121f);
+    const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
     Chromaticities rec2020 = REC2020_PRI;
 
     // Convert RGB to Rec.2020 for luminance calculation
@@ -374,7 +371,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     // Calculate inverse RGB in working space
     float max_rgb = fmaxf(rgb.x, fmaxf(rgb.y, rgb.z));
-    float3 inverse_rgb = make_float3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
+    float3 inverse_rgb = float3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
 
     // Calculate max of the inverse
     float max_inv_rgb = fmaxf(inverse_rgb.x, fmaxf(inverse_rgb.y, inverse_rgb.z));
@@ -395,7 +392,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     // Offset to avoid negatives
     float min_rgb = fminf(rgb.x, fminf(rgb.y, rgb.z));
     float offset = fmaxf(-min_rgb, 0.0f);
-    float3 rgb_offset = make_float3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
+    float3 rgb_offset = float3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
 
     // Calculate max of the offseted RGB
     float max_offset = fmaxf(rgb_offset.x, fmaxf(rgb_offset.y, rgb_offset.z));
@@ -407,7 +404,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
                   offset_rec2020.z * luminance_coeffs.z;
 
     // Calculate the inverted RGB offset
-    float3 inverse_offset = make_float3(max_offset - rgb_offset.x,
+    float3 inverse_offset = float3(max_offset - rgb_offset.x,
                                        max_offset - rgb_offset.y,
                                        max_offset - rgb_offset.z);
 
@@ -427,7 +424,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     // Adjust luminance ratio
     float ratio = (Y_new_compensate > y_compensate) ? (y_compensate / Y_new_compensate) : 1.0f;
-    return make_float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
+    return float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
 }
 
 static inline Chromaticities CenterPrimaries(Chromaticities N){

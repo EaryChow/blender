@@ -548,8 +548,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 log2_max_in,
                 hue_flights_in,
                 attenuation_rates_in,
-                make_float3(0, 0, 0), /* reverse_hue_flights_in */
-                make_float3(0, 0, 0), /* restore_purity_in */
+                float3(0, 0, 0), /* reverse_hue_flights_in */
+                float3(0, 0, 0), /* restore_purity_in */
                 per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
@@ -652,8 +652,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
                 attenuation_rates_in,
-                make_float3(0, 0, 0), /* reverse_hue_flights_in */
-                make_float3(0, 0, 0), /* restore_purity_in */
+                float3(0, 0, 0), /* reverse_hue_flights_in */
+                float3(0, 0, 0), /* restore_purity_in */
                 per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,

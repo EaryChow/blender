@@ -9,9 +9,9 @@ namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 // A struct holding 3x3 matrix
 struct float3x3 {
-  float3 x;
-  float3 y;
-  float3 z;
+  float3 col_x;
+  float3 col_y;
+  float3 col_z;
 };
 
 // A struct holding xy for R, G, B, and White point.
@@ -132,7 +132,7 @@ static inline float3 make_float3(float x, float y, float z) {
 // Helper function to create a float3x3
 static inline float3x3 make_float3x3(float3 a, float3 b, float3 c) {
   float3x3 d;
-  d.x = a, d.y = b, d.z = c;
+  d.col_x = a, d.col_y = b, d.col_z = c;
   return d;
 }
 
@@ -145,28 +145,28 @@ static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, 
 // Multiply float3 vector a and 3x3 matrix m
 static inline float3 mult_f3_f33(float3 a, float3x3 m) {
   return make_float3(
-    m.x.x * a.x + m.x.y * a.y + m.x.z * a.z,
-    m.y.x * a.x + m.y.y * a.y + m.y.z * a.z,
-    m.z.x * a.x + m.z.y * a.y + m.z.z * a.z
+    m.col_x.x * a.x + m.col_y.x * a.y + m.col_z.x * a.z,
+    m.col_x.y * a.x + m.col_y.y * a.y + m.col_z.y * a.z,
+    m.col_x.z * a.x + m.col_y.z * a.y + m.col_z.z * a.z
   );
 }
 
 // Calculate inverse of 3x3 matrix
 static inline float3x3 inv_f33(float3x3 m) {
-  float d = m.x.x * (m.y.y * m.z.z - m.z.y * m.y.z) -
-            m.x.y * (m.y.x * m.z.z - m.y.z * m.z.x) +
-            m.x.z * (m.y.x * m.z.y - m.y.y * m.z.x);
+  float d = m.col_x.x * (m.col_y.y * m.col_z.z - m.col_z.y * m.col_y.z) -
+            m.col_y.x * (m.col_x.y * m.col_z.z - m.col_z.y * m.col_x.z) +
+            m.col_z.x * (m.col_x.y * m.col_y.z - m.col_y.y * m.col_x.z);
   float id = 1.0f / d;
   float3x3 c = identity_mtx;
-  c.x.x = id * (m.y.y * m.z.z - m.z.y * m.y.z);
-  c.x.y = id * (m.x.z * m.z.y - m.x.y * m.z.z);
-  c.x.z = id * (m.x.y * m.y.z - m.x.z * m.y.y);
-  c.y.x = id * (m.y.z * m.z.x - m.y.x * m.z.z);
-  c.y.y = id * (m.x.x * m.z.z - m.x.z * m.z.x);
-  c.y.z = id * (m.y.x * m.x.z - m.x.x * m.y.z);
-  c.z.x = id * (m.y.x * m.z.y - m.z.x * m.y.y);
-  c.z.y = id * (m.z.x * m.x.y - m.x.x * m.z.y);
-  c.z.z = id * (m.x.x * m.y.y - m.y.x * m.x.y);
+  c.col_x.x = id * (m.col_y.y * m.col_z.z - m.col_z.y * m.col_y.z);
+  c.col_x.y = id * (m.col_z.y * m.col_x.z - m.col_x.y * m.col_z.z);
+  c.col_x.z = id * (m.col_x.y * m.col_y.z - m.col_y.y * m.col_x.z);
+  c.col_y.x = id * (m.col_y.z * m.col_z.x - m.col_z.z * m.col_y.x);
+  c.col_y.y = id * (m.col_x.x * m.col_z.z - m.col_z.x * m.col_x.z);
+  c.col_y.z = id * (m.col_z.x * m.col_x.y - m.col_x.x * m.col_y.z);
+  c.col_z.x = id * (m.col_y.x * m.col_z.y - m.col_z.x * m.col_y.y);
+  c.col_z.y = id * (m.col_z.x * m.col_x.y - m.col_x.x * m.col_z.y);
+  c.col_z.z = id * (m.col_x.x * m.col_y.y - m.col_y.x * m.col_x.y);
   return c;
 }
 
@@ -301,20 +301,18 @@ static inline float sigmoid(float in, float sp, float tp, float Pslope, float px
 
 static inline float3x3 RGBtoXYZ( Chromaticities N) {
   float3x3 M = make_float3x3(
-    make_float3(N.red.x/N.red.y, N.green.x / N.green.y, N.blue.x / N.blue.y),
-    make_float3(1.0, 1.0, 1.0),
-    make_float3(
-      (1-N.red.x-N.red.y) / N.red.y, (1-N.green.x-N.green.y) / N.green.y, (1-N.blue.x-N.blue.y)/N.blue.y
-    )
+    make_float3(N.red.x/N.red.y, 1.0, (1-N.red.x-N.red.y) / N.red.y),
+    make_float3(N.green.x / N.green.y, 1.0, (1-N.green.x-N.green.y) / N.green.y),
+    make_float3(N.blue.x / N.blue.y, 1.0, (1-N.blue.x-N.blue.y)/N.blue.y)
   );
   float3 wh = make_float3(
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
   wh = mult_f3_f33(wh, inv_f33(M));
   M = make_float3x3(
-    make_float3(M.x.x*wh.x , M.x.y*wh.y , M.x.z*wh.z),
-    make_float3(M.y.x*wh.x, M.y.y*wh.y, M.y.z*wh.z),
-    make_float3(M.z.x*wh.x,M.z.y*wh.y,M.z.z*wh.z)
+    make_float3(M.col_x.x*wh.x , M.col_y.x*wh.y , M.col_z.x*wh.z),
+    make_float3(M.col_x.y*wh.x, M.col_y.y*wh.y, M.col_z.y*wh.z),
+    make_float3(M.col_x.z*wh.x,M.col_y.z*wh.y,M.col_z.z*wh.z)
   );
   return M;
 }
@@ -326,9 +324,9 @@ static inline float3x3 XYZtoRGB( Chromaticities N) {
 
 static inline float3x3 transpose_f33( float3x3 A) {
   float3x3 B = A;
-  A.x=make_float3(B.x.x,B.y.x,B.z.x);
-  A.y=make_float3(B.x.y,B.y.y,B.z.y);
-  A.z=make_float3(B.x.z,B.y.z,B.z.z);
+  A.col_x=make_float3(B.col_x.x,B.col_y.x,B.col_z.x);
+  A.col_y=make_float3(B.col_x.y,B.col_y.y,B.col_z.y);
+  A.col_z=make_float3(B.col_x.z,B.col_y.z,B.col_z.z);
 
   return A;
 }
@@ -336,9 +334,9 @@ static inline float3x3 transpose_f33( float3x3 A) {
 static inline float3x3 mult_f33_f33( float3x3 A, float3x3 B) {
   A = transpose_f33(A);
   float3x3 C = B;
-  B.x= mult_f3_f33(A.x,C);
-  B.y= mult_f3_f33(A.y,C);
-  B.z= mult_f3_f33(A.z,C);
+  B.col_x= mult_f3_f33(A.col_x,C);
+  B.col_y= mult_f3_f33(A.col_y,C);
+  B.col_z= mult_f3_f33(A.col_z,C);
   B = transpose_f33(B);
 
   return B;

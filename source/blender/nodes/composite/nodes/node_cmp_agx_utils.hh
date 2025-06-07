@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_matrix.hh"
@@ -158,26 +159,20 @@ static inline float3 log2f3(float3 RGB) {
   return float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
 }
 
-static inline float sign(float x) {
-  // Return the sign of float x
-  if (x > 0.0f) return 1.0f;
-  if (x < 0.0f) return -1.0f;
-  return 0.0f;
-}
 
 static inline float spowf(float a, float b) {
   // Compute "safe" power of float a, reflected over the origin
 
-  a=sign(a)*pow(fabsf(a), b);
+  a=blender::math::sign(a)*pow(fabsf(a), b);
   return a;
 }
 
 static inline float3 spowf3(float3 a, float b) {
   // Compute "safe" power of float3 a, reflected over the origin
   return float3(
-    sign(a.x)*pow(fabsf(a.x), b),
-    sign(a.y)*pow(fabsf(a.y), b),
-    sign(a.z)*pow(fabsf(a.z), b)
+    blender::math::sign(a.x)*pow(fabsf(a.x), b),
+    blender::math::sign(a.y)*pow(fabsf(a.y), b),
+    blender::math::sign(a.z)*pow(fabsf(a.z), b)
   );
 }
 

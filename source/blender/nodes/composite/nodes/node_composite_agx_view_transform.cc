@@ -460,63 +460,224 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  builder.construct_and_set_matching_fn_cb([&]() {
-    return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-      "AgX View Transform",
-      [=, &builder](const float4 &color,
-         const float general_contrast_in,
-         const float toe_contrast_in,
-         const float shoulder_contrast_in,
-         const float pivot_offset_in,
-         const float log2_min_in,
-         const float log2_max_in,
-         const float3 hue_flights_in,
-         const float3 attenuation_rates_in,
-         const float3 reverse_hue_flights_in,
-         const float3 restore_purity_in,
-         const float per_channel_hue_flight_in,
-         const float tinting_scale_in,
-         const float tinting_hue_in,
-         const bool compensate_negatives_in
-         ) -> float4 {
-        return agx_image_formation(
-            color,
-            general_contrast_in,
-            toe_contrast_in,
-            shoulder_contrast_in,
-            pivot_offset_in,
-            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_min_in : -10.0f,
-            (builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2)) ? log2_max_in : 6.5f,
-            hue_flights_in,
-            attenuation_rates_in,
-            (builder.node().custom1) ? make_float3(0, 0, 0) : reverse_hue_flights_in,
-            (builder.node().custom1) ? make_float3(0, 0, 0) : restore_purity_in,
-            per_channel_hue_flight_in,
-            tinting_scale_in,
-            tinting_hue_in,
-            compensate_negatives_in,
-            builder.node().custom2,
-            builder.node().custom3,
-            builder.node().custom4,
-            builder.node().custom1);
-      },
-      mf::build::exec_presets::SomeSpanOrSingle<0>(),
-      TypeSequence<float4,
-                   float,
-                   float,
-                   float,
-                   float,
-                   float,
-                   float,
-                   float3,
-                   float3,
-                   float3,
-                   float3,
-                   float,
-                   float,
-                   float,
-                   bool>());
-  });
+  const bool use_inverse_inset = builder.node().custom1;
+  const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
+
+  if (!use_inverse_inset && use_generic_log2) {
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float log2_min_in,
+                       const float log2_max_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float3 reverse_hue_flights_in,
+                       const float3 restore_purity_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                log2_min_in,
+                log2_max_in,
+                hue_flights_in,
+                attenuation_rates_in,
+                reverse_hue_flights_in,
+                restore_purity_in,
+                per_channel_hue_flight_in,
+                tinting_scale_in,
+                tinting_hue_in,
+                compensate_negatives_in,
+                builder.node().custom2,
+                builder.node().custom3,
+                builder.node().custom4,
+                builder.node().custom1);
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else if (use_inverse_inset && use_generic_log2) {
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float log2_min_in,
+                       const float log2_max_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                log2_min_in,
+                log2_max_in,
+                hue_flights_in,
+                attenuation_rates_in,
+                make_float3(0, 0, 0), /* reverse_hue_flights_in */
+                make_float3(0, 0, 0), /* restore_purity_in */
+                per_channel_hue_flight_in,
+                tinting_scale_in,
+                tinting_hue_in,
+                compensate_negatives_in,
+                builder.node().custom2,
+                builder.node().custom3,
+                builder.node().custom4,
+                builder.node().custom1);
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else if (!use_inverse_inset && !use_generic_log2) {
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float3 reverse_hue_flights_in,
+                       const float3 restore_purity_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
+                hue_flights_in,
+                attenuation_rates_in,
+                reverse_hue_flights_in,
+                restore_purity_in,
+                per_channel_hue_flight_in,
+                tinting_scale_in,
+                tinting_hue_in,
+                compensate_negatives_in,
+                builder.node().custom2,
+                builder.node().custom3,
+                builder.node().custom4,
+                builder.node().custom1);
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else { /* use_inverse_inset && !use_generic_log2 */
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
+                hue_flights_in,
+                attenuation_rates_in,
+                make_float3(0, 0, 0), /* reverse_hue_flights_in */
+                make_float3(0, 0, 0), /* restore_purity_in */
+                per_channel_hue_flight_in,
+                tinting_scale_in,
+                tinting_hue_in,
+                compensate_negatives_in,
+                builder.node().custom2,
+                builder.node().custom3,
+                builder.node().custom4,
+                builder.node().custom1);
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  }
 }
 
 // Registration Function
@@ -530,7 +691,7 @@ static void node_register()
   ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;
-  // ntype.updatefunc = node_update;
+  ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;

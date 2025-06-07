@@ -212,9 +212,9 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Hue Rotation angle in degrees for each of the RGB primaries before curve."
         "Negative is clockwise, and positive is counterclockwise");
 
-  inset_panel.add_input<decl::Vector>("Attenuation Rates")
+  inset_panel.add_input<decl::Vector>("Rates of Attenuation")
     .default_value({0.329652f, 0.280513f, 0.124754f})
-    .min(0.0f)
+    .min(0.00001f)
     .max(0.6f)
     .subtype(PROP_NONE)
     .description(

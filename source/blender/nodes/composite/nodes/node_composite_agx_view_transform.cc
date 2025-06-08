@@ -209,7 +209,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .default_value({2.13976f, -1.22827f, -3.05174f})
     .min(-10.0f)
     .max(10.0f)
-    .subtype(PROP_NONE)
+    .subtype(PROP_EULER)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries before curve."
         "Negative is clockwise, and positive is counterclockwise");
@@ -218,7 +218,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .default_value({0.329652f, 0.280513f, 0.124754f})
     .min(0.00001f)
     .max(0.6f)
-    .subtype(PROP_NONE)
+    .subtype(PROP_PERCENTAGE)
     .description(
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales inwards before curve");
@@ -233,7 +233,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .default_value({0.0f, 0.0f, 0.0f})
     .min(-10.0f)
     .max(10.0f)
-    .subtype(PROP_NONE)
+    .subtype(PROP_EULER)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries after curve."
         "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.");
@@ -242,7 +242,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .default_value({0.323174f, 0.283256f, 0.037433f})
     .min(0.0f)
     .max(0.6f)
-    .subtype(PROP_NONE)
+    .subtype(PROP_PERCENTAGE)
     .description(
         "Percentage relative to the primary chromaticity purity,"
         "by which the chromaticity scales outwards after curve");

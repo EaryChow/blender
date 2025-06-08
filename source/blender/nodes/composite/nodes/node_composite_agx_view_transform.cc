@@ -5,6 +5,8 @@
 #include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_color.hh"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -349,10 +351,10 @@ static float4 agx_image_formation(float4 color,
   float in_rgb_array[3] = {color.x, color.y, color.z};
   float in_xyz_array[3];
   IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
-  float3 in_xyz = make_float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
+  float3 in_xyz = float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  float3 rgb = mult_f3_f33(in_xyz, xyz_to_working);
+  float3 rgb = xyz_to_working * in_xyz;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -371,7 +373,7 @@ static float4 agx_image_formation(float4 color,
   float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
 
   // apply inset matrix
-  rgb = mult_f3_f33(rgb, insetmat);
+  rgb = insetmat * rgb;
 
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
@@ -381,7 +383,7 @@ static float4 agx_image_formation(float4 color,
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  float log_midgray = lin2log(make_float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
+  float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
   float image_native_power = 2.4f;
   float midgray = pow(0.18f, 1.0f / image_native_power);
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
@@ -405,7 +407,7 @@ static float4 agx_image_formation(float4 color,
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, // Uses attenuation settings
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,         // Uses attenuation settings
         tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
@@ -413,16 +415,16 @@ static float4 agx_image_formation(float4 color,
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = inv_f33(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
   }
 
   // apply outset matrix
-  img = mult_f3_f33(img, outsetmat);
+  img = outsetmat * img;
 
   // convert from working primaries to target display primaries
   float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
                                          COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  img = mult_f3_f33(img, working_to_display);
+  img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -434,7 +436,7 @@ static float4 agx_image_formation(float4 color,
 
   // convert linearized formed image back to OCIO's scene_linear role space
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  float3 out_xyz = mult_f3_f33(img, display_to_xyz);
+  float3 out_xyz = display_to_xyz * img;
   float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
   float img_array[3];
   IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);
@@ -548,8 +550,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 log2_max_in,
                 hue_flights_in,
                 attenuation_rates_in,
-                make_float3(0, 0, 0), /* reverse_hue_flights_in */
-                make_float3(0, 0, 0), /* restore_purity_in */
+                float3(0, 0, 0), /* reverse_hue_flights_in */
+                float3(0, 0, 0), /* restore_purity_in */
                 per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
@@ -652,8 +654,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
                 attenuation_rates_in,
-                make_float3(0, 0, 0), /* reverse_hue_flights_in */
-                make_float3(0, 0, 0), /* restore_purity_in */
+                float3(0, 0, 0), /* reverse_hue_flights_in */
+                float3(0, 0, 0), /* restore_purity_in */
                 per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,

@@ -1,18 +1,16 @@
 #pragma once
 
+#include "BLI_math_base.hh"
+#include "BLI_math_vector_types.hh"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_matrix.hh"
+
 namespace blender::nodes::node_composite_agx_view_transform_cc {
 
 /* ##########################################################################
     Custom Structs
     ---------------------------
 */
-
-// A struct holding 3x3 matrix
-struct float3x3 {
-  float3 x;
-  float3 y;
-  float3 z;
-};
 
 // A struct holding xy for R, G, B, and White point.
 struct Chromaticities {
@@ -119,55 +117,10 @@ static const Chromaticities COLOR_SPACE_PRI[] = {
 static inline float radians(float d) {return d * (pi / 180.0f);}
 static inline float degrees(float r) {return r * (180.0f / pi);}
 
-// Helper function to create a float2
-static inline float2 make_float2(const float x, const float y) {
-  return float2{x, y};
-}
-
-// Helper function to create a float3
-static inline float3 make_float3(float x, float y, float z) {
-  return float3{x, y, z};
-}
-
-// Helper function to create a float3x3
-static inline float3x3 make_float3x3(float3 a, float3 b, float3 c) {
-  float3x3 d;
-  d.x = a, d.y = b, d.z = c;
-  return d;
-}
-
 static inline Chromaticities make_chromaticities( float2 A, float2 B, float2 C, float2 D) {
   Chromaticities E;
   E.red = A; E.green = B; E.blue = C; E.white = D;
   return E;
-}
-
-// Multiply float3 vector a and 3x3 matrix m
-static inline float3 mult_f3_f33(float3 a, float3x3 m) {
-  return make_float3(
-    m.x.x * a.x + m.x.y * a.y + m.x.z * a.z,
-    m.y.x * a.x + m.y.y * a.y + m.y.z * a.z,
-    m.z.x * a.x + m.z.y * a.y + m.z.z * a.z
-  );
-}
-
-// Calculate inverse of 3x3 matrix
-static inline float3x3 inv_f33(float3x3 m) {
-  float d = m.x.x * (m.y.y * m.z.z - m.z.y * m.y.z) -
-            m.x.y * (m.y.x * m.z.z - m.y.z * m.z.x) +
-            m.x.z * (m.y.x * m.z.y - m.y.y * m.z.x);
-  float id = 1.0f / d;
-  float3x3 c = identity_mtx;
-  c.x.x = id * (m.y.y * m.z.z - m.z.y * m.y.z);
-  c.x.y = id * (m.x.z * m.z.y - m.x.y * m.z.z);
-  c.x.z = id * (m.x.y * m.y.z - m.x.z * m.y.y);
-  c.y.x = id * (m.y.z * m.z.x - m.y.x * m.z.z);
-  c.y.y = id * (m.x.x * m.z.z - m.x.z * m.z.x);
-  c.y.z = id * (m.y.x * m.x.z - m.x.x * m.y.z);
-  c.z.x = id * (m.y.x * m.z.y - m.z.x * m.y.y);
-  c.z.y = id * (m.z.x * m.x.y - m.x.x * m.z.y);
-  c.z.z = id * (m.x.x * m.y.y - m.y.x * m.x.y);
-  return c;
 }
 
 static inline float3 clampf3(float3 a, float mn, float mx) {
@@ -180,43 +133,31 @@ static inline float3 clampf3(float3 a, float mn, float mx) {
 
 static inline float3 maxf3(float b, float3 a) {
   // For each component of float3 a, return max of component and float b
-  return make_float3(fmaxf(a.x, b), fmaxf(a.y, b), fmaxf(a.z, b));
+  return float3(blender::math::max(a.x, b), blender::math::max(a.y, b), blender::math::max(a.z, b));
 }
 
 static inline float3 minf3(float b, float3 a) {
   // For each component of float3 a, return min of component and float b
-  return make_float3(fminf(a.x, b), fminf(a.y, b), fminf(a.z, b));
-}
-
-static inline float3 powf3(float3 a, float b) {
-  // Raise each component of float3 a to power b
-  return make_float3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
+  return float3(blender::math::min(a.x, b), blender::math::min(a.y, b), blender::math::min(a.z, b));
 }
 
 static inline float3 log2f3(float3 RGB) {
-  return make_float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
-}
-
-static inline float sign(float x) {
-  // Return the sign of float x
-  if (x > 0.0f) return 1.0f;
-  if (x < 0.0f) return -1.0f;
-  return 0.0f;
+  return float3(log2f(RGB.x), log2f(RGB.y), log2f(RGB.z));
 }
 
 static inline float spowf(float a, float b) {
   // Compute "safe" power of float a, reflected over the origin
 
-  a=sign(a)*pow(fabsf(a), b);
+  a=blender::math::sign(a)*pow(fabsf(a), b);
   return a;
 }
 
 static inline float3 spowf3(float3 a, float b) {
   // Compute "safe" power of float3 a, reflected over the origin
-  return make_float3(
-    sign(a.x)*pow(fabsf(a.x), b),
-    sign(a.y)*pow(fabsf(a.y), b),
-    sign(a.z)*pow(fabsf(a.z), b)
+  return float3(
+    blender::math::sign(a.x)*pow(fabsf(a.x), b),
+    blender::math::sign(a.y)*pow(fabsf(a.y), b),
+    blender::math::sign(a.z)*pow(fabsf(a.z), b)
   );
 }
 
@@ -300,55 +241,41 @@ static inline float sigmoid(float in, float sp, float tp, float Pslope, float px
 }
 
 static inline float3x3 RGBtoXYZ( Chromaticities N) {
-  float3x3 M = make_float3x3(
-    make_float3(N.red.x/N.red.y, N.green.x / N.green.y, N.blue.x / N.blue.y),
-    make_float3(1.0, 1.0, 1.0),
-    make_float3(
-      (1-N.red.x-N.red.y) / N.red.y, (1-N.green.x-N.green.y) / N.green.y, (1-N.blue.x-N.blue.y)/N.blue.y
-    )
+  float3x3 M = float3x3(
+    float3(N.red.x/N.red.y, 1.0, (1-N.red.x-N.red.y) / N.red.y),
+    float3(N.green.x / N.green.y, 1.0, (1-N.green.x-N.green.y) / N.green.y),
+    float3(N.blue.x / N.blue.y, 1.0, (1-N.blue.x-N.blue.y)/N.blue.y)
   );
-  float3 wh = make_float3(
+  float3 wh = float3(
     N.white.x / N.white.y, 1.0, (1-N.white.x-N.white.y) / N.white.y
   );
-  wh = mult_f3_f33(wh, inv_f33(M));
-  M = make_float3x3(
-    make_float3(M.x.x*wh.x , M.x.y*wh.y , M.x.z*wh.z),
-    make_float3(M.y.x*wh.x, M.y.y*wh.y, M.y.z*wh.z),
-    make_float3(M.z.x*wh.x,M.z.y*wh.y,M.z.z*wh.z)
+  wh = blender::math::invert(M) * wh;
+  M = float3x3(
+    M[0] * wh.x,
+    M[1] * wh.y,
+    M[2] * wh.z
   );
   return M;
 }
 
 static inline float3x3 XYZtoRGB( Chromaticities N) {
-  float3x3 M = inv_f33(RGBtoXYZ(N));
+  float3x3 M = blender::math::invert(RGBtoXYZ(N));
   return M;
 }
 
 static inline float3x3 transpose_f33( float3x3 A) {
-  float3x3 B = A;
-  A.x=make_float3(B.x.x,B.y.x,B.z.x);
-  A.y=make_float3(B.x.y,B.y.y,B.z.y);
-  A.z=make_float3(B.x.z,B.y.z,B.z.z);
-
-  return A;
+  return blender::math::transpose(A);
 }
 
 static inline float3x3 mult_f33_f33( float3x3 A, float3x3 B) {
-  A = transpose_f33(A);
-  float3x3 C = B;
-  B.x= mult_f3_f33(A.x,C);
-  B.y= mult_f3_f33(A.y,C);
-  B.z= mult_f3_f33(A.z,C);
-  B = transpose_f33(B);
-
-  return B;
+  return B * A;
 }
 
 static inline float3x3 RGBtoRGB(Chromaticities N,Chromaticities M){
   float3x3 In2XYZ = RGBtoXYZ(N);
   float3x3 XYZ2Out = XYZtoRGB(M);
 
-  float3x3 rgbtorgb = mult_f33_f33(In2XYZ,XYZ2Out);
+  float3x3 rgbtorgb = mult_f33_f33(In2XYZ, XYZ2Out);
 
   return rgbtorgb;
 }
@@ -363,12 +290,12 @@ static inline float lerp_chromaticity_angle(float h1, float h2, float t) {
 
 static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chromaticities working_chrom) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
-    const float3 luminance_coeffs = make_float3(0.265818f, 0.59846986f, 0.1357121f);
+    const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
     Chromaticities rec2020 = REC2020_PRI;
 
     // Convert RGB to Rec.2020 for luminance calculation
     float3x3 working_to_rec2020 = RGBtoRGB(working_chrom, rec2020);
-    float3 rgb_rec2020 = mult_f3_f33(rgb, working_to_rec2020);
+    float3 rgb_rec2020 = working_to_rec2020 * rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -377,13 +304,13 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     // Calculate inverse RGB in working space
     float max_rgb = fmaxf(rgb.x, fmaxf(rgb.y, rgb.z));
-    float3 inverse_rgb = make_float3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
+    float3 inverse_rgb = float3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
 
     // Calculate max of the inverse
     float max_inv_rgb = fmaxf(inverse_rgb.x, fmaxf(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    float3 inverse_rec2020 = mult_f3_f33(inverse_rgb, working_to_rec2020);
+    float3 inverse_rec2020 = working_to_rec2020 * inverse_rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -398,26 +325,26 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
     // Offset to avoid negatives
     float min_rgb = fminf(rgb.x, fminf(rgb.y, rgb.z));
     float offset = fmaxf(-min_rgb, 0.0f);
-    float3 rgb_offset = make_float3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
+    float3 rgb_offset = float3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
 
     // Calculate max of the offseted RGB
     float max_offset = fmaxf(rgb_offset.x, fmaxf(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    float3 offset_rec2020 = mult_f3_f33(rgb_offset, working_to_rec2020);
+    float3 offset_rec2020 = working_to_rec2020 * rgb_offset;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
 
     // Calculate the inverted RGB offset
-    float3 inverse_offset = make_float3(max_offset - rgb_offset.x,
+    float3 inverse_offset = float3(max_offset - rgb_offset.x,
                                        max_offset - rgb_offset.y,
                                        max_offset - rgb_offset.z);
 
     // Calculate max of the inverse
     float max_inv_offset = fmaxf(inverse_offset.x, fmaxf(inverse_offset.y, inverse_offset.z));
 
-    float3 inverse_offset_rec2020 = mult_f3_f33(inverse_offset, working_to_rec2020);
+    float3 inverse_offset_rec2020 = working_to_rec2020 * inverse_offset;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;
@@ -430,7 +357,7 @@ static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chroma
 
     // Adjust luminance ratio
     float ratio = (Y_new_compensate > y_compensate) ? (y_compensate / Y_new_compensate) : 1.0f;
-    return make_float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
+    return float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
 }
 
 static inline Chromaticities CenterPrimaries(Chromaticities N){
@@ -459,12 +386,12 @@ static inline float2 cartesian_to_polar2(float2 a) {
   float2 b = a;
   b.y = atan2(a.y,a.x);
 
-  return make_float2(sqrt(a.x*a.x+ a.y*a.y),b.y);
+  return float2{sqrt(a.x*a.x+ a.y*a.y),b.y};
 }
 
 static inline float2 polar_to_cartesian2(float2 a) {
 
-  return make_float2(a.x * cos(a.y), a.x * sin(a.y));
+  return float2{a.x * cos(a.y), a.x * sin(a.y)};
 }
 
 static inline Chromaticities RotatePrimary(Chromaticities N,float rrot,float grot,float brot){
@@ -495,9 +422,9 @@ static inline Chromaticities RotatePrimary(Chromaticities N,float rrot,float gro
 static inline Chromaticities ScalePrim(Chromaticities N,float rs,float gs,float bs){
   N = CenterPrimaries(N);
 
-  N.red = make_float2(N.red.x*rs,N.red.y*rs);
-  N.green = make_float2(N.green.x*gs,N.green.y*gs);
-  N.blue = make_float2(N.blue.x*bs,N.blue.y*bs);
+  N.red = float2{N.red.x*rs,N.red.y*rs};
+  N.green = float2{N.green.x*gs,N.green.y*gs};
+  N.blue = float2{N.blue.x*bs,N.blue.y*bs};
 
   N = DeCenterPrimaries(N);
 
@@ -510,11 +437,11 @@ static inline float2 Line_equation(float2 a, float2 b)
     if (fabsf(dx) < 1e-6f) {
         /* vertical line → slope = +∞, intercept = x */
         const float kInf = 1e30f * 1e30f;
-        return make_float2(kInf, a.x);
+        return float2{kInf, a.x};
     }
     float m = (b.y - a.y) / dx;
     float c = a.y - m * a.x;
-    return make_float2(m, c);
+    return float2{m, c};
 }
 
 static inline Chromaticities Polygon(Chromaticities N){
@@ -563,7 +490,7 @@ static inline float2 intersection(float2 l1, float2 l2) {
     x = (c2 - c1) / (m1 - m2);
     y = m1 * x + c1;
   }
-  return make_float2(x, y);
+  return float2{x, y};
 }
 
 static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float cpg, float cpb, float ored, float og, float ob, float achromatic_rotate = 0, float achromatic_outset = 0) {
@@ -582,9 +509,9 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
 
   // compute the line eqns from each rotated‐primary → whitepoint
   float2 wp = original_N.white;
-  float2 lr = Line_equation( make_float2(N.red.x,   N.red.y),   wp );
-  float2 lg = Line_equation( make_float2(N.green.x, N.green.y), wp );
-  float2 lb = Line_equation( make_float2(N.blue.x,  N.blue.y),  wp );
+  float2 lr = Line_equation( float2{N.red.x,   N.red.y},   wp );
+  float2 lg = Line_equation( float2{N.green.x, N.green.y}, wp );
+  float2 lb = Line_equation( float2{N.blue.x,  N.blue.y},  wp );
 
   // intersect each with the chosen triangle edge
   float2 Pr = intersection(lr, redline);
@@ -607,17 +534,17 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
   const float arbitrary_scale = 4.0f;
 
   // Scale & rotate the achromatic point
-  float2 scaled_achromatic = make_float2(
+  float2 scaled_achromatic = float2{
       original_white.x,
       original_white.y * arbitrary_scale
-  );
+  };
   float achromatic_rotate_radians = radians(achromatic_rotate);
   float dx = scaled_achromatic.x - original_white.x;
   float dy = scaled_achromatic.y - original_white.y;
-  float2 rotated_achromatic = make_float2(
+  float2 rotated_achromatic = float2{
       original_white.x + dx * cos(achromatic_rotate_radians) - dy * sin(achromatic_rotate_radians),
       original_white.y + dx * sin(achromatic_rotate_radians) + dy * cos(achromatic_rotate_radians)
-  );
+  };
 
   // Build the infinite achromatic ray and triangle edges
   float2 la = Line_equation(rotated_achromatic, original_white);
@@ -648,10 +575,10 @@ static inline Chromaticities InsetPrimaries(Chromaticities N, float cpr, float c
   else if (on_segment(i3, original_N.blue,  original_N.red  )) hull_achromatic = i3;
 
   // Move whitepoint towards hull_achromatic by achromatic_outset
-  float2 interp = make_float2(
+  float2 interp = float2{
       (original_white.x - hull_achromatic.x) * (1.0f - achromatic_outset),
       (original_white.y - hull_achromatic.y) * (1.0f - achromatic_outset)
-  );
+  };
   N.white.x = hull_achromatic.x + interp.x;
   N.white.y = hull_achromatic.y + interp.y;
 

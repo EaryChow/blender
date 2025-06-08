@@ -551,6 +551,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
+                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -608,6 +609,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
+                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -663,6 +665,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
+                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -717,6 +720,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
+                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),

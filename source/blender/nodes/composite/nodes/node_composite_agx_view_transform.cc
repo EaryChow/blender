@@ -353,13 +353,12 @@ struct AgxPrecomputedData {
   float3x3 display_to_xyz;
   bool compensate_negatives;
   int display_primaries;
+  int working_primaries;
+  float log2_min;
+  float log2_max;
 };
 
 static AgxPrecomputedData agx_precompute_data(
-    float general_contrast_in,
-    float toe_contrast_in,
-    float shoulder_contrast_in,
-    float pivot_offset_in,
     float log2_min_in,
     float log2_max_in,
     float3 hue_flights_in,
@@ -410,6 +409,9 @@ static AgxPrecomputedData agx_precompute_data(
   precomputed_data.display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
   precomputed_data.compensate_negatives = compensate_negatives_in;
   precomputed_data.display_primaries = p_display_primaries;
+  precomputed_data.working_primaries = p_working_primaries;
+  precomputed_data.log2_min = log2_min_in;
+  precomputed_data.log2_max = log2_max_in;
 
   return precomputed_data;
 }
@@ -434,7 +436,7 @@ static float4 agx_image_formation(float4 color,
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (precomputed_data.compensate_negatives) {
-    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(precomputed_data.working_primaries)]);
   }
   else {
     rgb = maxf3(0, rgb);
@@ -448,7 +450,7 @@ static float4 agx_image_formation(float4 color,
   rgb_to_hsv_v(rgb, pre_curve_hsv);
 
   // encode to working log
-  rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
+  rgb = lin2log(rgb, static_cast<int>(p_working_log), precomputed_data.log2_min, precomputed_data.log2_max);
 
   // apply sigmoid, the image is formed at this point
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, precomputed_data.log_midgray + pivot_offset_in, precomputed_data.midgray);
@@ -529,10 +531,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             AgxPrecomputedData precomputed_data = agx_precompute_data(
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
                 hue_flights_in,
@@ -553,7 +551,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
-                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -563,8 +560,15 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
-                       int,
-                       AgxPrecomputedData>());
+                       float,
+                       float3,
+                       float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
     });
   } else if (use_inverse_inset && use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
@@ -584,10 +588,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             AgxPrecomputedData precomputed_data = agx_precompute_data(
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
                 hue_flights_in,
@@ -608,7 +608,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
-                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -618,8 +617,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
-                       int,
-                       AgxPrecomputedData>());
+                       float,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
     });
   } else if (!use_inverse_inset && !use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
@@ -639,10 +643,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             AgxPrecomputedData precomputed_data = agx_precompute_data(
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
@@ -663,7 +663,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
-                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -673,8 +672,14 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
-                       int,
-                       AgxPrecomputedData>());
+                       float3,
+                       float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
     });
   } else { /* use_inverse_inset && !use_generic_log2 */
     builder.construct_and_set_matching_fn_cb([&]() {
@@ -692,10 +697,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             AgxPrecomputedData precomputed_data = agx_precompute_data(
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
@@ -716,7 +717,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 shoulder_contrast_in,
                 pivot_offset_in,
                 per_channel_hue_flight_in,
-                builder.node().custom3,
                 precomputed_data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
@@ -726,8 +726,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
-                       int,
-                       AgxPrecomputedData>());
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
     });
   }
 }

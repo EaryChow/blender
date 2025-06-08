@@ -150,7 +150,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Slope of the S curve."
-        "Slope of the S curve. Controls the general contrast across the image");
+        "Slope of the S curve. Controls the general contrast across the image")
+    .compositor_expects_single_value();
 
   curve_panel.add_input<decl::Float>("Toe Contrast")
     .default_value(1.5f)
@@ -159,7 +160,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Toe exponential power of the S curve."
-        "Higher values make darker regions crush harder towards black");
+        "Higher values make darker regions crush harder towards black")
+    .compositor_expects_single_value();
 
   curve_panel.add_input<decl::Float>("Shoulder Contrast")
     .default_value(1.5f)
@@ -168,7 +170,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Shoulder exponential power of the S curve."
-        "Higher values make brighter regions crush harder towards white");
+        "Higher values make brighter regions crush harder towards white")
+    .compositor_expects_single_value();
 
   curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
     .default_value(0.0f)
@@ -177,7 +180,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .short_label("Pivot Offset")
     .description(
-        "Controls the pivot point for all contrast adjustments");
+        "Controls the pivot point for all contrast adjustments")
+    .compositor_expects_single_value();
 
   curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
     layout->prop(ptr, "working_log", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
@@ -190,7 +194,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .short_label("Log2 Min")
     .description(
         "The lower end of the generic log2 curve. Values are in Exposure stops."
-        "Only in use when working log is set to Generic Log2");
+        "Only in use when working log is set to Generic Log2")
+    .compositor_expects_single_value();
 
   curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
     .default_value(6.5f)
@@ -200,7 +205,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .short_label("Log2 Max")
     .description(
         "The upper end of the log curve. Values are in Exposure stops."
-        "Only in use when working log is set to Generic Log2");
+        "Only in use when working log is set to Generic Log2")
+    .compositor_expects_single_value();
 
   /* Panel for inset matrix settings. */
   PanelDeclarationBuilder &inset_panel = b.add_panel("Attenuation").default_closed(true);
@@ -212,7 +218,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries before curve."
-        "Negative is clockwise, and positive is counterclockwise");
+        "Negative is clockwise, and positive is counterclockwise")
+    .compositor_expects_single_value();
 
   inset_panel.add_input<decl::Vector>("Rates of Attenuation")
     .default_value({0.329652f, 0.280513f, 0.124754f})
@@ -221,7 +228,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Percentage relative to the primary chromaticity purity,"
-        "by which the chromaticity scales inwards before curve");
+        "by which the chromaticity scales inwards before curve")
+    .compositor_expects_single_value();
 
   inset_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
     layout->prop(ptr, "sync_outset_to_inset", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
@@ -236,7 +244,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Hue Rotation angle in degrees for each of the RGB primaries after curve."
-        "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.");
+        "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.")
+    .compositor_expects_single_value();
 
   outset_panel.add_input<decl::Vector>("Restore Purity")
     .default_value({0.323174f, 0.283256f, 0.037433f})
@@ -245,7 +254,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Percentage relative to the primary chromaticity purity,"
-        "by which the chromaticity scales outwards after curve");
+        "by which the chromaticity scales outwards after curve")
+    .compositor_expects_single_value();
 
   /* Panel for look adjustments settings. */
   PanelDeclarationBuilder &look_panel = b.add_panel("Look").default_closed(false);
@@ -257,7 +267,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "The percentage of hue shift introduced by the per-channel curve."
-        "Higher value will have yellower orange, for example");
+        "Higher value will have yellower orange, for example")
+    .compositor_expects_single_value();
 
   look_panel.add_input<decl::Float>("Tinting Scale")
     .default_value(0.0f)
@@ -266,7 +277,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Controls how far the white point shifts in the outset."
-        "Affecting the intensity or strength of the tint applied after curve");
+        "Affecting the intensity or strength of the tint applied after curve")
+    .compositor_expects_single_value();
 
   look_panel.add_input<decl::Float>("Tinting Hue")
     .default_value(0.0f)
@@ -275,7 +287,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .subtype(PROP_FACTOR)
     .description(
         "Adjusts the direction in which the white point shifts in the outset."
-        "influencing the overall hue of the tint applied after curve");
+        "influencing the overall hue of the tint applied after curve")
+    .compositor_expects_single_value();
 
   /* Panel for primaries settings. */
   PanelDeclarationBuilder &primaries_panel = b.add_panel("Primaries").default_closed(true);
@@ -290,7 +303,8 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .short_label("Compensate Negatives")
     .description(
         "Use special luminance compensation technique to prevent out-of-gamut negative values."
-        "Done in both pre-curve and post-curve state.");
+        "Done in both pre-curve and post-curve state.")
+    .compositor_expects_single_value();
 
 }
 

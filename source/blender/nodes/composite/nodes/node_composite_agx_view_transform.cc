@@ -371,12 +371,13 @@ static float4 agx_image_formation(float4 color,
   float3 rgb = xyz_to_working * in_xyz;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (compensate_negatives_in) {
-    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  }
-  else {
-    rgb = maxf3(0, rgb);
-  }
+  // if (compensate_negatives_in) {
+  //   rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+  // }
+  // else {
+  //   rgb = maxf3(0, rgb);
+  // }
+  rgb = maxf3(0, rgb);
 
   // generate inset matrix
   Chromaticities inset_chromaticities = InsetPrimaries(
@@ -390,8 +391,8 @@ static float4 agx_image_formation(float4 color,
   rgb = insetmat * rgb;
 
   // record pre-formation chromaticity angle
-  float3 pre_curve_hsv;
-  rgb_to_hsv_v(rgb, pre_curve_hsv);
+  // float3 pre_curve_hsv;
+  // rgb_to_hsv_v(rgb, pre_curve_hsv);
 
   // encode to working log
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
@@ -441,12 +442,13 @@ static float4 agx_image_formation(float4 color,
   img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (compensate_negatives_in) {
-    img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  }
-  else {
-    img = maxf3(0, img);
-  }
+  // if (compensate_negatives_in) {
+  //   img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
+  // }
+  // else {
+  //   img = maxf3(0, img);
+  // }
+  rgb = maxf3(0, rgb);
 
   // convert linearized formed image back to OCIO's scene_linear role space
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);

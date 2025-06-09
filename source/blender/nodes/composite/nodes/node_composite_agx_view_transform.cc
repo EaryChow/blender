@@ -127,6 +127,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
+  node->storage = MEM_callocN<NodeAgXViewTransformData>(__func__);
 }
 
 // Node Declaration
@@ -308,36 +309,144 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
 }
 
+// storage
+struct NodeAgXViewTransformData {
+  float3x3 scene_linear_to_working;
+  float3x3 working_to_display;
+  float3x3 display_to_scene_linear;
+  float log_midgray;
+  float midgray;
+  float3x3 insetmat;
+  float3x3 outsetmat;
+};
+
+static void storage_free(bNode *node)
+{
+  if (node->storage) {
+    MEM_freeN(node->storage);
+  }
+  node->storage = nullptr;
+}
+
+static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
+{
+  if (src_node->storage) {
+    NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
+    NodeAgXViewTransformData *new_data = MEM_dupN<NodeAgXViewTransformData>(src_data);
+    dest_node->storage = new_data;
+  }
+}
+
 static void node_update(bNodeTree *ntree, bNode *node)
 {
+  // ---- hide sockets based on rna properties ----
   // Get the value of the boolean property
   bool use_same_settings = node->custom1;
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
-  bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
-  if (reverse_hue_flights) {
-    blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
+  bNodeSocket *reverse_hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+  if (reverse_hue_flights_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights_soc, outset_panel_sockets_available);
   }
 
-  bNodeSocket *restore_purity = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
-  if (restore_purity) {
-    blender::bke::node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
+  bNodeSocket *restore_purity_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+  if (restore_purity_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *restore_purity_soc, outset_panel_sockets_available);
   }
 
   // Get the value of the enum property
   bool log2_settings_available = node->custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   // Find and set the availability of each related socket
-  bNodeSocket *log2_exposure_min = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
-  if (log2_exposure_min) {
-     blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
+  bNodeSocket *log2_exposure_min_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+  if (log2_exposure_min_soc) {
+     blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min_soc, log2_settings_available);
   }
 
-  bNodeSocket *log2_exposure_max = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
-  if (log2_exposure_max) {
-    blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
+  bNodeSocket *log2_exposure_max_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+  if (log2_exposure_max_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max_soc, log2_settings_available);
   }
 
+  // ---- precompute maths that are the same for all pixels ----
+  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(node->storage);
+  if (data == nullptr) {
+    return;
+  }
+
+  const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
+  const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
+
+  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[node->custom2]);
+  data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
+  data->working_to_display = RGBtoRGB(COLOR_SPACE_PRI[node->custom2],
+                                      COLOR_SPACE_PRI[node->custom4]);
+  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[node->custom4]);                                      
+  data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
+
+  float log2_min_in = 0.0f;
+  if (log2_exposure_min_soc && log2_exposure_min_soc->typeinfo->get_base_cpp_value) {
+    log2_exposure_min_soc->typeinfo->get_base_cpp_value(log2_exposure_min_soc->storage.data, &log2_min_in);
+  }
+
+  float log2_max_in = 0.0f;
+  if (log2_exposure_max_soc && log2_exposure_max_soc->typeinfo->get_base_cpp_value) {
+    log2_exposure_max_soc->typeinfo->get_base_cpp_value(log2_exposure_max_soc->storage.data, &log2_max_in);
+  }
+  
+  data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+
+  float image_native_power = 2.4f;
+  data->midgray = pow(0.18f, 1.0f / image_native_power);
+
+  bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
+  float3 attenuation_rates_in = float3(0.0f, 0.0f, 0.0f);
+  if (attenuation_rates_soc && attenuation_rates_soc->typeinfo->get_base_cpp_value) {
+    attenuation_rates_soc->typeinfo->get_base_cpp_value(attenuation_rates_soc->storage.data, &attenuation_rates_in);
+  }
+
+  bNodeSocket *hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Hue Flights");
+  float3 hue_flights_in = float3(0.0f, 0.0f, 0.0f);
+  if (hue_flights_soc && hue_flights_soc->typeinfo->get_base_cpp_value) {
+    hue_flights_soc->typeinfo->get_base_cpp_value(hue_flights_soc->storage.data, &hue_flights_in);
+  }
+
+  Chromaticities inset_chromaticities = InsetPrimaries(
+    COLOR_SPACE_PRI[node->custom2],
+    attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
+    hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
+
+  data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[node->custom2]);
+
+  bNodeSocket *restore_purity_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+  float3 restore_purity_in = float3(0.0f, 0.0f, 0.0f);
+  if (restore_purity_soc && restore_purity_soc->typeinfo->get_base_cpp_value) {
+    restore_purity_soc->typeinfo->get_base_cpp_value(restore_purity_soc->storage.data, &restore_purity_in);
+  }
+
+  float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f);
+  if (reverse_hue_flights_soc && reverse_hue_flights_soc->typeinfo->get_base_cpp_value) {
+    reverse_hue_flights_soc->typeinfo->get_base_cpp_value(reverse_hue_flights_soc->storage.data, &reverse_hue_flights_in);
+  }
+
+  if (node->custom1) {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[node->custom2],
+        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
+        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
+        tinting_hue_in + 180, tinting_scale_in);
+    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[node->custom2]));
+  }
+  else {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[node->custom2],
+        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
+        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
+        tinting_hue_in + 180, tinting_scale_in);
+        data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[node->custom2]));
+  }
 }
+
+
 
 // CPU processing logic
 static float4 agx_image_formation(float4 color,
@@ -347,121 +456,71 @@ static float4 agx_image_formation(float4 color,
                                   float pivot_offset_in,                     
                                   float log2_min_in,
                                   float log2_max_in,
-                                  float3 hue_flights_in,
-                                  float3 attenuation_rates_in,
-                                  float3 reverse_hue_flights_in,
-                                  float3 restore_purity_in,
                                   float per_channel_hue_flight_in,
-                                  float tinting_scale_in,
-                                  float tinting_hue_in,
                                   bool compensate_negatives_in,
                                   int p_working_primaries,
                                   int p_working_log,
                                   int p_display_primaries,
-                                  bool p_use_inverse_inset
+                                  NodeAgXViewTransformData *data
                                 )
 {
-  float alpha = color.w;
-  float in_rgb_array[3] = {color.x, color.y, color.z};
-  float in_xyz_array[3];
-  IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
-  float3 in_xyz = float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
+  float3 rgb = color.xyz;
 
-  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  float3 rgb = xyz_to_working * in_xyz;
+  rgb = data->scene_linear_to_working * rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  // if (compensate_negatives_in) {
-  //   rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  // }
-  // else {
-  //   rgb = maxf3(0, rgb);
-  // }
-  rgb = maxf3(0, rgb);
-
-  // generate inset matrix
-  Chromaticities inset_chromaticities = InsetPrimaries(
-      COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-      attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
-      hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
-
-  float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+  if (compensate_negatives_in) {
+    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+  }
+  else {
+    rgb = maxf3(0, rgb);
+  }
 
   // apply inset matrix
-  rgb = insetmat * rgb;
+  rgb = data->insetmat * rgb;
 
   // record pre-formation chromaticity angle
-  // float3 pre_curve_hsv;
-  // rgb_to_hsv_v(rgb, pre_curve_hsv);
+  float3 pre_curve_hsv;
+  rgb_to_hsv_v(rgb, pre_curve_hsv);
 
   // encode to working log
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
-  float image_native_power = 2.4f;
-  float midgray = pow(0.18f, 1.0f / image_native_power);
-  // rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
-  // rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
-  // rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  float log_midgray = data->log_midgray;
+  float midgray = data->midgray;
+  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
   img = spowf3(img, image_native_power);
 
   // lerp pre- and post-curve chromaticity angle
-  // float3 post_curve_hsv;
-  // rgb_to_hsv_v(img, post_curve_hsv);
-  // post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
-  // hsv_to_rgb_v(post_curve_hsv, img);
-
-  // generate outset matrix
-  float3x3 outsetmat;
-  if (p_use_inverse_inset) {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, // Uses attenuation settings
-        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,         // Uses attenuation settings
-        tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
-  else {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
-        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
-        tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
+  float3 post_curve_hsv;
+  rgb_to_hsv_v(img, post_curve_hsv);
+  post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
+  hsv_to_rgb_v(post_curve_hsv, img);
 
   // apply outset matrix
-  img = outsetmat * img;
+  img = data->outsetmat * img;
 
   // convert from working primaries to target display primaries
-  float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-                                         COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  img = working_to_display * img;
+  img = data->working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  // if (compensate_negatives_in) {
-  //   img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  // }
-  // else {
-  //   img = maxf3(0, img);
-  // }
-  rgb = maxf3(0, rgb);
+  if (compensate_negatives_in) {
+    img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
+  }
+  else {
+    img = maxf3(0, img);
+  }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  float3 out_xyz = display_to_xyz * img;
-  float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
-  float img_array[3];
-  IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);
+  img = data->display_to_scene_linear * img;
 
   // re-combine the alpha channel
-  color.x = img_array[0];
-  color.y = img_array[1];
-  color.z = img_array[2];
-  color.w = alpha;
+  color.xyz = img;
 
   return color;
 }
@@ -479,10 +538,9 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 // Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  const bool use_inverse_inset = builder.node().custom1;
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
-  if (!use_inverse_inset && use_generic_log2) {
+  if (use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
@@ -493,13 +551,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float log2_min_in,
                        const float log2_max_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float3 reverse_hue_flights_in,
-                       const float3 restore_purity_in,
                        const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             return agx_image_formation(
                 color,
@@ -509,18 +561,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
-                hue_flights_in,
-                attenuation_rates_in,
-                reverse_hue_flights_in,
-                restore_purity_in,
                 per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
                 compensate_negatives_in,
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                builder.node().custom1);
+                data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -530,16 +576,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
-                       float3,
-                       float3,
-                       float3,
-                       float3,
-                       float,
-                       float,
                        float,
                        bool>());
     });
-  } else if (use_inverse_inset && use_generic_log2) {
+  } else {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
@@ -548,66 +588,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
                        const float pivot_offset_in,
-                       const float log2_min_in,
-                       const float log2_max_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
                        const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                log2_min_in,
-                log2_max_in,
-                hue_flights_in,
-                attenuation_rates_in,
-                float3(0, 0, 0), /* reverse_hue_flights_in */
-                float3(0, 0, 0), /* restore_purity_in */
-                per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                builder.node().custom1);
-          },
-          mf::build::exec_presets::SomeSpanOrSingle<0>(),
-          TypeSequence<float4,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float3,
-                       float3,
-                       float,
-                       float,
-                       float,
-                       bool>());
-    });
-  } else if (!use_inverse_inset && !use_generic_log2) {
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float3 reverse_hue_flights_in,
-                       const float3 restore_purity_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             return agx_image_formation(
                 color,
@@ -617,78 +598,17 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
-                hue_flights_in,
-                attenuation_rates_in,
-                reverse_hue_flights_in,
-                restore_purity_in,
                 per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
                 compensate_negatives_in,
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                builder.node().custom1);
+                data);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
                        float,
                        float,
-                       float,
-                       float,
-                       float3,
-                       float3,
-                       float3,
-                       float3,
-                       float,
-                       float,
-                       float,
-                       bool>());
-    });
-  } else { /* use_inverse_inset && !use_generic_log2 */
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
-                hue_flights_in,
-                attenuation_rates_in,
-                float3(0, 0, 0), /* reverse_hue_flights_in */
-                float3(0, 0, 0), /* restore_purity_in */
-                per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                builder.node().custom1);
-          },
-          mf::build::exec_presets::SomeSpanOrSingle<0>(),
-          TypeSequence<float4,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float3,
-                       float3,
                        float,
                        float,
                        float,
@@ -710,6 +630,8 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
+  ntype.free_storage = storage_free;
+  ntype.copy_storage = storage_copy;
   blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;
   ntype.gpu_fn = node_gpu_material;

@@ -401,9 +401,9 @@ static float4 agx_image_formation(float4 color,
   float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
   float image_native_power = 2.4f;
   float midgray = pow(0.18f, 1.0f / image_native_power);
-  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
-  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
-  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  // rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  // rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  // rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
   img = spowf3(img, image_native_power);

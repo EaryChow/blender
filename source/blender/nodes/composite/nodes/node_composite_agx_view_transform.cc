@@ -28,9 +28,7 @@
 #include "RNA_enum_types.hh"
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-#include "NOD_geometry_nodes_lazy_function.hh"
-#include "COM_profiler.hh"
-#include <chrono>
+
 
 // Namespace Declaration
 using namespace blender::compositor;
@@ -341,91 +339,26 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 }
 
-// processing logic
-
-// precompute static data that won't change per-pixel
-struct AgxPrecomputedData {
-  float3x3 xyz_to_working;
-  float3x3 insetmat;
-  float log_midgray;
-  float image_native_power;
-  float midgray;
-  float3x3 outsetmat;
-  float3x3 working_to_display;
-  float3x3 display_to_xyz;
-  bool compensate_negatives;
-  int display_primaries;
-  int working_primaries;
-  float log2_min;
-  float log2_max;
-};
-
-static AgxPrecomputedData agx_precompute_data(
-    float log2_min_in,
-    float log2_max_in,
-    float3 hue_flights_in,
-    float3 attenuation_rates_in,
-    float3 reverse_hue_flights_in,
-    float3 restore_purity_in,
-    float tinting_scale_in,
-    float tinting_hue_in,
-    bool compensate_negatives_in,
-    int p_working_primaries,
-    int p_working_log,
-    int p_display_primaries,
-    bool p_use_inverse_inset) {
-  AgxPrecomputedData precomputed_data;
-
-  precomputed_data.xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-
-  Chromaticities inset_chromaticities = InsetPrimaries(
-      COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-      attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
-      hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
-
-  precomputed_data.insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-
-  precomputed_data.log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
-  precomputed_data.image_native_power = 2.4f;
-  precomputed_data.midgray = pow(0.18f, 1.0f / precomputed_data.image_native_power);
-
-  if (p_use_inverse_inset) {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
-        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
-        tinting_hue_in + 180, tinting_scale_in);
-    precomputed_data.outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
-  else {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
-        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
-        tinting_hue_in + 180, tinting_scale_in);
-    precomputed_data.outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
-
-  precomputed_data.working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-                                                   COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  precomputed_data.display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  precomputed_data.compensate_negatives = compensate_negatives_in;
-  precomputed_data.display_primaries = p_display_primaries;
-  precomputed_data.working_primaries = p_working_primaries;
-  precomputed_data.log2_min = log2_min_in;
-  precomputed_data.log2_max = log2_max_in;
-
-  return precomputed_data;
-}
-
+// CPU processing logic
 static float4 agx_image_formation(float4 color,
                                   float general_contrast_in,
                                   float toe_contrast_in,
                                   float shoulder_contrast_in,
-                                  float pivot_offset_in,
+                                  float pivot_offset_in,                     
+                                  float log2_min_in,
+                                  float log2_max_in,
+                                  float3 hue_flights_in,
+                                  float3 attenuation_rates_in,
+                                  float3 reverse_hue_flights_in,
+                                  float3 restore_purity_in,
                                   float per_channel_hue_flight_in,
+                                  float tinting_scale_in,
+                                  float tinting_hue_in,
+                                  bool compensate_negatives_in,
+                                  int p_working_primaries,
                                   int p_working_log,
-                                  const AgxPrecomputedData &precomputed_data
+                                  int p_display_primaries,
+                                  bool p_use_inverse_inset
                                 )
 {
   float alpha = color.w;
@@ -434,56 +367,90 @@ static float4 agx_image_formation(float4 color,
   IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
   float3 in_xyz = float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
 
-  float3 rgb = precomputed_data.xyz_to_working * in_xyz;
+  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+  float3 rgb = xyz_to_working * in_xyz;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (precomputed_data.compensate_negatives) {
-    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(precomputed_data.working_primaries)]);
+  if (compensate_negatives_in) {
+    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
   }
   else {
     rgb = maxf3(0, rgb);
   }
 
+  // generate inset matrix
+  Chromaticities inset_chromaticities = InsetPrimaries(
+      COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
+      attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
+      hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
+
+  float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+
   // apply inset matrix
-  rgb = precomputed_data.insetmat * rgb;
+  rgb = insetmat * rgb;
 
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
   rgb_to_hsv_v(rgb, pre_curve_hsv);
 
   // encode to working log
-  rgb = lin2log(rgb, static_cast<int>(p_working_log), precomputed_data.log2_min, precomputed_data.log2_max);
+  rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, precomputed_data.log_midgray + pivot_offset_in, precomputed_data.midgray);
-  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, precomputed_data.log_midgray + pivot_offset_in, precomputed_data.midgray);
-  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, precomputed_data.log_midgray + pivot_offset_in, precomputed_data.midgray);
+  float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
+  float image_native_power = 2.4f;
+  float midgray = pow(0.18f, 1.0f / image_native_power);
+  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
+  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
-  img = spowf3(img, precomputed_data.image_native_power);
+  img = spowf3(img, image_native_power);
 
   // lerp pre- and post-curve chromaticity angle
-  float3 post_curve_hsv;
-  rgb_to_hsv_v(img, post_curve_hsv);
-  post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
-  hsv_to_rgb_v(post_curve_hsv, img);
+  // float3 post_curve_hsv;
+  // rgb_to_hsv_v(img, post_curve_hsv);
+  // post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
+  // hsv_to_rgb_v(post_curve_hsv, img);
+
+  // generate outset matrix
+  float3x3 outsetmat;
+  if (p_use_inverse_inset) {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
+        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, // Uses attenuation settings
+        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,         // Uses attenuation settings
+        tinting_hue_in + 180, tinting_scale_in);
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+  }
+  else {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
+        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
+        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
+        tinting_hue_in + 180, tinting_scale_in);
+    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
+  }
 
   // apply outset matrix
-  img = precomputed_data.outsetmat * img;
+  img = outsetmat * img;
 
   // convert from working primaries to target display primaries
-  img = precomputed_data.working_to_display * img;
+  float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
+                                         COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
+  img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (precomputed_data.compensate_negatives) {
-    img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(precomputed_data.display_primaries)]);
+  if (compensate_negatives_in) {
+    img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
   }
   else {
     img = maxf3(0, img);
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  float3 out_xyz = precomputed_data.display_to_xyz * img;
+  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
+  float3 out_xyz = display_to_xyz * img;
   float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
   float img_array[3];
   IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);
@@ -532,13 +499,19 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-            AgxPrecomputedData precomputed_data = agx_precompute_data(
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
                 hue_flights_in,
                 attenuation_rates_in,
                 reverse_hue_flights_in,
                 restore_purity_in,
+                per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
                 compensate_negatives_in,
@@ -546,24 +519,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
-
-
-            auto start = std::chrono::high_resolution_clock::now();
-            float4 result = agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                per_channel_hue_flight_in,
-                builder.node().custom3,
-                precomputed_data);
-            auto end = std::chrono::high_resolution_clock::now();
-            if (builder.context().profiler()) {
-              builder.context().profiler()->set_node_evaluation_time(
-                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
-            }
-            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -599,13 +554,19 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-            AgxPrecomputedData precomputed_data = agx_precompute_data(
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
                 hue_flights_in,
                 attenuation_rates_in,
                 float3(0, 0, 0), /* reverse_hue_flights_in */
                 float3(0, 0, 0), /* restore_purity_in */
+                per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
                 compensate_negatives_in,
@@ -613,24 +574,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
-
-
-            auto start = std::chrono::high_resolution_clock::now();
-            float4 result = agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                per_channel_hue_flight_in,
-                builder.node().custom3,
-                precomputed_data);
-            auto end = std::chrono::high_resolution_clock::now();
-            if (builder.context().profiler()) {
-              builder.context().profiler()->set_node_evaluation_time(
-                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
-            }
-            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -664,13 +607,19 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-            AgxPrecomputedData precomputed_data = agx_precompute_data(
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
                 attenuation_rates_in,
                 reverse_hue_flights_in,
                 restore_purity_in,
+                per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
                 compensate_negatives_in,
@@ -678,24 +627,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
-
-
-            auto start = std::chrono::high_resolution_clock::now();
-            float4 result = agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                per_channel_hue_flight_in,
-                builder.node().custom3,
-                precomputed_data);
-            auto end = std::chrono::high_resolution_clock::now();
-            if (builder.context().profiler()) {
-              builder.context().profiler()->set_node_evaluation_time(
-                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
-            }
-            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -727,13 +658,19 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-            AgxPrecomputedData precomputed_data = agx_precompute_data(
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
                 hue_flights_in,
                 attenuation_rates_in,
                 float3(0, 0, 0), /* reverse_hue_flights_in */
                 float3(0, 0, 0), /* restore_purity_in */
+                per_channel_hue_flight_in,
                 tinting_scale_in,
                 tinting_hue_in,
                 compensate_negatives_in,
@@ -741,24 +678,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
-
-
-            auto start = std::chrono::high_resolution_clock::now();
-            float4 result = agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                per_channel_hue_flight_in,
-                builder.node().custom3,
-                precomputed_data);
-            auto end = std::chrono::high_resolution_clock::now();
-            if (builder.context().profiler()) {
-              builder.context().profiler()->set_node_evaluation_time(
-                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
-            }
-            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

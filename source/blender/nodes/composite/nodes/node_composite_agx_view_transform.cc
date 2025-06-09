@@ -121,6 +121,34 @@ static void node_rna(StructRNA *srna) {
       false);
 }
 
+// storage
+struct NodeAgXViewTransformData {
+  float3x3 scene_linear_to_working;
+  float3x3 working_to_display;
+  float3x3 display_to_scene_linear;
+  float log_midgray;
+  float midgray;
+  float3x3 insetmat;
+  float3x3 outsetmat;
+};
+
+static void storage_free(bNode *node)
+{
+  if (node->storage) {
+    MEM_freeN(node->storage);
+  }
+  node->storage = nullptr;
+}
+
+static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
+{
+  if (src_node->storage) {
+    NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
+    NodeAgXViewTransformData *new_data = MEM_dupN<NodeAgXViewTransformData>(src_data);
+    dest_node->storage = new_data;
+  }
+}
+
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom2 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
@@ -307,34 +335,6 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Done in both pre-curve and post-curve state.")
     .compositor_expects_single_value();
 
-}
-
-// storage
-struct NodeAgXViewTransformData {
-  float3x3 scene_linear_to_working;
-  float3x3 working_to_display;
-  float3x3 display_to_scene_linear;
-  float log_midgray;
-  float midgray;
-  float3x3 insetmat;
-  float3x3 outsetmat;
-};
-
-static void storage_free(bNode *node)
-{
-  if (node->storage) {
-    MEM_freeN(node->storage);
-  }
-  node->storage = nullptr;
-}
-
-static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
-{
-  if (src_node->storage) {
-    NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
-    NodeAgXViewTransformData *new_data = MEM_dupN<NodeAgXViewTransformData>(src_data);
-    dest_node->storage = new_data;
-  }
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)

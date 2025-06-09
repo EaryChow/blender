@@ -28,6 +28,7 @@
 #include "RNA_enum_types.hh"
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+#include "NOD_geometry_nodes_lazy_function.hh"
 
 
 // Namespace Declaration
@@ -544,6 +545,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
+
+            /* Add ScopedNodeTimer to measure execution time. */
+            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -602,6 +607,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
+
+            /* Add ScopedNodeTimer to measure execution time. */
+            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -658,6 +667,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
+
+            /* Add ScopedNodeTimer to measure execution time. */
+            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -712,6 +725,10 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom3,
                 builder.node().custom4,
                 builder.node().custom1);
+
+            /* Add ScopedNodeTimer to measure execution time. */
+            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+
             return agx_image_formation(
                 color,
                 general_contrast_in,

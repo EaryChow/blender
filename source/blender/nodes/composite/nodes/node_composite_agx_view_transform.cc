@@ -18,6 +18,7 @@
 #include "GPU_material.hh"
 #include "FN_multi_function_builder.hh"
 #include "IMB_colormanagement.hh"
+#include "MEM_guardedalloc.h"
 #include "NOD_multi_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_rna_define.hh"
@@ -135,7 +136,7 @@ struct NodeAgXViewTransformData {
 static void storage_free(bNode *node)
 {
   if (node->storage) {
-    MEM_freeN(node->storage);
+    mem_freeN_ex(node->storage, mem_guarded::internal::AllocationType::ALLOC_FREE);
   }
   node->storage = nullptr;
 }
@@ -144,7 +145,7 @@ static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNod
 {
   if (src_node->storage) {
     NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
-    NodeAgXViewTransformData *new_data = MEM_dupN<NodeAgXViewTransformData>(src_data);
+    NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(mem_dupallocN(src_data));
     dest_node->storage = new_data;
   }
 }
@@ -155,7 +156,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
-  node->storage = MEM_callocN<NodeAgXViewTransformData>(__func__);
+  node->storage = static_cast<NodeAgXViewTransformData *>(mem_callocN(sizeof(NodeAgXViewTransformData), __func__));
 }
 
 // Node Declaration
@@ -376,11 +377,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
 
-  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[node->custom2]);
+  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
   data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
-  data->working_to_display = RGBtoRGB(COLOR_SPACE_PRI[node->custom2],
-                                      COLOR_SPACE_PRI[node->custom4]);
-  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[node->custom4]);                                      
+  data->working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+                                      COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
 
   float log2_min_in = 0.0f;
@@ -411,13 +412,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
   }
 
   Chromaticities inset_chromaticities = InsetPrimaries(
-    COLOR_SPACE_PRI[node->custom2],
+    COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
     attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
-  data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[node->custom2]);
+  data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
 
-  bNodeSocket *restore_purity_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+
   float3 restore_purity_in = float3(0.0f, 0.0f, 0.0f);
   if (restore_purity_soc && restore_purity_soc->typeinfo->get_base_cpp_value) {
     restore_purity_soc->typeinfo->get_base_cpp_value(restore_purity_soc->storage.data, &restore_purity_in);
@@ -428,21 +429,33 @@ static void node_update(bNodeTree *ntree, bNode *node)
     reverse_hue_flights_soc->typeinfo->get_base_cpp_value(reverse_hue_flights_soc->storage.data, &reverse_hue_flights_in);
   }
 
+  float tinting_hue_in = 0.0f;
+  bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
+  if (tinting_hue_soc && tinting_hue_soc->typeinfo->get_base_cpp_value) {
+    tinting_hue_soc->typeinfo->get_base_cpp_value(tinting_hue_soc->storage.data, &tinting_hue_in);
+  }
+
+  float tinting_scale_in = 0.0f;
+  bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
+  if (tinting_scale_soc && tinting_scale_soc->typeinfo->get_base_cpp_value) {
+    tinting_scale_soc->typeinfo->get_base_cpp_value(tinting_scale_soc->storage.data, &tinting_scale_in);
+  }
+
   if (node->custom1) {
     Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[node->custom2],
+        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
         tinting_hue_in + 180, tinting_scale_in);
-    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[node->custom2]));
+    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[node->custom2],
+        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-        data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[node->custom2]));
+        data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
   }
 }
 
@@ -464,7 +477,9 @@ static float4 agx_image_formation(float4 color,
                                   NodeAgXViewTransformData *data
                                 )
 {
-  float3 rgb = color.xyz;
+  float3 rgb.x = color.x;
+  float3 rgb.y = color.y;
+  float3 rgb.z = color.z;
 
   rgb = data->scene_linear_to_working * rgb;
 
@@ -494,7 +509,7 @@ static float4 agx_image_formation(float4 color,
   rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
-  img = spowf3(img, image_native_power);
+  img = spowf3(img, 2.4f);
 
   // lerp pre- and post-curve chromaticity angle
   float3 post_curve_hsv;
@@ -520,7 +535,11 @@ static float4 agx_image_formation(float4 color,
   img = data->display_to_scene_linear * img;
 
   // re-combine the alpha channel
-  color.xyz = img;
+  color.x = img.x;
+
+  color.y = img.y;
+
+  color.z = img.z;
 
   return color;
 }
@@ -553,6 +572,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float log2_max_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
+            NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -630,8 +650,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
-  ntype.free_storage = storage_free;
-  ntype.copy_storage = storage_copy;
+  blender::bke::node_type_storage(ntype, "NodeAgXViewTransformData", storage_free, storage_copy);
   blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;
   ntype.gpu_fn = node_gpu_material;

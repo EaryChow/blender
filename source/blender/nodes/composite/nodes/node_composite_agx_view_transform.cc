@@ -29,7 +29,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
-
+#include "COM_profiler.hh"
+#include <chrono>
 
 // Namespace Declaration
 using namespace blender::compositor;
@@ -546,10 +547,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom4,
                 builder.node().custom1);
 
-            /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
-            return agx_image_formation(
+            auto start = std::chrono::high_resolution_clock::now();
+            float4 result = agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -558,6 +558,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 per_channel_hue_flight_in,
                 builder.node().custom3,
                 precomputed_data);
+            auto end = std::chrono::high_resolution_clock::now();
+            if (builder.context().profiler()) {
+              builder.context().profiler()->set_node_evaluation_time(
+                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
+            }
+            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -608,10 +614,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom4,
                 builder.node().custom1);
 
-            /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
-            return agx_image_formation(
+            auto start = std::chrono::high_resolution_clock::now();
+            float4 result = agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -620,6 +625,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 per_channel_hue_flight_in,
                 builder.node().custom3,
                 precomputed_data);
+            auto end = std::chrono::high_resolution_clock::now();
+            if (builder.context().profiler()) {
+              builder.context().profiler()->set_node_evaluation_time(
+                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
+            }
+            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -668,10 +679,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom4,
                 builder.node().custom1);
 
-            /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
-            return agx_image_formation(
+            auto start = std::chrono::high_resolution_clock::now();
+            float4 result = agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -680,6 +690,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 per_channel_hue_flight_in,
                 builder.node().custom3,
                 precomputed_data);
+            auto end = std::chrono::high_resolution_clock::now();
+            if (builder.context().profiler()) {
+              builder.context().profiler()->set_node_evaluation_time(
+                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
+            }
+            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -726,10 +742,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom4,
                 builder.node().custom1);
 
-            /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
-            return agx_image_formation(
+            auto start = std::chrono::high_resolution_clock::now();
+            float4 result = agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -738,6 +753,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 per_channel_hue_flight_in,
                 builder.node().custom3,
                 precomputed_data);
+            auto end = std::chrono::high_resolution_clock::now();
+            if (builder.context().profiler()) {
+              builder.context().profiler()->set_node_evaluation_time(
+                  builder.node().instance_key(), std::chrono::duration_cast<timeit::Nanoseconds>(end - start));
+            }
+            return result;
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

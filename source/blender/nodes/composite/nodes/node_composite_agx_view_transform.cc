@@ -547,7 +547,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom1);
 
             /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
             return agx_image_formation(
                 color,
@@ -609,7 +609,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom1);
 
             /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
             return agx_image_formation(
                 color,
@@ -669,7 +669,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom1);
 
             /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
             return agx_image_formation(
                 color,
@@ -727,7 +727,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom1);
 
             /* Add ScopedNodeTimer to measure execution time. */
-            const nodes::ScopedNodeTimer node_timer(*builder.context(), *builder.node().bnode());
+            const nodes::ScopedNodeTimer node_timer(*builder.context_, builder.node());
 
             return agx_image_formation(
                 color,

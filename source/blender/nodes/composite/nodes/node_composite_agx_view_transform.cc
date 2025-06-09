@@ -136,7 +136,7 @@ struct NodeAgXViewTransformData {
 static void storage_free(bNode *node)
 {
   if (node->storage) {
-    mem_freeN_ex(node->storage, mem_guarded::internal::AllocationType::ALLOC_FREE);
+    MEM_freeN(node->storage);
   }
   node->storage = nullptr;
 }
@@ -145,7 +145,7 @@ static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNod
 {
   if (src_node->storage) {
     NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
-    NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(mem_dupallocN(src_data));
+    NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(MEM_dupallocN(src_data));
     dest_node->storage = new_data;
   }
 }
@@ -156,7 +156,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
-  node->storage = static_cast<NodeAgXViewTransformData *>(mem_callocN(sizeof(NodeAgXViewTransformData), __func__));
+  node->storage = static_cast<NodeAgXViewTransformData *>(MEM_callocN(sizeof(NodeAgXViewTransformData), __func__));
 }
 
 // Node Declaration
@@ -460,7 +460,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
 }
 
 
-
 // CPU processing logic
 static float4 agx_image_formation(float4 color,
                                   float general_contrast_in,
@@ -477,9 +476,10 @@ static float4 agx_image_formation(float4 color,
                                   NodeAgXViewTransformData *data
                                 )
 {
-  float3 rgb.x = color.x;
-  float3 rgb.y = color.y;
-  float3 rgb.z = color.z;
+  float3 rgb;
+  rgb.x = color.x;
+  rgb.y = color.y;
+  rgb.z = color.z;
 
   rgb = data->scene_linear_to_working * rgb;
 
@@ -610,6 +610,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
+            NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
             return agx_image_formation(
                 color,
                 general_contrast_in,

@@ -429,19 +429,19 @@ data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min
     node_socket_get_vector(ntree, node, reverse_hue_flights_soc, (float *)&reverse_hue_flights_in);
   }
 
-  float tinting_hue_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
+  float tinting_hue_in = 0.0f; /* Default value. */
   if (tinting_hue_soc) {
     tinting_hue_in = node_socket_get_float(ntree, node, tinting_hue_soc);
   }
 
-  float tinting_scale_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
+  float tinting_scale_in = 0.0f; /* Default value. */
   if (tinting_scale_soc) {
     tinting_scale_in = node_socket_get_float(ntree, node, tinting_scale_soc);
   }
 
-  if (node->custom1) {
+  if (use_same_settings) {
     Chromaticities outset_chromaticities = InsetPrimaries(
         COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
@@ -455,7 +455,7 @@ data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-        data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
+    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
   }
 }
 

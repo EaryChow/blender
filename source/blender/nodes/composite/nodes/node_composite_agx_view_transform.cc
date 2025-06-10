@@ -123,6 +123,8 @@ static void node_rna(StructRNA *srna) {
 }
 
 // storage
+NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
+
 struct NodeAgXViewTransformData {
   float3x3 scene_linear_to_working;
   float3x3 working_to_display;
@@ -133,30 +135,14 @@ struct NodeAgXViewTransformData {
   float3x3 outsetmat;
 };
 
-static void storage_free(bNode *node)
-{
-  if (node->storage) {
-    MEM_freeN(node->storage);
-  }
-  node->storage = nullptr;
-}
-
-static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
-{
-  if (src_node->storage) {
-    NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
-    NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(MEM_dupallocN(src_data));
-    dest_node->storage = new_data;
-  }
-}
-
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom2 =  int(AGXPrimaries::AGX_PRIMARIES_REC2020);
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
-  node->storage = static_cast<NodeAgXViewTransformData *>(MEM_callocN(sizeof(NodeAgXViewTransformData), __func__));
+  NodeAgXViewTransformData *data = MEM_callocN<NodeAgXViewTransformData>("node agx");
+  node->storage = data;
 }
 
 // Node Declaration
@@ -370,10 +356,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   // ---- precompute maths that are the same for all pixels ----
   NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(node->storage);
-  if (data == nullptr) {
-    node->storage = static_cast<NodeAgXViewTransformData *>(MEM_callocN(sizeof(NodeAgXViewTransformData), __func__));
-    data = static_cast<NodeAgXViewTransformData *>(node->storage);
-  }
 
   const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
@@ -395,7 +377,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
     log2_max_in = node_socket_get_float(ntree, node, log2_exposure_max_soc);
   }
   
-data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+  data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
 
   float image_native_power = 2.4f;
   data->midgray = pow(0.18f, 1.0f / image_native_power);
@@ -652,7 +634,8 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
-  blender::bke::node_type_storage(ntype, "NodeAgXViewTransformData", storage_free, storage_copy);
+  blender::bke::node_type_storage(
+      ntype, "NodeAgXViewTransformData", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;
   ntype.gpu_fn = node_gpu_material;

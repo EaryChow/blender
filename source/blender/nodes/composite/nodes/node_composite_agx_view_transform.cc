@@ -384,31 +384,31 @@ static void node_update(bNodeTree *ntree, bNode *node)
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
 
-  float log2_min_in = 0.0f;
-  if (log2_exposure_min_soc && log2_exposure_min_soc->typeinfo->get_base_cpp_value) {
-    log2_exposure_min_soc->typeinfo->get_base_cpp_value(log2_exposure_min_soc->storage, &log2_min_in);
+  float log2_min_in = -10.0f; /* Default value. */
+  if (log2_exposure_min_soc) {
+    blender::bke::node_socket_get_float(*log2_exposure_min_soc, &log2_min_in);
   }
 
-  float log2_max_in = 0.0f;
-  if (log2_exposure_max_soc && log2_exposure_max_soc->typeinfo->get_base_cpp_value) {
-    log2_exposure_max_soc->typeinfo->get_base_cpp_value(log2_exposure_max_soc->storage, &log2_max_in);
+  float log2_max_in = 6.5f; /* Default value. */
+  if (log2_exposure_max_soc) {
+    blender::bke::node_socket_get_float(*log2_exposure_max_soc, &log2_max_in);
   }
   
-  data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
 
   float image_native_power = 2.4f;
   data->midgray = pow(0.18f, 1.0f / image_native_power);
 
   bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
-  float3 attenuation_rates_in = float3(0.0f, 0.0f, 0.0f);
-  if (attenuation_rates_soc && attenuation_rates_soc->typeinfo->get_base_cpp_value) {
-    attenuation_rates_soc->typeinfo->get_base_cpp_value(attenuation_rates_soc->storage, &attenuation_rates_in);
+  float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
+  if (attenuation_rates_soc) {
+    blender::bke::node_socket_get_vector(*attenuation_rates_soc, &attenuation_rates_in);
   }
 
   bNodeSocket *hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Hue Flights");
-  float3 hue_flights_in = float3(0.0f, 0.0f, 0.0f);
-  if (hue_flights_soc && hue_flights_soc->typeinfo->get_base_cpp_value) {
-    hue_flights_soc->typeinfo->get_base_cpp_value(hue_flights_soc->storage, &hue_flights_in);
+  float3 hue_flights_in = float3(2.13976f, -1.22827f, -3.05174f); /* Default value. */
+  if (hue_flights_soc) {
+    blender::bke::node_socket_get_vector(*hue_flights_soc, &hue_flights_in);
   }
 
   Chromaticities inset_chromaticities = InsetPrimaries(
@@ -419,26 +419,26 @@ static void node_update(bNodeTree *ntree, bNode *node)
   data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
 
 
-  float3 restore_purity_in = float3(0.0f, 0.0f, 0.0f);
-  if (restore_purity_soc && restore_purity_soc->typeinfo->get_base_cpp_value) {
-    restore_purity_soc->typeinfo->get_base_cpp_value(restore_purity_soc->storage, &restore_purity_in);
+  float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
+  if (restore_purity_soc) {
+    blender::bke::node_socket_get_vector(*restore_purity_soc, &restore_purity_in);
   }
 
-  float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f);
-  if (reverse_hue_flights_soc && reverse_hue_flights_soc->typeinfo->get_base_cpp_value) {
-    reverse_hue_flights_soc->typeinfo->get_base_cpp_value(reverse_hue_flights_soc->storage, &reverse_hue_flights_in);
+  float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f); /* Default value. */
+  if (reverse_hue_flights_soc) {
+    blender::bke::node_socket_get_vector(*reverse_hue_flights_soc, &reverse_hue_flights_in);
   }
 
-  float tinting_hue_in = 0.0f;
+  float tinting_hue_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
-  if (tinting_hue_soc && tinting_hue_soc->typeinfo->get_base_cpp_value) {
-    tinting_hue_soc->typeinfo->get_base_cpp_value(tinting_hue_soc->storage, &tinting_hue_in);
+  if (tinting_hue_soc) {
+    blender::bke::node_socket_get_float(*tinting_hue_soc, &tinting_hue_in);
   }
 
-  float tinting_scale_in = 0.0f;
+  float tinting_scale_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
-  if (tinting_scale_soc && tinting_scale_soc->typeinfo->get_base_cpp_value) {
-    tinting_scale_soc->typeinfo->get_base_cpp_value(tinting_scale_soc->storage, &tinting_scale_in);
+  if (tinting_scale_soc) {
+    blender::bke::node_socket_get_float(*tinting_scale_soc, &tinting_scale_in);
   }
 
   if (node->custom1) {

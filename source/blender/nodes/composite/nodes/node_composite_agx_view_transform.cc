@@ -386,12 +386,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   float log2_min_in = -10.0f; /* Default value. */
   if (log2_exposure_min_soc) {
-    node_socket_get_float(ntree, node, log2_exposure_min_soc, &log2_min_in);
+    log2_min_in = node_socket_get_float(ntree, node, log2_exposure_min_soc);
   }
 
   float log2_max_in = 6.5f; /* Default value. */
   if (log2_exposure_max_soc) {
-    node_socket_get_float(ntree, node, log2_exposure_max_soc, &log2_max_in);
+    log2_max_in = node_socket_get_float(ntree, node, log2_exposure_max_soc);
   }
   
 data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
@@ -402,13 +402,13 @@ data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min
   bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
   float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
   if (attenuation_rates_soc) {
-    node_socket_get_vector(ntree, node, attenuation_rates_soc, &attenuation_rates_in);
+    node_socket_get_vector(ntree, node, attenuation_rates_soc, (float *)&attenuation_rates_in);
   }
 
   bNodeSocket *hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Hue Flights");
   float3 hue_flights_in = float3(2.13976f, -1.22827f, -3.05174f); /* Default value. */
   if (hue_flights_soc) {
-    node_socket_get_vector(ntree, node, hue_flights_soc, &hue_flights_in);
+    node_socket_get_vector(ntree, node, hue_flights_soc, (float *)&hue_flights_in);
   }
 
   Chromaticities inset_chromaticities = InsetPrimaries(
@@ -421,24 +421,24 @@ data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min
 
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
   if (restore_purity_soc) {
-    node_socket_get_vector(ntree, node, restore_purity_soc, &restore_purity_in);
+    node_socket_get_vector(ntree, node, restore_purity_soc, (float *)&restore_purity_in);
   }
 
   float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f); /* Default value. */
   if (reverse_hue_flights_soc) {
-    node_socket_get_vector(ntree, node, reverse_hue_flights_soc, &reverse_hue_flights_in);
+    node_socket_get_vector(ntree, node, reverse_hue_flights_soc, (float *)&reverse_hue_flights_in);
   }
 
   float tinting_hue_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
   if (tinting_hue_soc) {
-    node_socket_get_float(ntree, node, tinting_hue_soc, &tinting_hue_in);
+    tinting_hue_in = node_socket_get_float(ntree, node, tinting_hue_soc);
   }
 
   float tinting_scale_in = 0.0f; /* Default value. */
   bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
   if (tinting_scale_soc) {
-    node_socket_get_float(ntree, node, tinting_scale_soc, &tinting_scale_in);
+    tinting_scale_in = node_socket_get_float(ntree, node, tinting_scale_soc);
   }
 
   if (node->custom1) {

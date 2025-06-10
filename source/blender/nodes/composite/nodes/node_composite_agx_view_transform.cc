@@ -143,12 +143,11 @@ static void storage_free(bNode *node)
 
 static void storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const bNode *src_node)
 {
-  NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(MEM_callocN(sizeof(NodeAgXViewTransformData), __func__));
   if (src_node->storage) {
-    const NodeAgXViewTransformData *src_data = static_cast<const NodeAgXViewTransformData *>(src_node->storage);
-    *new_data = *src_data;
+    NodeAgXViewTransformData *src_data = static_cast<NodeAgXViewTransformData *>(src_node->storage);
+    NodeAgXViewTransformData *new_data = static_cast<NodeAgXViewTransformData *>(MEM_dupallocN(src_data));
+    dest_node->storage = new_data;
   }
-  dest_node->storage = new_data;
 }
 
 // initialize
@@ -372,7 +371,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   // ---- precompute maths that are the same for all pixels ----
   NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(node->storage);
   if (data == nullptr) {
-    return;
+    node->storage = static_cast<NodeAgXViewTransformData *>(MEM_callocN(sizeof(NodeAgXViewTransformData), __func__));
+    data = static_cast<NodeAgXViewTransformData *>(node->storage);
   }
 
   const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();

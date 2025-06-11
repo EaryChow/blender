@@ -456,15 +456,20 @@ static float4 agx_image_formation(float4 color,
                                   int p_working_primaries,
                                   int p_working_log,
                                   int p_display_primaries,
-                                  NodeAgXViewTransformData *data
-                                )
+                                  float3x3 scene_linear_to_working,
+                                  float3x3 working_to_display,
+                                  float3x3 display_to_scene_linear,
+                                  float log_midgray,
+                                  float midgray,
+                                  float3x3 insetmat,
+                                  float3x3 outsetmat)
 {
   float3 rgb;
   rgb.x = color.x;
   rgb.y = color.y;
   rgb.z = color.z;
 
-  rgb = data->scene_linear_to_working * rgb;
+  rgb = scene_linear_to_working * rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -475,7 +480,7 @@ static float4 agx_image_formation(float4 color,
   }
 
   // apply inset matrix
-  rgb = data->insetmat * rgb;
+  rgb = insetmat * rgb;
 
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
@@ -485,8 +490,6 @@ static float4 agx_image_formation(float4 color,
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  float log_midgray = data->log_midgray;
-  float midgray = data->midgray;
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
@@ -501,10 +504,10 @@ static float4 agx_image_formation(float4 color,
   hsv_to_rgb_v(post_curve_hsv, img);
 
   // apply outset matrix
-  img = data->outsetmat * img;
+  img = outsetmat * img;
 
   // convert from working primaries to target display primaries
-  img = data->working_to_display * img;
+  img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -515,7 +518,7 @@ static float4 agx_image_formation(float4 color,
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  img = data->display_to_scene_linear * img;
+  img = display_to_scene_linear * img;
 
   // re-combine the alpha channel
   color.x = img.x;
@@ -540,6 +543,12 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 // Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
+  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
+  if (data == nullptr) {
+    /* This can happen if the node is not yet initialized. */
+    return;
+  }
+
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
   if (use_generic_log2) {
@@ -555,7 +564,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float log2_max_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
-            NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -569,7 +577,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data);
+                data->scene_linear_to_working,
+                data->working_to_display,
+                data->display_to_scene_linear,
+                data->log_midgray,
+                data->midgray,
+                data->insetmat,
+                data->outsetmat);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -593,7 +607,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
-            NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -607,7 +620,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data);
+                data->scene_linear_to_working,
+                data->working_to_display,
+                data->display_to_scene_linear,
+                data->log_midgray,
+                data->midgray,
+                data->insetmat,
+                data->outsetmat);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

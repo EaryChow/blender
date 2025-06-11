@@ -123,8 +123,6 @@ static void node_rna(StructRNA *srna) {
 }
 
 // storage
-NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
-
 struct NodeAgXViewTransformData {
   float3x3 scene_linear_to_working;
   float3x3 working_to_display;
@@ -134,6 +132,8 @@ struct NodeAgXViewTransformData {
   float3x3 insetmat;
   float3x3 outsetmat;
 };
+
+NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
 
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {

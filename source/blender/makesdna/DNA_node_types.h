@@ -1392,6 +1392,16 @@ typedef struct NodeSetAlpha {
   char mode;
 } NodeSetAlpha;
 
+typedef struct NodeAgXViewTransformData {
+  float3x3 scene_linear_to_working;
+  float3x3 working_to_display;
+  float3x3 display_to_scene_linear;
+  float log_midgray;
+  float midgray;
+  float3x3 insetmat;
+  float3x3 outsetmat;
+} NodeAgXViewTransformData;
+
 typedef struct NodeTexBase {
   TexMapping tex_mapping;
   ColorMapping color_mapping;

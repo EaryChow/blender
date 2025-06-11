@@ -82,6 +82,9 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+// storage
+NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
+
 // RNA functions for node properties
 static void node_rna(StructRNA *srna) {
   PropertyRNA *prop;
@@ -121,19 +124,6 @@ static void node_rna(StructRNA *srna) {
       NOD_inline_boolean_accessors(custom1, 1),
       false);
 }
-
-// storage
-struct NodeAgXViewTransformData {
-  float3x3 scene_linear_to_working;
-  float3x3 working_to_display;
-  float3x3 display_to_scene_linear;
-  float log_midgray;
-  float midgray;
-  float3x3 insetmat;
-  float3x3 outsetmat;
-};
-
-NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
 
 // initialize
 static void node_init(bNodeTree * /*tree*/, bNode *node) {
@@ -364,18 +354,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
   data->working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
                                       COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
-  printf("working_to_display: %f %f %f, %f %f %f, %f %f %f\n",
-         data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
-         data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
-         data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
-
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
-  printf("display_to_scene_linear: %f %f %f, %f %f %f, %f %f %f\n",
-         data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
-         data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
-         data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
-
 
   float log2_min_in = -10.0f; /* Default value. */
   if (log2_exposure_min_soc) {
@@ -388,12 +368,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
   }
   
   data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
-  printf("log_midgray: %f\n", data->log_midgray);
 
   float image_native_power = 2.4f;
   data->midgray = pow(0.18f, 1.0f / image_native_power);
-  printf("midgray: %f\n", data->midgray);
-
 
   bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
   float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
@@ -413,11 +390,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
   data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
-  printf("insetmat: %f %f %f, %f %f %f, %f %f %f\n",
-         data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
-         data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
-         data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
-
 
 
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
@@ -449,16 +421,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
         tinting_hue_in + 180, tinting_scale_in);
     data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
-    printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
-           data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-           data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-           data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
-
-    printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
-           data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-           data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-           data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
-
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
@@ -467,16 +429,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
     data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
-    printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
-           data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-           data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-           data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
-
-    printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
-           data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-           data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-           data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
-
   }
 }
 

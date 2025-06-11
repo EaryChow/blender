@@ -352,11 +352,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
-  data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
-  copy_m3_m3(data->working_to_display, RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
-          COLOR_SPACE_PRI[static_cast<int>(node->custom4)]).m);
+  copy_m3_m3(data->scene_linear_to_working, (xyz_to_working * scene_to_xyz).ptr());
+  float3x3 working_to_display_mat = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+          COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  copy_m3_m3(data->working_to_display, working_to_display_mat.ptr());
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
-  data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
+  copy_m3_m3(data->display_to_scene_linear, (xyz_to_scene * display_to_xyz).ptr());
 
   float log2_min_in = -10.0f; /* Default value. */
   if (log2_exposure_min_soc) {
@@ -390,7 +391,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
     attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
-  copy_m3_m3(data->insetmat, RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m);
+  copy_m3_m3(data->insetmat, RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).ptr());
 
 
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
@@ -421,7 +422,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
         tinting_hue_in + 180, tinting_scale_in);
-    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m));
+    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).ptr()));
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
@@ -429,7 +430,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m));
+    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).ptr()));
   }
 }
 

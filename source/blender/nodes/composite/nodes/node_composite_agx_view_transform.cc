@@ -83,6 +83,7 @@ static const EnumPropertyItem agx_working_log_items[] = {
 };
 
 // storage
+
 NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
 
 // RNA functions for node properties
@@ -352,8 +353,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
   data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
-  data->working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
-                                      COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  copy_m3_m3(data->working_to_display, RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+          COLOR_SPACE_PRI[static_cast<int>(node->custom4)]).m);
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
 
@@ -389,7 +390,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
     attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
-  data->insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  copy_m3_m3(data->insetmat, RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m);
 
 
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
@@ -420,7 +421,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
         attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
         tinting_hue_in + 180, tinting_scale_in);
-    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
+    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m));
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(
@@ -428,7 +429,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
         restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
         reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
         tinting_hue_in + 180, tinting_scale_in);
-    data->outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
+    copy_m3_m3(data->outsetmat, blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]).m));
   }
 }
 
@@ -567,13 +568,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data->scene_linear_to_working,
-                data->working_to_display,
-                data->display_to_scene_linear,
+                float3x3(data->scene_linear_to_working),
+                float3x3(data->working_to_display),
+                float3x3(data->display_to_scene_linear),
                 data->log_midgray,
                 data->midgray,
-                data->insetmat,
-                data->outsetmat);
+                float3x3(data->insetmat),
+                float3x3(data->outsetmat));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -610,13 +611,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data->scene_linear_to_working,
-                data->working_to_display,
-                data->display_to_scene_linear,
+                float3x3(data->scene_linear_to_working),
+                float3x3(data->working_to_display),
+                float3x3(data->display_to_scene_linear),
                 data->log_midgray,
                 data->midgray,
-                data->insetmat,
-                data->outsetmat);
+                float3x3(data->insetmat),
+                float3x3(data->outsetmat));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

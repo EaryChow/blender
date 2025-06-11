@@ -1397,6 +1397,7 @@ typedef struct NodeAgXViewTransformData {
   float working_to_display[3][3];
   float display_to_scene_linear[3][3];
   float log_midgray;
+  float midgray;
   float insetmat[3][3];
   float outsetmat[3][3];
 } NodeAgXViewTransformData;

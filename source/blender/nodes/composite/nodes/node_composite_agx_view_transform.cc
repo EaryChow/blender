@@ -586,9 +586,30 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
+  printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+    data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+    data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+  printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+    data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+    data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
+  printf("log_midgray in multi function: %f\n", data->log_midgray);
+  printf("midgray in multi function: %f\n", data->midgray);
+  printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+    data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+    data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
+  printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+    data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+    data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
+  printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+    data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+    data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
   if (data == nullptr) {
-    /* This can happen if the node is not yet initialized. */
-    return;
+    printf("multi function startup: data is nullptr\n");
   }
 
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
@@ -606,28 +627,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float log2_max_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
-            printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
-              data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
-              data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
-            printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
-              data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
-              data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
-            printf("log_midgray in multi function: %f\n", data->log_midgray);
-            printf("midgray in multi function: %f\n", data->midgray);
-            printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
-              data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
-              data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
-            printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
-              data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
-              data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
-            printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-              data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-              data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -671,28 +670,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
-            printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
-              data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
-              data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
-            printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
-              data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
-              data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
-            printf("log_midgray in multi function: %f\n", data->log_midgray);
-            printf("midgray in multi function: %f\n", data->midgray);
-            printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
-              data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
-              data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
-            printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
-              data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
-              data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
-            printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-              data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-              data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-              data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
             return agx_image_formation(
                 color,
                 general_contrast_in,

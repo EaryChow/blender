@@ -357,7 +357,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
           COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
   copy_m3_m3(data->working_to_display, working_to_display_mat.ptr());
 
-  printf("working_to_display: %f %f %f, %f %f %f, %f %f %f\n",
+  printf("working_to_display in update: %f %f %f, %f %f %f, %f %f %f\n",
     data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
     data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
     data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
@@ -365,7 +365,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   copy_m3_m3(data->display_to_scene_linear, (xyz_to_scene * display_to_xyz).ptr());
 
-  printf("display_to_scene_linear: %f %f %f, %f %f %f, %f %f %f\n",
+  printf("display_to_scene_linear in update: %f %f %f, %f %f %f, %f %f %f\n",
     data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
     data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
     data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
@@ -382,12 +382,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
   
   data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
 
-  printf("log_midgray: %f\n", data->log_midgray);
+  printf("log_midgray in update: %f\n", data->log_midgray);
 
   float image_native_power = 2.4f;
   data->midgray = pow(0.18f, 1.0f / image_native_power);
 
-  printf("midgray: %f\n", data->midgray);
+  printf("midgray in update: %f\n", data->midgray);
 
   bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
   float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
@@ -409,7 +409,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   float3x3 inset_mat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
   copy_m3_m3(data->insetmat, inset_mat.ptr());
 
-  printf("insetmat: %f %f %f, %f %f %f, %f %f %f\n",
+  printf("insetmat in update: %f %f %f, %f %f %f, %f %f %f\n",
     data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
     data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
     data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
@@ -454,7 +454,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
     float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
     copy_m3_m3(data->outsetmat, outset_mat.ptr());
   }
-  printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
+  printf("outsetmat in update: %f %f %f, %f %f %f, %f %f %f\n",
     data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
     data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
     data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
@@ -483,6 +483,29 @@ static float4 agx_image_formation(float4 color,
                                   float3x3 insetmat,
                                   float3x3 outsetmat)
 {
+  printf("insetmat in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    insetmat[0][0], insetmat[0][1], insetmat[0][2],
+    insetmat[1][0], insetmat[1][1], insetmat[1][2],
+    insetmat[2][0], insetmat[2][1], insetmat[2][2]);
+  printf("outsetmat in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    outsetmat[0][0], outsetmat[0][1], outsetmat[0][2],
+    outsetmat[1][0], outsetmat[1][1], outsetmat[1][2],
+    outsetmat[2][0], outsetmat[2][1], outsetmat[2][2]);
+  printf("log_midgray in lambda: %f\n", log_midgray);
+  printf("midgray in lamda: %f\n", midgray);
+  printf("scene_linear_to_working in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    scene_linear_to_working[0][0], scene_linear_to_working[0][1], scene_linear_to_working[0][2],
+    scene_linear_to_working[1][0], scene_linear_to_working[1][1], scene_linear_to_working[1][2],
+    scene_linear_to_working[2][0], scene_linear_to_working[2][1], scene_linear_to_working[2][2]);
+  printf("working_to_display in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    working_to_display[0][0], working_to_display[0][1], working_to_display[0][2],
+    working_to_display[1][0], working_to_display[1][1], working_to_display[1][2],
+    working_to_display[2][0], working_to_display[2][1], working_to_display[2][2]);
+  printf("display_to_scene_linear in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    display_to_scene_linear[0][0], display_to_scene_linear[0][1], display_to_scene_linear[0][2],
+    display_to_scene_linear[1][0], display_to_scene_linear[1][1], display_to_scene_linear[1][2],
+    display_to_scene_linear[2][0], display_to_scene_linear[2][1], display_to_scene_linear[2][2]);
+  
   float3 rgb;
   rgb.x = color.x;
   rgb.y = color.y;
@@ -583,6 +606,28 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float log2_max_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
+            printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+              data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+              data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+            printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+              data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+              data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
+            printf("log_midgray in multi function: %f\n", data->log_midgray);
+            printf("midgray in multi function: %f\n", data->midgray);
+            printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+              data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+              data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
+            printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+              data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+              data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
+            printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+              data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+              data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
             return agx_image_formation(
                 color,
                 general_contrast_in,
@@ -626,6 +671,28 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float per_channel_hue_flight_in,
                        const bool compensate_negatives_in) -> float4 {
+            printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+              data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+              data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+            printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+              data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+              data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
+            printf("log_midgray in multi function: %f\n", data->log_midgray);
+            printf("midgray in multi function: %f\n", data->midgray);
+            printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+              data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+              data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
+            printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+              data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+              data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
+            printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+              data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+              data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+              data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
             return agx_image_formation(
                 color,
                 general_contrast_in,

@@ -356,8 +356,19 @@ static void node_update(bNodeTree *ntree, bNode *node)
   float3x3 working_to_display_mat = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
           COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
   copy_m3_m3(data->working_to_display, working_to_display_mat.ptr());
+
+  printf("working_to_display: %f %f %f, %f %f %f, %f %f %f\n",
+    data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+    data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+    data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
   copy_m3_m3(data->display_to_scene_linear, (xyz_to_scene * display_to_xyz).ptr());
+
+  printf("display_to_scene_linear: %f %f %f, %f %f %f, %f %f %f\n",
+    data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+    data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+    data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
 
   float log2_min_in = -10.0f; /* Default value. */
   if (log2_exposure_min_soc) {
@@ -371,8 +382,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
   
   data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
 
+  printf("log_midgray: %f\n", data->log_midgray);
+
   float image_native_power = 2.4f;
   data->midgray = pow(0.18f, 1.0f / image_native_power);
+
+  printf("midgray: %f\n", data->midgray);
 
   bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
   float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
@@ -394,6 +409,10 @@ static void node_update(bNodeTree *ntree, bNode *node)
   float3x3 inset_mat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
   copy_m3_m3(data->insetmat, inset_mat.ptr());
 
+  printf("insetmat: %f %f %f, %f %f %f, %f %f %f\n",
+    data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+    data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+    data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
 
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
   if (restore_purity_soc) {
@@ -435,6 +454,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
     float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
     copy_m3_m3(data->outsetmat, outset_mat.ptr());
   }
+  printf("outsetmat: %f %f %f, %f %f %f, %f %f %f\n",
+    data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+    data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+    data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
+
 }
 
 

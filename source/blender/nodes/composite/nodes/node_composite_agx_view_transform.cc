@@ -361,14 +361,18 @@ static float4 agx_image_formation(float4 color,
                                   bool p_use_inverse_inset
                                 )
 {
-  float alpha = color.w;
-  float in_rgb_array[3] = {color.x, color.y, color.z};
-  float in_xyz_array[3];
-  IMB_colormanagement_scene_linear_to_xyz(in_xyz_array, in_rgb_array);
-  float3 in_xyz = float3(in_xyz_array[0], in_xyz_array[1], in_xyz_array[2]);
+  const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
+  const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
+
+  float3 rgb;
+  rgb.x = color.x;
+  rgb.y = color.y;
+  rgb.z = color.z;
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  float3 rgb = xyz_to_working * in_xyz;
+  float3x3 scene_linear_to_working = xyz_to_working * scene_to_xyz;
+
+  rgb = scene_linear_to_working * rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -450,16 +454,13 @@ static float4 agx_image_formation(float4 color,
 
   // convert linearized formed image back to OCIO's scene_linear role space
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  float3 out_xyz = display_to_xyz * img;
-  float out_xyz_array[3] = {out_xyz.x, out_xyz.y, out_xyz.z};
-  float img_array[3];
-  IMB_colormanagement_xyz_to_scene_linear(img_array, out_xyz_array);
+  float3x3 display_to_scene_linear = xyz_to_scene * display_to_xyz;
+  img = display_to_scene_linear * img;
 
   // re-combine the alpha channel
-  color.x = img_array[0];
-  color.y = img_array[1];
-  color.z = img_array[2];
-  color.w = alpha;
+  color.x = img.x;
+  color.y = img.y;
+  color.z = img.z;
 
   return color;
 }

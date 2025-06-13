@@ -132,7 +132,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
-  NodeAgXViewTransformData *data = MEM_callocN<NodeAgXViewTransformData>("node agx");
+  NodeAgXViewTransformData *data = MEM_callocN<NodeAgXViewTransformData>("NodeAgXViewTransformData");
   node->storage = data;
 }
 

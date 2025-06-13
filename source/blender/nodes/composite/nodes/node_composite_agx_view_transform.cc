@@ -483,29 +483,6 @@ static float4 agx_image_formation(float4 color,
                                   float3x3 insetmat,
                                   float3x3 outsetmat)
 {
-  printf("insetmat in lambda: %f %f %f, %f %f %f, %f %f %f\n",
-    insetmat[0][0], insetmat[0][1], insetmat[0][2],
-    insetmat[1][0], insetmat[1][1], insetmat[1][2],
-    insetmat[2][0], insetmat[2][1], insetmat[2][2]);
-  printf("outsetmat in lambda: %f %f %f, %f %f %f, %f %f %f\n",
-    outsetmat[0][0], outsetmat[0][1], outsetmat[0][2],
-    outsetmat[1][0], outsetmat[1][1], outsetmat[1][2],
-    outsetmat[2][0], outsetmat[2][1], outsetmat[2][2]);
-  printf("log_midgray in lambda: %f\n", log_midgray);
-  printf("midgray in lamda: %f\n", midgray);
-  printf("scene_linear_to_working in lambda: %f %f %f, %f %f %f, %f %f %f\n",
-    scene_linear_to_working[0][0], scene_linear_to_working[0][1], scene_linear_to_working[0][2],
-    scene_linear_to_working[1][0], scene_linear_to_working[1][1], scene_linear_to_working[1][2],
-    scene_linear_to_working[2][0], scene_linear_to_working[2][1], scene_linear_to_working[2][2]);
-  printf("working_to_display in lambda: %f %f %f, %f %f %f, %f %f %f\n",
-    working_to_display[0][0], working_to_display[0][1], working_to_display[0][2],
-    working_to_display[1][0], working_to_display[1][1], working_to_display[1][2],
-    working_to_display[2][0], working_to_display[2][1], working_to_display[2][2]);
-  printf("display_to_scene_linear in lambda: %f %f %f, %f %f %f, %f %f %f\n",
-    display_to_scene_linear[0][0], display_to_scene_linear[0][1], display_to_scene_linear[0][2],
-    display_to_scene_linear[1][0], display_to_scene_linear[1][1], display_to_scene_linear[1][2],
-    display_to_scene_linear[2][0], display_to_scene_linear[2][1], display_to_scene_linear[2][2]);
-  
   float3 rgb;
   rgb.x = color.x;
   rgb.y = color.y;
@@ -646,13 +623,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                float3x3(float3(0.627454, 0.069110, 0.016398), float3(0.329248, 0.919531, 0.088030), float3(0.043300, 0.011360, 0.895573)),
-                float3x3(float3(1.660359, -0.124564, -0.018157), float3(-0.587537, 1.132912, -0.100602), float3(-0.072822, -0.008348, 1.118758)),
-                float3x3(float3(1.000000, -0.000000, 0.000000), float3(-0.000001, 1.000000, 0.000000), float3(-0.000001, -0.000000, 1.000000)),
-                0.606061f,
-                0.489437f,
-                float3x3(float3(0.856631, 0.137337, 0.111914), float3(0.095125, 0.761240, 0.076803), float3(0.048244, 0.101423, 0.811283)),
-                float3x3(float3(1.127105, -0.141351, -0.141351), float3(-0.110613, 1.157843, -0.110613), float3(-0.016492, -0.016492, 1.251964)));
+                float3x3(&data->scene_linear_to_working[0][0]),
+                float3x3(&data->working_to_display[0][0]),
+                float3x3(&data->display_to_scene_linear[0][0]),
+                data->log_midgray,
+                data->midgray,
+                float3x3(&data->insetmat[0][0]),
+                float3x3(&data->outsetmat[0][0]));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -701,13 +678,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                float3x3(float3(0.627454, 0.069110, 0.016398), float3(0.329248, 0.919531, 0.088030), float3(0.043300, 0.011360, 0.895573)),
-                float3x3(float3(1.660359, -0.124564, -0.018157), float3(-0.587537, 1.132912, -0.100602), float3(-0.072822, -0.008348, 1.118758)),
-                float3x3(float3(1.000000, -0.000000, 0.000000), float3(-0.000001, 1.000000, 0.000000), float3(-0.000001, -0.000000, 1.000000)),
-                0.606061f,
-                0.489437f,
-                float3x3(float3(0.856631, 0.137337, 0.111914), float3(0.095125, 0.761240, 0.076803), float3(0.048244, 0.101423, 0.811283)),
-                float3x3(float3(1.127105, -0.141351, -0.141351), float3(-0.110613, 1.157843, -0.110613), float3(-0.016492, -0.016492, 1.251964)));
+                float3x3(&data->scene_linear_to_working[0][0]),
+                float3x3(&data->working_to_display[0][0]),
+                float3x3(&data->display_to_scene_linear[0][0]),
+                data->log_midgray,
+                data->midgray,
+                float3x3(&data->insetmat[0][0]),
+                float3x3(&data->outsetmat[0][0]));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

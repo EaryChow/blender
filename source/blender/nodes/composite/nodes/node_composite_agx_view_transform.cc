@@ -625,7 +625,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float pivot_offset_in,
                        const float log2_min_in,
                        const float log2_max_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float3 reverse_hue_flights_in,
+                       const float3 restore_purity_in,
                        const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             return agx_image_formation(
                 color,
@@ -656,6 +662,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
+                       float3,
+                       float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
                        float,
                        bool>());
     });
@@ -668,7 +680,13 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
                        const float pivot_offset_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float3 reverse_hue_flights_in,
+                       const float3 restore_purity_in,
                        const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
             return agx_image_formation(
                 color,
@@ -695,6 +713,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
           TypeSequence<float4,
                        float,
                        float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float3,
+                       float3,
                        float,
                        float,
                        float,

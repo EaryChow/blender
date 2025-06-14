@@ -677,7 +677,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom4,
                 float3x3(reinterpret_cast<const float*>(&data->scene_linear_to_working)),
                 float3x3(reinterpret_cast<const float*>(&data->working_to_display)),
-                float3x3(static_cast<const float*>(&data->display_to_scene_linear)),
+                float3x3(reinterpret_cast<const float*>(&data->display_to_scene_linear)),
                 data->log_midgray,
                 data->midgray,
                 float3x3(reinterpret_cast<const float*>(&data->insetmat)),

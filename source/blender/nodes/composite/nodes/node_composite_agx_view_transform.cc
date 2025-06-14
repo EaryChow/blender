@@ -91,7 +91,7 @@ struct NodeAgXViewTransformData {
   float midgray;
   float3x3 insetmat;
   float3x3 outsetmat;
-}
+};
 
 // RNA functions for node properties
 static void node_rna(StructRNA *srna) {
@@ -450,7 +450,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
         hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
         tinting_hue_in + 180, tinting_scale_in);
     float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
-    data->outsetmat = outset_ma;
+    data->outsetmat = outset_mat;
   }
   else {
     Chromaticities outset_chromaticities = InsetPrimaries(

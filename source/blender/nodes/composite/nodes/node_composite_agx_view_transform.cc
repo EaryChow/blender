@@ -18,6 +18,7 @@
 #include "GPU_material.hh"
 #include "FN_multi_function_builder.hh"
 #include "IMB_colormanagement.hh"
+#include "MEM_guardedalloc.h"
 #include "NOD_multi_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_rna_define.hh"
@@ -81,6 +82,19 @@ static const EnumPropertyItem agx_working_log_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+// storage
+struct NodeAgXViewTransformData {
+  float3x3 scene_linear_to_working;
+  float3x3 working_to_display;
+  float3x3 display_to_scene_linear;
+  float log_midgray;
+  float midgray;
+  float3x3 insetmat;
+  float3x3 outsetmat;
+}
+
+NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
+
 // RNA functions for node properties
 static void node_rna(StructRNA *srna) {
   PropertyRNA *prop;
@@ -127,6 +141,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node) {
   node->custom3 = int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   node->custom4 = int(AGXPrimaries::AGX_PRIMARIES_REC709);
   node->custom1 = false;
+  NodeAgXViewTransformData *data = MEM_callocN<NodeAgXViewTransformData>("NodeAgXViewTransformData");
+  node->storage = data;
 }
 
 // Node Declaration
@@ -310,34 +326,150 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
+  // ---- hide sockets based on rna properties ----
   // Get the value of the boolean property
   bool use_same_settings = node->custom1;
   bool outset_panel_sockets_available = !use_same_settings;
   // Find and set the availability of each related socket
-  bNodeSocket *reverse_hue_flights = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
-  if (reverse_hue_flights) {
-    blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights, outset_panel_sockets_available);
+  bNodeSocket *reverse_hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+  if (reverse_hue_flights_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *reverse_hue_flights_soc, outset_panel_sockets_available);
   }
 
-  bNodeSocket *restore_purity = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
-  if (restore_purity) {
-    blender::bke::node_set_socket_availability(*ntree, *restore_purity, outset_panel_sockets_available);
+  bNodeSocket *restore_purity_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+  if (restore_purity_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *restore_purity_soc, outset_panel_sockets_available);
   }
 
   // Get the value of the enum property
   bool log2_settings_available = node->custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
   // Find and set the availability of each related socket
-  bNodeSocket *log2_exposure_min = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
-  if (log2_exposure_min) {
-     blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min, log2_settings_available);
+  bNodeSocket *log2_exposure_min_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+  if (log2_exposure_min_soc) {
+     blender::bke::node_set_socket_availability(*ntree, *log2_exposure_min_soc, log2_settings_available);
   }
 
-  bNodeSocket *log2_exposure_max = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
-  if (log2_exposure_max) {
-    blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max, log2_settings_available);
+  bNodeSocket *log2_exposure_max_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+  if (log2_exposure_max_soc) {
+    blender::bke::node_set_socket_availability(*ntree, *log2_exposure_max_soc, log2_settings_available);
   }
+
+  // ---- precompute maths that are the same for all pixels ----
+  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(node->storage);
+
+  const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
+  const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
+
+  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  data->scene_linear_to_working = xyz_to_working * scene_to_xyz;
+  float3x3 working_to_display_mat = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+          COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  data->working_to_display = working_to_display_mat;
+
+  printf("working_to_display in update: %f %f %f, %f %f %f, %f %f %f\n",
+    data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+    data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+    data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+
+  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);                                      
+  data->display_to_scene_linear = xyz_to_scene * display_to_xyz;
+
+  printf("display_to_scene_linear in update: %f %f %f, %f %f %f, %f %f %f\n",
+    data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+    data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+    data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
+
+  float log2_min_in = -10.0f; /* Default value. */
+  if (log2_exposure_min_soc) {
+    log2_min_in = node_socket_get_float(ntree, node, log2_exposure_min_soc);
+  }
+
+  float log2_max_in = 6.5f; /* Default value. */
+  if (log2_exposure_max_soc) {
+    log2_max_in = node_socket_get_float(ntree, node, log2_exposure_max_soc);
+  }
+  
+  data->log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+
+  printf("log_midgray in update: %f\n", data->log_midgray);
+
+  float image_native_power = 2.4f;
+  data->midgray = pow(0.18f, 1.0f / image_native_power);
+
+  printf("midgray in update: %f\n", data->midgray);
+
+  bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
+  float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
+  if (attenuation_rates_soc) {
+    node_socket_get_vector(ntree, node, attenuation_rates_soc, (float *)&attenuation_rates_in);
+  }
+
+  bNodeSocket *hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Hue Flights");
+  float3 hue_flights_in = float3(2.13976f, -1.22827f, -3.05174f); /* Default value. */
+  if (hue_flights_soc) {
+    node_socket_get_vector(ntree, node, hue_flights_soc, (float *)&hue_flights_in);
+  }
+
+  Chromaticities inset_chromaticities = InsetPrimaries(
+    COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+    attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
+    hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
+
+  float3x3 inset_mat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  data->insetmat = inset_mat;
+
+  printf("insetmat in update: %f %f %f, %f %f %f, %f %f %f\n",
+    data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+    data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+    data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
+
+  float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
+  if (restore_purity_soc) {
+    node_socket_get_vector(ntree, node, restore_purity_soc, (float *)&restore_purity_in);
+  }
+
+  float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f); /* Default value. */
+  if (reverse_hue_flights_soc) {
+    node_socket_get_vector(ntree, node, reverse_hue_flights_soc, (float *)&reverse_hue_flights_in);
+  }
+
+  bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
+  float tinting_hue_in = 0.0f; /* Default value. */
+  if (tinting_hue_soc) {
+    tinting_hue_in = node_socket_get_float(ntree, node, tinting_hue_soc);
+  }
+
+  bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
+  float tinting_scale_in = 0.0f; /* Default value. */
+  if (tinting_scale_soc) {
+    tinting_scale_in = node_socket_get_float(ntree, node, tinting_scale_soc);
+  }
+
+  if (use_same_settings) {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
+        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
+        tinting_hue_in + 180, tinting_scale_in);
+    float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
+    data->outsetmat = outset_ma;
+  }
+  else {
+    Chromaticities outset_chromaticities = InsetPrimaries(
+        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
+        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
+        tinting_hue_in + 180, tinting_scale_in);
+    float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
+    data->outsetmat = outset_mat;
+  }
+  printf("outsetmat in update: %f %f %f, %f %f %f, %f %f %f\n",
+    data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+    data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+    data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
 
 }
+
 
 // CPU processing logic
 static float4 agx_image_formation(float4 color,
@@ -347,33 +479,25 @@ static float4 agx_image_formation(float4 color,
                                   float pivot_offset_in,                     
                                   float log2_min_in,
                                   float log2_max_in,
-                                  float3 hue_flights_in,
-                                  float3 attenuation_rates_in,
-                                  float3 reverse_hue_flights_in,
-                                  float3 restore_purity_in,
                                   float per_channel_hue_flight_in,
-                                  float tinting_scale_in,
-                                  float tinting_hue_in,
                                   bool compensate_negatives_in,
                                   int p_working_primaries,
                                   int p_working_log,
                                   int p_display_primaries,
-                                  bool p_use_inverse_inset
-                                )
+                                  float3x3 scene_linear_to_working,
+                                  float3x3 working_to_display,
+                                  float3x3 display_to_scene_linear,
+                                  float log_midgray,
+                                  float midgray,
+                                  float3x3 insetmat,
+                                  float3x3 outsetmat)
 {
-  const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
-  const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
-
   float3 rgb;
   rgb.x = color.x;
   rgb.y = color.y;
   rgb.z = color.z;
 
-  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-  float3x3 scene_linear_to_working = xyz_to_working * scene_to_xyz;
-
   rgb = scene_linear_to_working * rgb;
-
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
     rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
@@ -381,18 +505,8 @@ static float4 agx_image_formation(float4 color,
   else {
     rgb = maxf3(0, rgb);
   }
-
-  // generate inset matrix
-  Chromaticities inset_chromaticities = InsetPrimaries(
-      COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-      attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
-      hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
-
-  float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
-
   // apply inset matrix
   rgb = insetmat * rgb;
-
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
   rgb_to_hsv_v(rgb, pre_curve_hsv);
@@ -401,15 +515,12 @@ static float4 agx_image_formation(float4 color,
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), static_cast<int>(p_working_log), log2_min_in, log2_max_in).x;
-  float image_native_power = 2.4f;
-  float midgray = pow(0.18f, 1.0f / image_native_power);
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
-  img = spowf3(img, image_native_power);
+  img = spowf3(img, 2.4f);
 
   // lerp pre- and post-curve chromaticity angle
   float3 post_curve_hsv;
@@ -417,31 +528,10 @@ static float4 agx_image_formation(float4 color,
   post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
   hsv_to_rgb_v(post_curve_hsv, img);
 
-  // generate outset matrix
-  float3x3 outsetmat;
-  if (p_use_inverse_inset) {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, // Uses attenuation settings
-        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,         // Uses attenuation settings
-        tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
-  else {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
-        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
-        tinting_hue_in + 180, tinting_scale_in);
-    outsetmat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]));
-  }
-
   // apply outset matrix
   img = outsetmat * img;
 
   // convert from working primaries to target display primaries
-  float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)],
-                                         COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
   img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
@@ -453,13 +543,13 @@ static float4 agx_image_formation(float4 color,
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
-  float3x3 display_to_scene_linear = xyz_to_scene * display_to_xyz;
   img = display_to_scene_linear * img;
 
   // re-combine the alpha channel
   color.x = img.x;
+
   color.y = img.y;
+
   color.z = img.z;
 
   return color;
@@ -478,14 +568,40 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 // Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  const bool use_inverse_inset = builder.node().custom1;
+  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
+  printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+    data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+    data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
+  printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+    data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+    data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
+  printf("log_midgray in multi function: %f\n", data->log_midgray);
+  printf("midgray in multi function: %f\n", data->midgray);
+  printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+    data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+    data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
+  printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+    data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+    data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
+  printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+    data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+    data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
+  if (data == nullptr) {
+    printf("multi function startup: data is nullptr\n");
+  }
+
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
-  if (!use_inverse_inset && use_generic_log2) {
+  if (use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -508,18 +624,18 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 pivot_offset_in,
                 log2_min_in,
                 log2_max_in,
-                hue_flights_in,
-                attenuation_rates_in,
-                reverse_hue_flights_in,
-                restore_purity_in,
                 per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
                 compensate_negatives_in,
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                builder.node().custom1);
+                &data->scene_linear_to_working,
+                &data->working_to_display,
+                &data->display_to_scene_linear,
+                data->log_midgray,
+                data->midgray,
+                &data->insetmat,
+                &data->outsetmat);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -538,64 +654,11 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        bool>());
     });
-  } else if (use_inverse_inset && use_generic_log2) {
+  } else {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float log2_min_in,
-                       const float log2_max_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                log2_min_in,
-                log2_max_in,
-                hue_flights_in,
-                attenuation_rates_in,
-                float3(0, 0, 0), /* reverse_hue_flights_in */
-                float3(0, 0, 0), /* restore_purity_in */
-                per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                builder.node().custom1);
-          },
-          mf::build::exec_presets::SomeSpanOrSingle<0>(),
-          TypeSequence<float4,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float3,
-                       float3,
-                       float,
-                       float,
-                       float,
-                       bool>());
-    });
-  } else if (!use_inverse_inset && !use_generic_log2) {
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -616,18 +679,18 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 pivot_offset_in,
                 -10.0f, /* log2_min_in */
                 6.5f,   /* log2_max_in */
-                hue_flights_in,
-                attenuation_rates_in,
-                reverse_hue_flights_in,
-                restore_purity_in,
                 per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
                 compensate_negatives_in,
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                builder.node().custom1);
+                &data->scene_linear_to_working,
+                &data->working_to_display,
+                &data->display_to_scene_linear,
+                data->log_midgray,
+                data->midgray,
+                &data->insetmat,
+                &data->outsetmat);
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -637,55 +700,6 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float3,
                        float3,
-                       float3,
-                       float3,
-                       float,
-                       float,
-                       float,
-                       bool>());
-    });
-  } else { /* use_inverse_inset && !use_generic_log2 */
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
-                hue_flights_in,
-                attenuation_rates_in,
-                float3(0, 0, 0), /* reverse_hue_flights_in */
-                float3(0, 0, 0), /* restore_purity_in */
-                per_channel_hue_flight_in,
-                tinting_scale_in,
-                tinting_hue_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                builder.node().custom1);
-          },
-          mf::build::exec_presets::SomeSpanOrSingle<0>(),
-          TypeSequence<float4,
-                       float,
-                       float,
-                       float,
-                       float,
                        float3,
                        float3,
                        float,
@@ -709,6 +723,8 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
+  blender::bke::node_type_storage(
+      ntype, "NodeAgXViewTransformData", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(ntype, 180, 150, 240);
   ntype.build_multi_function = node_build_multi_function;
   ntype.gpu_fn = node_gpu_material;

@@ -491,8 +491,8 @@ static float4 agx_image_formation(float4 color,
                                   float3x3 outsetmat)
 {
   printf("scene_linear_to_working in lambda:\n", scene_linear_to_working);
-  printf("inset matrix in lambda:\n", inset_mat);
-  printf("outset matrix in lambda:\n", outset_mat);
+  printf("inset matrix in lambda:\n", insetmat);
+  printf("outset matrix in lambda:\n", outsetmat);
   printf("working to display in lambda:\n", working_to_display);
   printf("display to scene_linear:\n",display_to_scene_linear);
   float3 rgb;

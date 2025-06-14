@@ -368,12 +368,12 @@ static float4 agx_image_formation(float4 color,
   rgb.x = color.x;
   rgb.y = color.y;
   rgb.z = color.z;
-
+  printf("input scene linear rgb:\n", rgb);
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
   float3x3 scene_linear_to_working = xyz_to_working * scene_to_xyz;
-
+  printf("scene_linear_to_working in lambda:\n", scene_linear_to_working);
   rgb = scene_linear_to_working * rgb;
-
+  printf("input working rgb:\n", rgb);
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
     rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);

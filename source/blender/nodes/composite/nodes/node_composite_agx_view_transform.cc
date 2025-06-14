@@ -487,11 +487,8 @@ static float4 agx_image_formation(float4 color,
   rgb.x = color.x;
   rgb.y = color.y;
   rgb.z = color.z;
-  printf("input scene linear rgb: %f %f %f\n", rgb.x, rgb.y, rgb.z);
 
   rgb = scene_linear_to_working * rgb;
-
-  printf("input working rgb: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
     rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
@@ -499,40 +496,35 @@ static float4 agx_image_formation(float4 color,
   else {
     rgb = maxf3(0, rgb);
   }
-  printf("post low guardrail rgb: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   // apply inset matrix
   rgb = insetmat * rgb;
-  printf("post inset rgb: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   // record pre-formation chromaticity angle
   float3 pre_curve_hsv;
   rgb_to_hsv_v(rgb, pre_curve_hsv);
 
-  printf("Before lin2log: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   // encode to working log
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
-  printf("After lin2log: %f %f %f\n", rgb.x, rgb.y, rgb.z);
 
   // apply sigmoid, the image is formed at this point
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);
   float3 img = rgb;
-  printf("post sigmoid: %f %f %f\n", img.x, img.y, img.z);
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
   img = spowf3(img, 2.4f);
-  printf("linearized img: %f %f %f\n", img.x, img.y, img.z);
+
   // lerp pre- and post-curve chromaticity angle
   float3 post_curve_hsv;
   rgb_to_hsv_v(img, post_curve_hsv);
   post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
   hsv_to_rgb_v(post_curve_hsv, img);
-  printf("post hsv mixing: %f %f %f\n", img.x, img.y, img.z);
+
   // apply outset matrix
   img = outsetmat * img;
-  printf("post outset: %f %f %f\n", img.x, img.y, img.z);
+
   // convert from working primaries to target display primaries
   img = working_to_display * img;
-  printf("pre-display-guard: %f %f %f\n", img.x, img.y, img.z);
+
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
     img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
@@ -540,17 +532,17 @@ static float4 agx_image_formation(float4 color,
   else {
     img = maxf3(0, img);
   }
-  printf("post display guard: %f %f %f\n", img.x, img.y, img.z);
+
   // convert linearized formed image back to OCIO's scene_linear role space
   img = display_to_scene_linear * img;
-  printf("output scene img: %f %f %f\n", img.x, img.y, img.z);
+
   // re-combine the alpha channel
   color.x = img.x;
 
   color.y = img.y;
 
   color.z = img.z;
-  printf("ouput color: %f %f %f\n", color.x, color.y, color.z, color.w);
+
   return color;
 }
 

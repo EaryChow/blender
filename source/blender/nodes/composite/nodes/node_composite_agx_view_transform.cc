@@ -93,8 +93,6 @@ struct NodeAgXViewTransformData {
   float3x3 outsetmat;
 }
 
-NODE_STORAGE_FUNCS(NodeAgXViewTransformData)
-
 // RNA functions for node properties
 static void node_rna(StructRNA *srna) {
   PropertyRNA *prop;

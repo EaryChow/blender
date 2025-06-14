@@ -505,8 +505,10 @@ static float4 agx_image_formation(float4 color,
   float3 pre_curve_hsv;
   rgb_to_hsv_v(rgb, pre_curve_hsv);
 
+  printf("Before lin2log: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   // encode to working log
   rgb = lin2log(rgb, static_cast<int>(p_working_log), log2_min_in, log2_max_in);
+  printf("After lin2log: %f %f %f\n", rgb.x, rgb.y, rgb.z);
 
   // apply sigmoid, the image is formed at this point
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray);

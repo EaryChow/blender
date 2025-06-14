@@ -490,16 +490,15 @@ static float4 agx_image_formation(float4 color,
                                   float3x3 insetmat,
                                   float3x3 outsetmat)
 {
-  printf("scene_linear_to_working in lambda:\n", scene_linear_to_working);
-  printf("inset matrix in lambda:\n", insetmat);
-  printf("outset matrix in lambda:\n", outsetmat);
-  printf("working to display in lambda:\n", working_to_display);
-  printf("display to scene_linear:\n",display_to_scene_linear);
+  printf("scene_linear_to_working in lambda: %f %f %f, %f %f %f, %f %f %f\n",
+    scene_linear_to_working[0][0], scene_linear_to_working[0][1], scene_linear_to_working[0][2],
+    scene_linear_to_working[1][0], scene_linear_to_working[1][1], scene_linear_to_working[1][2],
+    scene_linear_to_working[2][0], scene_linear_to_working[2][1], scene_linear_to_working[2][2]);
   float3 rgb;
   rgb.x = color.x;
   rgb.y = color.y;
   rgb.z = color.z;
-  printf("input scene linear rgb:\n", rgb);
+  printf("input scene linear rgb: %f %f %f\n", rgb.x, rgb.y, rgb.z);
   rgb = scene_linear_to_working * rgb;
   printf("input working rgb:\n", rgb);
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0

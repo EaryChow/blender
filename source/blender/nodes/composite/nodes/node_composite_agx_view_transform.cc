@@ -592,7 +592,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
         return mf::build::detail::build_multi_function_with_n_inputs_one_output<
             float4>(
             "AgX View Transform",
-            [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
+            [=, &builder, &scene_linear_to_working_matrix, &working_to_display_matrix, &display_to_scene_linear_matrix, &log_midgray_val, &midgray_val, &inset_matrix, &outset_matrix](
                 const float4 &color,
                 const float general_contrast_in,
                 const float toe_contrast_in,
@@ -650,21 +650,21 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
-              const float4 &color,
-              const float general_contrast_in,
-              const float toe_contrast_in,
-              const float shoulder_contrast_in,
-              const float pivot_offset_in,
-              const float log2_min_in,
-              const float log2_max_in,
-              const float3 hue_flights_in,
-              const float3 attenuation_rates_in,
-              const float per_channel_hue_flight_in,
-              const float tinting_scale_in,
-              const float tinting_hue_in,
-              const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
+          [=, &builder, &scene_linear_to_working_matrix, &working_to_display_matrix, &display_to_scene_linear_matrix, &log_midgray_val, &midgray_val, &inset_matrix, &outset_matrix](
+                const float4 &color,
+                const float general_contrast_in,
+                const float toe_contrast_in,
+                const float shoulder_contrast_in,
+                const float pivot_offset_in,
+                const float log2_min_in,
+                const float log2_max_in,
+                const float3 hue_flights_in,
+                const float3 attenuation_rates_in,
+                const float per_channel_hue_flight_in,
+                const float tinting_scale_in,
+                const float tinting_hue_in,
+                const bool compensate_negatives_in) -> float4 {
+              return agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -704,20 +704,21 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
-              const float general_contrast_in,
-              const float toe_contrast_in,
-              const float shoulder_contrast_in,
-              const float pivot_offset_in,
-              const float3 hue_flights_in,
-              const float3 attenuation_rates_in,
-              const float3 reverse_hue_flights_in,
-              const float3 restore_purity_in,
-              const float per_channel_hue_flight_in,
-              const float tinting_scale_in,
-              const float tinting_hue_in,
-              const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
+          [=, &builder, &scene_linear_to_working_matrix, &working_to_display_matrix, &display_to_scene_linear_matrix, &log_midgray_val, &midgray_val, &inset_matrix, &outset_matrix](
+                const float4 &color,
+                const float general_contrast_in,
+                const float toe_contrast_in,
+                const float shoulder_contrast_in,
+                const float pivot_offset_in,
+                const float3 hue_flights_in,
+                const float3 attenuation_rates_in,
+                const float3 reverse_hue_flights_in,
+                const float3 restore_purity_in,
+                const float per_channel_hue_flight_in,
+                const float tinting_scale_in,
+                const float tinting_hue_in,
+                const bool compensate_negatives_in) -> float4 {
+              return agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,
@@ -757,19 +758,19 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
-              const float4 &color,
-              const float general_contrast_in,
-              const float toe_contrast_in,
-              const float shoulder_contrast_in,
-              const float pivot_offset_in,
-              const float3 hue_flights_in,
-              const float3 attenuation_rates_in,
-              const float per_channel_hue_flight_in,
-              const float tinting_scale_in,
-              const float tinting_hue_in,
-              const bool compensate_negatives_in) -> float4 {
-            return agx_image_formation(
+          [=, &builder, &scene_linear_to_working_matrix, &working_to_display_matrix, &display_to_scene_linear_matrix, &log_midgray_val, &midgray_val, &inset_matrix, &outset_matrix](
+                const float4 &color,
+                const float general_contrast_in,
+                const float toe_contrast_in,
+                const float shoulder_contrast_in,
+                const float pivot_offset_in,
+                const float3 hue_flights_in,
+                const float3 attenuation_rates_in,
+                const float per_channel_hue_flight_in,
+                const float tinting_scale_in,
+                const float tinting_hue_in,
+                const bool compensate_negatives_in) -> float4 {
+              return agx_image_formation(
                 color,
                 general_contrast_in,
                 toe_contrast_in,

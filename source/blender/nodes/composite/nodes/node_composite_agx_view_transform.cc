@@ -598,13 +598,14 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     printf("multi function startup: data is nullptr\n");
   }
 
+  const bool use_inverse_inset = builder.node().custom1;
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
-  if (use_generic_log2) {
+  if (!use_inverse_inset && use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
+          [=, &builder](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -632,13 +633,23 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data->scene_linear_to_working,
-                data->working_to_display,
-                data->display_to_scene_linear,
+                float3x3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+                         data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+                         data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]),
+                float3x3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+                         data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+                         data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]),
+                float3x3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+                         data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+                         data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]),
                 data->log_midgray,
                 data->midgray,
-                data->insetmat,
-                data->outsetmat);
+                float3x3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+                         data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+                         data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]),
+                float3x3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+                         data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+                         data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -657,7 +668,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        bool>());
     });
-  } else {
+  } else if (!use_inverse_inset && !use_generic_log2) {
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
@@ -687,13 +698,23 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 builder.node().custom2,
                 builder.node().custom3,
                 builder.node().custom4,
-                data->scene_linear_to_working,
-                data->working_to_display,
-                data->display_to_scene_linear,
-                data->log_midgray,
-                data->midgray,
-                data->insetmat,
-                data->outsetmat);
+                          float3x3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+                                   data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+                                   data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]),
+                          float3x3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+                                   data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+                                   data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]),
+                          float3x3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+                                   data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+                                   data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]),
+                          data->log_midgray,
+                          data->midgray,
+                          float3x3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+                                   data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+                                   data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]),
+                          float3x3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+                                   data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+                                   data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
           },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -703,6 +724,128 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float3,
                        float3,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else if (use_inverse_inset && use_generic_log2) {
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float log2_min_in,
+                       const float log2_max_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+                        return agx_image_formation(
+                          color,
+                          general_contrast_in,
+                          toe_contrast_in,
+                          shoulder_contrast_in,
+                          pivot_offset_in,
+                          log2_min_in,
+                          log2_max_in,
+                          per_channel_hue_flight_in,
+                          compensate_negatives_in,
+                          builder.node().custom2,
+                          builder.node().custom3,
+                          builder.node().custom4,
+                          float3x3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+                                   data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+                                   data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]),
+                          float3x3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+                                   data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+                                   data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]),
+                          float3x3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+                                   data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+                                   data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]),
+                          data->log_midgray,
+                          data->midgray,
+                          float3x3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+                                   data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+                                   data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]),
+                          float3x3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+                                   data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+                                   data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else { /* use_inverse_inset && !use_generic_log2 */
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+                        return agx_image_formation(
+                          color,
+                          general_contrast_in,
+                          toe_contrast_in,
+                          shoulder_contrast_in,
+                          pivot_offset_in,
+                          -10.0f, /* log2_min_in */
+                          6.5f,   /* log2_max_in */
+                          per_channel_hue_flight_in,
+                          compensate_negatives_in,
+                          builder.node().custom2,
+                          builder.node().custom3,
+                          builder.node().custom4,
+                                    float3x3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+                                             data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+                                             data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]),
+                                    float3x3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
+                                             data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
+                                             data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]),
+                                    float3x3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
+                                             data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
+                                             data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]),
+                                    data->log_midgray,
+                                    data->midgray,
+                                    float3x3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
+                                             data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
+                                             data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]),
+                                    float3x3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
+                                             data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
+                                             data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
+          },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
                        float3,
                        float3,
                        float,

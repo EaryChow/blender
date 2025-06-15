@@ -571,6 +571,7 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 // Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
+  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
   const bool use_inverse_inset = builder.node().custom1;
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
@@ -578,7 +579,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -618,9 +619,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           log2_max_in,
                           per_channel_hue_flight_in,
                           compensate_negatives_in,
-                          builder.node().custom2,
-                          builder.node().custom3,
-                          builder.node().custom4,
+                          static_cast<int>(builder.node().custom2),
+                          static_cast<int>(builder.node().custom3),
+                          static_cast<int>(builder.node().custom4),
                           scene_linear_to_working_matrix,
                           working_to_display_matrix,
                           display_to_scene_linear_matrix,
@@ -650,7 +651,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -688,9 +689,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           6.5f,   /* log2_max_in */
                           per_channel_hue_flight_in,
                           compensate_negatives_in,
-                          builder.node().custom2,
-                          builder.node().custom3,
-                          builder.node().custom4,
+                          static_cast<int>(builder.node().custom2),
+                          static_cast<int>(builder.node().custom3),
+                          static_cast<int>(builder.node().custom4),
                           scene_linear_to_working_matrix,
                           working_to_display_matrix,
                           display_to_scene_linear_matrix,
@@ -718,7 +719,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -756,9 +757,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           6.5f,   /* log2_max_in */
                           per_channel_hue_flight_in,
                           compensate_negatives_in,
-                          builder.node().custom2,
-                          builder.node().custom3,
-                          builder.node().custom4,
+                          static_cast<int>(builder.node().custom2),
+                          static_cast<int>(builder.node().custom3),
+                          static_cast<int>(builder.node().custom4),
                           scene_linear_to_working_matrix,
                           working_to_display_matrix,
                           display_to_scene_linear_matrix,
@@ -786,7 +787,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder](const float4 &color,
+          [=, &builder, &data](const float4 &color,
                        const float general_contrast_in,
                        const float toe_contrast_in,
                        const float shoulder_contrast_in,
@@ -822,9 +823,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           6.5f,   /* log2_max_in */
                           per_channel_hue_flight_in,
                           compensate_negatives_in,
-                          builder.node().custom2,
-                          builder.node().custom3,
-                          builder.node().custom4,
+                          static_cast<int>(builder.node().custom2),
+                          static_cast<int>(builder.node().custom3),
+                          static_cast<int>(builder.node().custom4),
                           scene_linear_to_working_matrix,
                           working_to_display_matrix,
                           display_to_scene_linear_matrix,

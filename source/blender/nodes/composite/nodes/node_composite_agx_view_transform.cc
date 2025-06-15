@@ -571,33 +571,6 @@ return GPU_stack_link(material, node, "node_composite_agx_view_transform", input
 // Multi Function
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  NodeAgXViewTransformData *data = static_cast<NodeAgXViewTransformData *>(builder.node().storage);
-  printf("working_to_display in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-    data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2],
-    data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2],
-    data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]);
-  printf("display_to_scene_linear in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-    data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2],
-    data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2],
-    data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]);
-  printf("log_midgray in multi function: %f\n", data->log_midgray);
-  printf("midgray in multi function: %f\n", data->midgray);
-  printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-    data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
-    data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
-    data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
-  printf("insetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-    data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2],
-    data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2],
-    data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]);
-  printf("outsetmat in multi function: %f %f %f, %f %f %f, %f %f %f\n",
-    data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2],
-    data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2],
-    data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]);
-  if (data == nullptr) {
-    printf("multi function startup: data is nullptr\n");
-  }
-
   const bool use_inverse_inset = builder.node().custom1;
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
@@ -620,114 +593,46 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-            float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                               data->scene_linear_to_working[1],
-                                                               data->scene_linear_to_working[2]);
-            float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                          data->working_to_display[1],
-                                                          data->working_to_display[2]);
-            float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                               data->display_to_scene_linear[1],
-                                                               data->display_to_scene_linear[2]);
-            float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                             data->insetmat[1],
-                                             data->insetmat[2]);
-            float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                              data->outsetmat[1],
-                                              data->outsetmat[2]);
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                log2_min_in,
-                log2_max_in,
-                per_channel_hue_flight_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                scene_linear_to_working_matrix,
-                working_to_display_matrix,
-                display_to_scene_linear_matrix,
-                data->log_midgray,
-                data->midgray,
-                inset_matrix,
-                outset_matrix),
-          },
+                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
+                                                                           data->scene_linear_to_working[1],
+                                                                           data->scene_linear_to_working[2]);
+                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
+                                                                      data->working_to_display[1],
+                                                                      data->working_to_display[2]);
+                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
+                                                                           data->display_to_scene_linear[1],
+                                                                           data->display_to_scene_linear[2]);
+                        float3x3 inset_matrix = float3x3(data->insetmat[0],
+                                                         data->insetmat[1],
+                                                         data->insetmat[2]);
+                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
+                                                          data->outsetmat[1],
+                                                          data->outsetmat[2]);
+                        return agx_image_formation(
+                          color,
+                          general_contrast_in,
+                          toe_contrast_in,
+                          shoulder_contrast_in,
+                          pivot_offset_in,
+                          log2_min_in,
+                          log2_max_in,
+                          per_channel_hue_flight_in,
+                          compensate_negatives_in,
+                          builder.node().custom2,
+                          builder.node().custom3,
+                          builder.node().custom4,
+                          scene_linear_to_working_matrix,
+                          working_to_display_matrix,
+                          display_to_scene_linear_matrix,
+                          data->log_midgray,
+                          data->midgray,
+                          inset_matrix,
+                          outset_matrix);
+                    },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
                        float,
                        float,
-                       float,
-                       float,
-                       float,
-                       float,
-                       float3,
-                       float3,
-                       float3,
-                       float3,
-                       float,
-                       float,
-                       float,
-                       bool>());
-    });
-  } else if (!use_inverse_inset && !use_generic_log2) {
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float3 reverse_hue_flights_in,
-                       const float3 restore_purity_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-            float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                               data->scene_linear_to_working[1],
-                                                               data->scene_linear_to_working[2]);
-            float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                          data->working_to_display[1],
-                                                          data->working_to_display[2]);
-            float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                               data->display_to_scene_linear[1],
-                                                               data->display_to_scene_linear[2]);
-            float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                             data->insetmat[1],
-                                             data->insetmat[2]);
-            float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                              data->outsetmat[1],
-                                              data->outsetmat[2]);
-            return agx_image_formation(
-                color,
-                general_contrast_in,
-                toe_contrast_in,
-                shoulder_contrast_in,
-                pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
-                per_channel_hue_flight_in,
-                compensate_negatives_in,
-                builder.node().custom2,
-                builder.node().custom3,
-                builder.node().custom4,
-                scene_linear_to_working_matrix,
-                working_to_display_matrix,
-                display_to_scene_linear_matrix,
-                data->log_midgray,
-                data->midgray,
-                inset_matrix,
-                outset_matrix),
-          },
-          mf::build::exec_presets::SomeSpanOrSingle<0>(),
-          TypeSequence<float4,
                        float,
                        float,
                        float,
@@ -779,8 +684,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           toe_contrast_in,
                           shoulder_contrast_in,
                           pivot_offset_in,
-                          log2_min_in,
-                          log2_max_in,
+                          -10.0f, /* log2_min_in */
+                          6.5f,   /* log2_max_in */
                           per_channel_hue_flight_in,
                           compensate_negatives_in,
                           builder.node().custom2,
@@ -792,8 +697,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           data->log_midgray,
                           data->midgray,
                           inset_matrix,
-                          outset_matrix),
-          },
+                          outset_matrix);
+                    },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
                        float,
@@ -802,6 +707,74 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        float,
                        float,
                        float,
+                       float3,
+                       float3,
+                       float,
+                       float,
+                       float,
+                       bool>());
+    });
+  } else if (!use_inverse_inset && !use_generic_log2) {
+    builder.construct_and_set_matching_fn_cb([&]() {
+      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
+          "AgX View Transform",
+          [=, &builder](const float4 &color,
+                       const float general_contrast_in,
+                       const float toe_contrast_in,
+                       const float shoulder_contrast_in,
+                       const float pivot_offset_in,
+                       const float3 hue_flights_in,
+                       const float3 attenuation_rates_in,
+                       const float3 reverse_hue_flights_in,
+                       const float3 restore_purity_in,
+                       const float per_channel_hue_flight_in,
+                       const float tinting_scale_in,
+                       const float tinting_hue_in,
+                       const bool compensate_negatives_in) -> float4 {
+                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
+                                                                           data->scene_linear_to_working[1],
+                                                                           data->scene_linear_to_working[2]);
+                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
+                                                                      data->working_to_display[1],
+                                                                      data->working_to_display[2]);
+                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
+                                                                           data->display_to_scene_linear[1],
+                                                                           data->display_to_scene_linear[2]);
+                        float3x3 inset_matrix = float3x3(data->insetmat[0],
+                                                         data->insetmat[1],
+                                                         data->insetmat[2]);
+                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
+                                                          data->outsetmat[1],
+                                                          data->outsetmat[2]);
+                        return agx_image_formation(
+                          color,
+                          general_contrast_in,
+                          toe_contrast_in,
+                          shoulder_contrast_in,
+                          pivot_offset_in,
+                          -10.0f, /* log2_min_in */
+                          6.5f,   /* log2_max_in */
+                          per_channel_hue_flight_in,
+                          compensate_negatives_in,
+                          builder.node().custom2,
+                          builder.node().custom3,
+                          builder.node().custom4,
+                          scene_linear_to_working_matrix,
+                          working_to_display_matrix,
+                          display_to_scene_linear_matrix,
+                          data->log_midgray,
+                          data->midgray,
+                          inset_matrix,
+                          outset_matrix);
+                    },
+          mf::build::exec_presets::SomeSpanOrSingle<0>(),
+          TypeSequence<float4,
+                       float,
+                       float,
+                       float,
+                       float,
+                       float3,
+                       float3,
                        float3,
                        float3,
                        float,
@@ -838,7 +811,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                                          data->insetmat[2]);
                         float3x3 outset_matrix = float3x3(data->outsetmat[0],
                                                           data->outsetmat[1],
-                                                          data->outsetmat[2]); 
+                                                          data->outsetmat[2]);
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -858,8 +831,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                           data->log_midgray,
                           data->midgray,
                           inset_matrix,
-                          outset_matrix),
-          },
+                          outset_matrix);
+                    },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
                        float,

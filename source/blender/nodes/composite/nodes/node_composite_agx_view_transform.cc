@@ -594,21 +594,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                                           data->scene_linear_to_working[1],
-                                                                           data->scene_linear_to_working[2]);
-                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                                      data->working_to_display[1],
-                                                                      data->working_to_display[2]);
-                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                                           data->display_to_scene_linear[1],
-                                                                           data->display_to_scene_linear[2]);
-                        float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                                         data->insetmat[1],
-                                                         data->insetmat[2]);
-                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                                          data->outsetmat[1],
-                                                          data->outsetmat[2]);
+                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
+                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
+                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
+                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
+                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
+                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
+                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
+                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
+                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
+                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
+                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
+                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
+                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -664,21 +663,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                                           data->scene_linear_to_working[1],
-                                                                           data->scene_linear_to_working[2]);
-                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                                      data->working_to_display[1],
-                                                                      data->working_to_display[2]);
-                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                                           data->display_to_scene_linear[1],
-                                                                           data->display_to_scene_linear[2]);
-                        float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                                         data->insetmat[1],
-                                                         data->insetmat[2]);
-                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                                          data->outsetmat[1],
-                                                          data->outsetmat[2]);
+                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
+                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
+                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
+                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
+                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
+                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
+                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
+                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
+                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
+                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
+                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
+                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
+                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -732,21 +730,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                                           data->scene_linear_to_working[1],
-                                                                           data->scene_linear_to_working[2]);
-                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                                      data->working_to_display[1],
-                                                                      data->working_to_display[2]);
-                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                                           data->display_to_scene_linear[1],
-                                                                           data->display_to_scene_linear[2]);
-                        float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                                         data->insetmat[1],
-                                                         data->insetmat[2]);
-                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                                          data->outsetmat[1],
-                                                          data->outsetmat[2]);
+                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
+                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
+                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
+                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
+                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
+                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
+                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
+                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
+                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
+                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
+                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
+                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
+                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -798,21 +795,20 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                        const float tinting_scale_in,
                        const float tinting_hue_in,
                        const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(data->scene_linear_to_working[0],
-                                                                           data->scene_linear_to_working[1],
-                                                                           data->scene_linear_to_working[2]);
-                        float3x3 working_to_display_matrix = float3x3(data->working_to_display[0],
-                                                                      data->working_to_display[1],
-                                                                      data->working_to_display[2]);
-                        float3x3 display_to_scene_linear_matrix = float3x3(data->display_to_scene_linear[0],
-                                                                           data->display_to_scene_linear[1],
-                                                                           data->display_to_scene_linear[2]);
-                        float3x3 inset_matrix = float3x3(data->insetmat[0],
-                                                         data->insetmat[1],
-                                                         data->insetmat[2]);
-                        float3x3 outset_matrix = float3x3(data->outsetmat[0],
-                                                          data->outsetmat[1],
-                                                          data->outsetmat[2]);
+                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
+                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
+                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
+                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
+                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
+                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
+                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
+                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
+                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
+                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
+                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
+                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
+                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,

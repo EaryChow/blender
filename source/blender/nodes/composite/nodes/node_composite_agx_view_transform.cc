@@ -575,60 +575,59 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
   const bool use_inverse_inset = builder.node().custom1;
   const bool use_generic_log2 = builder.node().custom3 == int(AGXWorkingLog::AGX_WORKING_LOG_GENERIC_LOG2);
 
+  printf("scene_linear_to_working in multi function: %f %f %f, %f %f %f, %f %f %f\n",
+    data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2],
+    data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2],
+    data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]);
+
+    const float3x3 scene_linear_to_working_matrix = data->scene_linear_to_working;
+    const float3x3 working_to_display_matrix = data->working_to_display;
+    const float3x3 display_to_scene_linear_matrix = data->display_to_scene_linear;
+    const float log_midgray_val = data->log_midgray;
+    const float midgray_val = data->midgray;
+    const float3x3 inset_matrix = data->insetmat;
+    const float3x3 outset_matrix = data->outsetmat;
   if (!use_inverse_inset && use_generic_log2) {
-    builder.construct_and_set_matching_fn_cb([&]() {
-      return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
-          "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float log2_min_in,
-                       const float log2_max_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float3 reverse_hue_flights_in,
-                       const float3 restore_purity_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
-                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
-                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
-                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
-                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
-                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
-                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
-                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
-                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
-                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
-                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
-                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
-                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
-                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
-                        return agx_image_formation(
-                          color,
-                          general_contrast_in,
-                          toe_contrast_in,
-                          shoulder_contrast_in,
-                          pivot_offset_in,
-                          log2_min_in,
-                          log2_max_in,
-                          per_channel_hue_flight_in,
-                          compensate_negatives_in,
-                          static_cast<int>(builder.node().custom2),
-                          static_cast<int>(builder.node().custom3),
-                          static_cast<int>(builder.node().custom4),
-                          scene_linear_to_working_matrix,
-                          working_to_display_matrix,
-                          display_to_scene_linear_matrix,
-                          data->log_midgray,
-                          data->midgray,
-                          inset_matrix,
-                          outset_matrix);
+      builder.construct_and_set_matching_fn_cb([&]() {
+        return mf::build::detail::build_multi_function_with_n_inputs_one_output<
+            float4>(
+            "AgX View Transform",
+            [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
+                const float4 &color,
+                const float general_contrast_in,
+                const float toe_contrast_in,
+                const float shoulder_contrast_in,
+                const float pivot_offset_in,
+                const float log2_min_in,
+                const float log2_max_in,
+                const float3 hue_flights_in,
+                const float3 attenuation_rates_in,
+                const float3 reverse_hue_flights_in,
+                const float3 restore_purity_in,
+                const float per_channel_hue_flight_in,
+                const float tinting_scale_in,
+                const float tinting_hue_in,
+                const bool compensate_negatives_in) -> float4 {
+              return agx_image_formation(
+                  color,
+                  general_contrast_in,
+                  toe_contrast_in,
+                  shoulder_contrast_in,
+                  pivot_offset_in,
+                  log2_min_in,
+                  log2_max_in,
+                  per_channel_hue_flight_in,
+                  compensate_negatives_in,
+                  static_cast<int>(builder.node().custom2),
+                  static_cast<int>(builder.node().custom3),
+                  static_cast<int>(builder.node().custom4),
+                  scene_linear_to_working_matrix,
+                  working_to_display_matrix,
+                  display_to_scene_linear_matrix,
+                  log_midgray_val,
+                  midgray_val,
+                  inset_matrix,
+                  outset_matrix);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -651,54 +650,40 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float log2_min_in,
-                       const float log2_max_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
-                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
-                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
-                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
-                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
-                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
-                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
-                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
-                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
-                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
-                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
-                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
-                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
-                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
-                        return agx_image_formation(
-                          color,
-                          general_contrast_in,
-                          toe_contrast_in,
-                          shoulder_contrast_in,
-                          pivot_offset_in,
-                          -10.0f, /* log2_min_in */
-                          6.5f,   /* log2_max_in */
-                          per_channel_hue_flight_in,
-                          compensate_negatives_in,
-                          static_cast<int>(builder.node().custom2),
-                          static_cast<int>(builder.node().custom3),
-                          static_cast<int>(builder.node().custom4),
-                          scene_linear_to_working_matrix,
-                          working_to_display_matrix,
-                          display_to_scene_linear_matrix,
-                          data->log_midgray,
-                          data->midgray,
-                          inset_matrix,
-                          outset_matrix);
+          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
+              const float4 &color,
+              const float general_contrast_in,
+              const float toe_contrast_in,
+              const float shoulder_contrast_in,
+              const float pivot_offset_in,
+              const float log2_min_in,
+              const float log2_max_in,
+              const float3 hue_flights_in,
+              const float3 attenuation_rates_in,
+              const float per_channel_hue_flight_in,
+              const float tinting_scale_in,
+              const float tinting_hue_in,
+              const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
+                per_channel_hue_flight_in,
+                compensate_negatives_in,
+                static_cast<int>(builder.node().custom2),
+                static_cast<int>(builder.node().custom3),
+                static_cast<int>(builder.node().custom4),
+                scene_linear_to_working_matrix,
+                working_to_display_matrix,
+                display_to_scene_linear_matrix,
+                log_midgray_val,
+                midgray_val,
+                inset_matrix,
+                outset_matrix);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -719,54 +704,39 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float3 reverse_hue_flights_in,
-                       const float3 restore_purity_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
-                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
-                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
-                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
-                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
-                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
-                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
-                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
-                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
-                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
-                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
-                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
-                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
-                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
-                        return agx_image_formation(
-                          color,
-                          general_contrast_in,
-                          toe_contrast_in,
-                          shoulder_contrast_in,
-                          pivot_offset_in,
-                          -10.0f, /* log2_min_in */
-                          6.5f,   /* log2_max_in */
-                          per_channel_hue_flight_in,
-                          compensate_negatives_in,
-                          static_cast<int>(builder.node().custom2),
-                          static_cast<int>(builder.node().custom3),
-                          static_cast<int>(builder.node().custom4),
-                          scene_linear_to_working_matrix,
-                          working_to_display_matrix,
-                          display_to_scene_linear_matrix,
-                          data->log_midgray,
-                          data->midgray,
-                          inset_matrix,
-                          outset_matrix);
+          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
+              const float general_contrast_in,
+              const float toe_contrast_in,
+              const float shoulder_contrast_in,
+              const float pivot_offset_in,
+              const float3 hue_flights_in,
+              const float3 attenuation_rates_in,
+              const float3 reverse_hue_flights_in,
+              const float3 restore_purity_in,
+              const float per_channel_hue_flight_in,
+              const float tinting_scale_in,
+              const float tinting_hue_in,
+              const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
+                per_channel_hue_flight_in,
+                compensate_negatives_in,
+                static_cast<int>(builder.node().custom2),
+                static_cast<int>(builder.node().custom3),
+                static_cast<int>(builder.node().custom4),
+                scene_linear_to_working_matrix,
+                working_to_display_matrix,
+                display_to_scene_linear_matrix,
+                log_midgray_val,
+                midgray_val,
+                inset_matrix,
+                outset_matrix);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -787,52 +757,38 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-          [=, &builder, &data](const float4 &color,
-                       const float general_contrast_in,
-                       const float toe_contrast_in,
-                       const float shoulder_contrast_in,
-                       const float pivot_offset_in,
-                       const float3 hue_flights_in,
-                       const float3 attenuation_rates_in,
-                       const float per_channel_hue_flight_in,
-                       const float tinting_scale_in,
-                       const float tinting_hue_in,
-                       const bool compensate_negatives_in) -> float4 {
-                        float3x3 scene_linear_to_working_matrix = float3x3(float3(data->scene_linear_to_working[0][0], data->scene_linear_to_working[0][1], data->scene_linear_to_working[0][2]),
-                                                                           float3(data->scene_linear_to_working[1][0], data->scene_linear_to_working[1][1], data->scene_linear_to_working[1][2]),
-                                                                           float3(data->scene_linear_to_working[2][0], data->scene_linear_to_working[2][1], data->scene_linear_to_working[2][2]));
-                        float3x3 working_to_display_matrix = float3x3(float3(data->working_to_display[0][0], data->working_to_display[0][1], data->working_to_display[0][2]),
-                                                                      float3(data->working_to_display[1][0], data->working_to_display[1][1], data->working_to_display[1][2]),
-                                                                      float3(data->working_to_display[2][0], data->working_to_display[2][1], data->working_to_display[2][2]));
-                        float3x3 display_to_scene_linear_matrix = float3x3(float3(data->display_to_scene_linear[0][0], data->display_to_scene_linear[0][1], data->display_to_scene_linear[0][2]),
-                                                                           float3(data->display_to_scene_linear[1][0], data->display_to_scene_linear[1][1], data->display_to_scene_linear[1][2]),
-                                                                           float3(data->display_to_scene_linear[2][0], data->display_to_scene_linear[2][1], data->display_to_scene_linear[2][2]));
-                        float3x3 inset_matrix = float3x3(float3(data->insetmat[0][0], data->insetmat[0][1], data->insetmat[0][2]),
-                                                         float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
-                                                         float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
-                        float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
-                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
-                        return agx_image_formation(
-                          color,
-                          general_contrast_in,
-                          toe_contrast_in,
-                          shoulder_contrast_in,
-                          pivot_offset_in,
-                          -10.0f, /* log2_min_in */
-                          6.5f,   /* log2_max_in */
-                          per_channel_hue_flight_in,
-                          compensate_negatives_in,
-                          static_cast<int>(builder.node().custom2),
-                          static_cast<int>(builder.node().custom3),
-                          static_cast<int>(builder.node().custom4),
-                          scene_linear_to_working_matrix,
-                          working_to_display_matrix,
-                          display_to_scene_linear_matrix,
-                          data->log_midgray,
-                          data->midgray,
-                          inset_matrix,
-                          outset_matrix);
+          [=, &builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix](
+              const float4 &color,
+              const float general_contrast_in,
+              const float toe_contrast_in,
+              const float shoulder_contrast_in,
+              const float pivot_offset_in,
+              const float3 hue_flights_in,
+              const float3 attenuation_rates_in,
+              const float per_channel_hue_flight_in,
+              const float tinting_scale_in,
+              const float tinting_hue_in,
+              const bool compensate_negatives_in) -> float4 {
+            return agx_image_formation(
+                color,
+                general_contrast_in,
+                toe_contrast_in,
+                shoulder_contrast_in,
+                pivot_offset_in,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
+                per_channel_hue_flight_in,
+                compensate_negatives_in,
+                static_cast<int>(builder.node().custom2),
+                static_cast<int>(builder.node().custom3),
+                static_cast<int>(builder.node().custom4),
+                scene_linear_to_working_matrix,
+                working_to_display_matrix,
+                display_to_scene_linear_matrix,
+                log_midgray_val,
+                midgray_val,
+                inset_matrix,
+                outset_matrix);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

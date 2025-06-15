@@ -607,7 +607,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                                          float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
                                                          float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
                         float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
+                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -676,7 +677,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                                          float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
                                                          float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
                         float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
+                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -743,7 +745,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                                          float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
                                                          float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
                         float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
+                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,
@@ -808,7 +811,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                                                          float3(data->insetmat[1][0], data->insetmat[1][1], data->insetmat[1][2]),
                                                          float3(data->insetmat[2][0], data->insetmat[2][1], data->insetmat[2][2]));
                         float3x3 outset_matrix = float3x3(float3(data->outsetmat[0][0], data->outsetmat[0][1], data->outsetmat[0][2]),
-                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]));
+                                                          float3(data->outsetmat[1][0], data->outsetmat[1][1], data->outsetmat[1][2]),
+                                                          float3(data->outsetmat[2][0], data->outsetmat[2][1], data->outsetmat[2][2]));
                         return agx_image_formation(
                           color,
                           general_contrast_in,

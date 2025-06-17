@@ -18,7 +18,6 @@
 #include "GPU_material.hh"
 #include "FN_multi_function_builder.hh"
 #include "IMB_colormanagement.hh"
-#include "MEM_guardedalloc.h"
 #include "NOD_multi_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_rna_define.hh"
@@ -141,30 +140,55 @@ static void node_declare(NodeDeclarationBuilder &b) {
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
 
-  /* Panel for log and sigmoid curve settings. */
-  PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
+  /* Panel for log curve settings. */
+  PanelDeclarationBuilder &log_curve_panel = b.add_panel("Log Curve").default_closed(true);
+  log_curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+    layout->prop(ptr, "working_log", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
 
-  curve_panel.add_input<decl::Float>("General Contrast")
+  log_curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
+    .default_value(-10.0f)
+    .min(-15.0f)
+    .max(-5.0f)
+    .subtype(PROP_NONE)
+    .short_label("Log2 Min")
+    .description(
+        "The lower end of the generic log2 curve. Values are in Exposure stops.")
+    .compositor_expects_single_value();
+
+  log_curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
+    .default_value(6.5f)
+    .min(4.0f)
+    .max(15.0f)
+    .subtype(PROP_NONE)
+    .short_label("Log2 Max")
+    .description(
+        "The upper end of the log curve. Values are in Exposure stops.")
+    .compositor_expects_single_value();
+
+  /* Panel for sigmoid curve settings. */
+  PanelDeclarationBuilder &s_curve_panel = b.add_panel("Contrast Curve").default_closed(false);
+
+  s_curve_panel.add_input<decl::Float>("General Contrast")
     .default_value(2.4f)
     .min(1.4f)
     .max(4.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Slope of the S curve."
-        "Slope of the S curve. Controls the general contrast across the image")
+        "Slope of the S curve. "
+        "Control the general contrast across the image")
     .compositor_expects_single_value();
 
-  curve_panel.add_input<decl::Float>("Toe Contrast")
+  s_curve_panel.add_input<decl::Float>("Toe Contrast")
     .default_value(1.5f)
     .min(0.7f)
     .max(10.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Toe exponential power of the S curve."
+        "Toe exponential power of the S curve. "
         "Higher values make darker regions crush harder towards black")
     .compositor_expects_single_value();
 
-  curve_panel.add_input<decl::Float>("Shoulder Contrast")
+  s_curve_panel.add_input<decl::Float>("Shoulder Contrast")
     .default_value(1.5f)
     .min(0.7f)
     .max(10.0f)
@@ -174,39 +198,14 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Higher values make brighter regions crush harder towards white")
     .compositor_expects_single_value();
 
-  curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
+  s_curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
     .default_value(0.0f)
     .min(-0.3f)
     .max(0.18f)
     .subtype(PROP_FACTOR)
     .short_label("Pivot Offset")
     .description(
-        "Controls the pivot point for all contrast adjustments")
-    .compositor_expects_single_value();
-
-  curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-    layout->prop(ptr, "working_log", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
-
-  curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
-    .default_value(-10.0f)
-    .min(-15.0f)
-    .max(-5.0f)
-    .subtype(PROP_NONE)
-    .short_label("Log2 Min")
-    .description(
-        "The lower end of the generic log2 curve. Values are in Exposure stops."
-        "Only in use when working log is set to Generic Log2")
-    .compositor_expects_single_value();
-
-  curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
-    .default_value(6.5f)
-    .min(2.8f)
-    .max(38.0f)
-    .subtype(PROP_NONE)
-    .short_label("Log2 Max")
-    .description(
-        "The upper end of the log curve. Values are in Exposure stops."
-        "Only in use when working log is set to Generic Log2")
+        "Control the pivot point for all contrast adjustments")
     .compositor_expects_single_value();
 
   /* Panel for inset matrix settings. */
@@ -214,11 +213,11 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
   inset_panel.add_input<decl::Vector>("Hue Flights")
     .default_value({2.13976f, -1.22827f, -3.05174f})
-    .min(-10.0f)
-    .max(10.0f)
+    .min(-15.0f)
+    .max(15.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Hue Rotation angle in degrees for each of the RGB primaries before curve."
+        "Hue Rotation angle in degrees for each of the RGB primaries before curve. "
         "Negative is clockwise, and positive is counterclockwise")
     .compositor_expects_single_value();
 
@@ -228,7 +227,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .max(0.6f)
     .subtype(PROP_FACTOR)
     .description(
-        "Percentage relative to the primary chromaticity purity,"
+        "Percentage relative to the primary chromaticity purity, "
         "by which the chromaticity scales inwards before curve")
     .compositor_expects_single_value();
 
@@ -240,11 +239,11 @@ static void node_declare(NodeDeclarationBuilder &b) {
 
   outset_panel.add_input<decl::Vector>("Reverse Hue Flights")
     .default_value({0.0f, 0.0f, 0.0f})
-    .min(-10.0f)
-    .max(10.0f)
+    .min(-15.0f)
+    .max(15.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Hue Rotation angle in degrees for each of the RGB primaries after curve."
+        "Hue Rotation angle in degrees for each of the RGB primaries after curve. "
         "Direction is the reverse of the Attenuation. Negative is counterclockwise, positive is clockwise.")
     .compositor_expects_single_value();
 
@@ -254,7 +253,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .max(0.6f)
     .subtype(PROP_FACTOR)
     .description(
-        "Percentage relative to the primary chromaticity purity,"
+        "Percentage relative to the primary chromaticity purity, "
         "by which the chromaticity scales outwards after curve")
     .compositor_expects_single_value();
 
@@ -267,7 +266,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .max(1.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "The percentage of hue shift introduced by the per-channel curve."
+        "The percentage of hue shift introduced by the per-channel curve. "
         "Higher value will have yellower orange, for example")
     .compositor_expects_single_value();
 
@@ -277,7 +276,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .max(0.2f)
     .subtype(PROP_FACTOR)
     .description(
-        "Controls how far the white point shifts in the outset."
+        "Control how far the white point shifts in the outset. "
         "Affecting the intensity or strength of the tint applied after curve")
     .compositor_expects_single_value();
 
@@ -287,7 +286,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .max(180.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Adjusts the direction in which the white point shifts in the outset."
+        "Adjust the direction in which the white point shifts in the outset. "
         "influencing the overall hue of the tint applied after curve")
     .compositor_expects_single_value();
 
@@ -303,7 +302,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
     .default_value(true)
     .short_label("Compensate Negatives")
     .description(
-        "Use special luminance compensation technique to prevent out-of-gamut negative values."
+        "Use special luminance compensation technique to prevent out-of-gamut negative values. "
         "Done in both pre-curve and post-curve state.")
     .compositor_expects_single_value();
 
@@ -343,12 +342,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 // CPU processing logic
 static float4 agx_image_formation(float4 color,
+                                  float log2_min_in,
+                                  float log2_max_in,
                                   float general_contrast_in,
                                   float toe_contrast_in,
                                   float shoulder_contrast_in,
                                   float pivot_offset_in,                     
-                                  float log2_min_in,
-                                  float log2_max_in,
                                   float per_channel_hue_flight_in,
                                   bool compensate_negatives_in,
                                   int p_working_primaries,
@@ -547,12 +546,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
             "AgX View Transform",
             [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
                 const float4 &color,
+                const float log2_min_in,
+                const float log2_max_in,
                 const float general_contrast_in,
                 const float toe_contrast_in,
                 const float shoulder_contrast_in,
                 const float pivot_offset_in,
-                const float log2_min_in,
-                const float log2_max_in,
                 const float3 hue_flights_in,
                 const float3 attenuation_rates_in,
                 const float3 reverse_hue_flights_in,
@@ -563,12 +562,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 const bool compensate_negatives_in) -> float4 {
               return agx_image_formation(
                   color,
+                  log2_min_in,
+                  log2_max_in,
                   general_contrast_in,
                   toe_contrast_in,
                   shoulder_contrast_in,
                   pivot_offset_in,
-                  log2_min_in,
-                  log2_max_in,
                   per_channel_hue_flight_in,
                   compensate_negatives_in,
                   static_cast<int>(builder.node().custom2),
@@ -605,12 +604,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
           "AgX View Transform",
             [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
                 const float4 &color,
+                const float log2_min_in,
+                const float log2_max_in,
                 const float general_contrast_in,
                 const float toe_contrast_in,
                 const float shoulder_contrast_in,
                 const float pivot_offset_in,
-                const float log2_min_in,
-                const float log2_max_in,
                 const float3 hue_flights_in,
                 const float3 attenuation_rates_in,
                 const float per_channel_hue_flight_in,
@@ -619,12 +618,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 const bool compensate_negatives_in) -> float4 {
               return agx_image_formation(
                 color,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
                 general_contrast_in,
                 toe_contrast_in,
                 shoulder_contrast_in,
                 pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
                 per_channel_hue_flight_in,
                 compensate_negatives_in,
                 static_cast<int>(builder.node().custom2),
@@ -673,12 +672,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 const bool compensate_negatives_in) -> float4 {
               return agx_image_formation(
                 color,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
                 general_contrast_in,
                 toe_contrast_in,
                 shoulder_contrast_in,
                 pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
                 per_channel_hue_flight_in,
                 compensate_negatives_in,
                 static_cast<int>(builder.node().custom2),
@@ -725,12 +724,12 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 const bool compensate_negatives_in) -> float4 {
               return agx_image_formation(
                 color,
+                -10.0f, /* log2_min_in */
+                6.5f,   /* log2_max_in */
                 general_contrast_in,
                 toe_contrast_in,
                 shoulder_contrast_in,
                 pivot_offset_in,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
                 per_channel_hue_flight_in,
                 compensate_negatives_in,
                 static_cast<int>(builder.node().custom2),
@@ -767,7 +766,7 @@ static void node_register()
 
   cmp_node_type_base(&ntype, "CompositorNodeAgXViewTransform");
   ntype.ui_name = "AgX View Transform";
-  ntype.ui_description = "Applies AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
+  ntype.ui_description = "Apply AgX Picture Formation that converts rendered RGB exposure into an Image for Display";
   ntype.enum_name_legacy = "AGX_VIEW_TRANSFORM";
   ntype.nclass = NODE_CLASS_OP_COLOR;
   ntype.declare = node_declare;

@@ -615,8 +615,8 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 const bool compensate_negatives_in) -> float4 {
               return agx_image_formation(
                 color,
-                -10.0f, /* log2_min_in */
-                6.5f,   /* log2_max_in */
+                log2_min_in,
+                log2_max_in,
                 general_contrast_in,
                 toe_contrast_in,
                 shoulder_contrast_in,

@@ -140,12 +140,12 @@ static void node_declare(NodeDeclarationBuilder &b) {
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
 
-  /* Panel for log curve settings. */
-  PanelDeclarationBuilder &log_curve_panel = b.add_panel("Log Curve").default_closed(true);
-  log_curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
+  /* Panel for log and sigmoid curve settings. */
+  PanelDeclarationBuilder &curve_panel = b.add_panel("Curve").default_closed(false);
+  curve_panel.add_layout([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
     layout->prop(ptr, "working_log", UI_ITEM_R_SPLIT_EMPTY_NAME, std::nullopt, ICON_NONE);});
 
-  log_curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
+  curve_panel.add_input<decl::Float>("Log2 Minimum Exposure")
     .default_value(-10.0f)
     .min(-15.0f)
     .max(-5.0f)
@@ -155,7 +155,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "The lower end of the generic log2 curve. Values are in Exposure stops.")
     .compositor_expects_single_value();
 
-  log_curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
+  curve_panel.add_input<decl::Float>("Log2 Maximum Exposure")
     .default_value(6.5f)
     .min(4.0f)
     .max(15.0f)
@@ -165,10 +165,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "The upper end of the log curve. Values are in Exposure stops.")
     .compositor_expects_single_value();
 
-  /* Panel for sigmoid curve settings. */
-  PanelDeclarationBuilder &s_curve_panel = b.add_panel("Contrast Curve").default_closed(false);
-
-  s_curve_panel.add_input<decl::Float>("General Contrast")
+  curve_panel.add_input<decl::Float>("General Contrast")
     .default_value(2.4f)
     .min(1.4f)
     .max(4.0f)
@@ -178,7 +175,7 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Control the general contrast across the image")
     .compositor_expects_single_value();
 
-  s_curve_panel.add_input<decl::Float>("Toe Contrast")
+  curve_panel.add_input<decl::Float>("Toe Contrast")
     .default_value(1.5f)
     .min(0.7f)
     .max(10.0f)
@@ -188,17 +185,17 @@ static void node_declare(NodeDeclarationBuilder &b) {
         "Higher values make darker regions crush harder towards black")
     .compositor_expects_single_value();
 
-  s_curve_panel.add_input<decl::Float>("Shoulder Contrast")
+  curve_panel.add_input<decl::Float>("Shoulder Contrast")
     .default_value(1.5f)
     .min(0.7f)
     .max(10.0f)
     .subtype(PROP_FACTOR)
     .description(
-        "Shoulder exponential power of the S curve."
+        "Shoulder exponential power of the S curve. "
         "Higher values make brighter regions crush harder towards white")
     .compositor_expects_single_value();
 
-  s_curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
+  curve_panel.add_input<decl::Float>("Contrast Pivot Offset")
     .default_value(0.0f)
     .min(-0.3f)
     .max(0.18f)

@@ -426,12 +426,116 @@ static float4 agx_image_formation(float4 color,
 
 // GPU Processing
 static int node_gpu_material(GPUMaterial *material,
+  bNodeTree *ntree,
   bNode *node,
   bNodeExecData * /*execdata*/,
   GPUNodeStack *inputs,
   GPUNodeStack *outputs)
 {
-return GPU_stack_link(material, node, "node_composite_agx_view_transform", inputs, outputs);
+  // ---- precompute maths that are the same for all pixels ----
+  const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
+  const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
+
+  float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  float3x3 scene_linear_to_working_matrix = xyz_to_working * scene_to_xyz;
+
+  float3x3 working_to_display_matrix = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+          COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  
+  float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
+  float3x3 display_to_scene_linear_matrix = xyz_to_scene * display_to_xyz;
+
+  // find log2 sockets
+  bNodeSocket *log2_exposure_min_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
+  bNodeSocket *log2_exposure_max_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Maximum Exposure");
+
+  // find inset sockets
+  bNodeSocket *attenuation_rates_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Rates of Attenuation");
+  bNodeSocket *hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Hue Flights");
+
+  // find outset sockets
+  bNodeSocket *reverse_hue_flights_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Reverse Hue Flights");
+  bNodeSocket *restore_purity_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Restore Purity");
+  bNodeSocket *tinting_hue_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Hue");
+  bNodeSocket *tinting_scale_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Tinting Scale");
+  // precalculate log middle gray
+  float log2_min_in = -10.0f; /* Default value. */
+  if (log2_exposure_min_soc) {
+    log2_min_in = node_socket_get_float(ntree, node, log2_exposure_min_soc);
+  }
+
+  float log2_max_in = 6.5f; /* Default value. */
+  if (log2_exposure_max_soc) {
+    log2_max_in = node_socket_get_float(ntree, node, log2_exposure_max_soc);
+  }
+  float log_midgray_val = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+  // precalculate mid gray value
+  float image_native_power = 2.4f;
+  float midgray_val = pow(0.18f, 1.0f / image_native_power);
+
+  // precalculate inset matrix
+  float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
+  if (attenuation_rates_soc) {
+    node_socket_get_vector(ntree, node, attenuation_rates_soc, (float *)&attenuation_rates_in);
+  }
+
+  float3 hue_flights_in = float3(2.13976f, -1.22827f, -3.05174f); /* Default value. */
+  if (hue_flights_soc) {
+    node_socket_get_vector(ntree, node, hue_flights_in, (float *)&hue_flights_in);
+  }
+  Chromaticities inset_chromaticities = InsetPrimaries(
+    COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+    attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
+    hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
+
+  float3x3 inset_matrix = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+
+  // precalculate outset matrix
+  float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
+  if (restore_purity_soc) {
+    node_socket_get_vector(ntree, node, restore_purity_in, (float *)&restore_purity_in);
+  }
+
+  float3 reverse_hue_flights_in = float3(0.0f, 0.0f, 0.0f); /* Default value. */
+  if (reverse_hue_flights_soc) {
+    node_socket_get_vector(ntree, node, reverse_hue_flights_in, (float *)&reverse_hue_flights_in);
+  }
+
+  float tinting_hue_in = 0.0f; /* Default value. */
+  if (tinting_hue_soc) {
+    tinting_hue_in = node_socket_get_float(ntree, node, tinting_hue_soc);
+  }
+
+  float tinting_scale_in = 0.0f; /* Default value. */
+  if (tinting_scale_soc) {
+    tinting_scale_in = node_socket_get_float(ntree, node, tinting_scale_soc);
+  }
+
+  Chromaticities outset_chromaticities = OutsetPrimaries(
+    COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+    restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
+    reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
+    tinting_hue_in, tinting_scale_in);
+
+  float3x3 outset_matrix = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], outset_chromaticities);
+
+  float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], REC2020_PRI);
+  float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom4)], REC2020_PRI);
+
+  return GPU_stack_link(material, 
+                        node, 
+                        "node_composite_agx_view_transform", 
+                        inputs, 
+                        outputs,
+                        GPU_constant(scene_linear_to_working_matrix),
+                        GPU_constant(working_to_display_matrix),
+                        GPU_constant(display_to_scene_linear_matrix),
+                        GPU_constant(log_midgray_val),
+                        GPU_constant(midgray_val),
+                        GPU_constant(inset_matrix),
+                        GPU_constant(outset_matrix),
+                        GPU_constant(working_to_rec2020),
+                        GPU_constant(display_to_rec2020));
 }
 
 // Multi Function

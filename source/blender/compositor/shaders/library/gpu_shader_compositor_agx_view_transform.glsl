@@ -152,20 +152,20 @@ void node_composite_agx_view_transform(vec4 color,
                                        int p_working_primaries,
                                        int p_working_log,
                                        int p_display_primaries,
-                                       mat3 scene_linear_to_working,
-                                       mat3 working_to_display,
-                                       mat3 display_to_scene_linear,
+                                       mat4 scene_linear_to_working,
+                                       mat4 working_to_display,
+                                       mat4 display_to_scene_linear,
                                        float log_midgray,
                                        float midgray,
-                                       mat3 insetmat,
-                                       mat3 outsetmat,
-                                       mat3 working_to_rec2020,
-                                       mat3 display_to_rec2020,
+                                       mat4 insetmat,
+                                       mat4 outsetmat,
+                                       mat4 working_to_rec2020,
+                                       mat4 display_to_rec2020,
                                        out vec4 result)
 {
   vec3 rgb = color.rgb;
 
-  rgb = scene_linear_to_working * rgb;
+  rgb = (scene_linear_to_working * vec4(rgb, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -175,7 +175,7 @@ void node_composite_agx_view_transform(vec4 color,
     rgb = max(vec3(0.0), rgb);
   }
   // apply inset matrix
-  rgb = insetmat * rgb;
+  rgb = (insetmat * vec4(rgb, 1.0)).rgb;
   // record pre-formation chromaticity angle
   vec3 pre_curve_hsv;
   rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv);
@@ -198,10 +198,10 @@ void node_composite_agx_view_transform(vec4 color,
   hsv_to_rgb(vec4(post_curve_hsv, 1.0), img);
 
   // apply outset matrix
-  img = outsetmat * img;
+  img = (outsetmat * vec4(img, 1.0)).rgb;
 
   // convert from working primaries to target display primaries
-  img = working_to_display * img;
+  img = (working_to_display * vec4(img, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
@@ -212,7 +212,7 @@ void node_composite_agx_view_transform(vec4 color,
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  img = display_to_scene_linear * img;
+  img = (display_to_scene_linear * vec4(img, 1.0)).rgb;
 
   // re-combine the alpha channel
   result = vec4(img, color.a);

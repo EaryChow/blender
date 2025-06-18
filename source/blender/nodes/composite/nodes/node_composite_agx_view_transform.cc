@@ -546,7 +546,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
         return mf::build::detail::build_multi_function_with_n_inputs_one_output<
             float4>(
             "AgX View Transform",
-            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
+            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix, working_to_rec2020, display_to_rec2020]( 
                 const float4 &color,
                 const float log2_min_in,
                 const float log2_max_in,

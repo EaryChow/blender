@@ -288,14 +288,11 @@ static inline float lerp_chromaticity_angle(float h1, float h2, float t) {
     return lerped - floorf(lerped);
 }
 
-static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, Chromaticities working_chrom) {
+static inline float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, float3x3 input_pri_to_rec2020_mat) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
     const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
-    Chromaticities rec2020 = REC2020_PRI;
 
-    // Convert RGB to Rec.2020 for luminance calculation
-    float3x3 working_to_rec2020 = RGBtoRGB(working_chrom, rec2020);
-    float3 rgb_rec2020 = working_to_rec2020 * rgb;
+    float3 rgb_rec2020 = input_pri_to_rec2020_mat * rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +

@@ -356,7 +356,9 @@ static float4 agx_image_formation(float4 color,
                                   float log_midgray,
                                   float midgray,
                                   float3x3 insetmat,
-                                  float3x3 outsetmat)
+                                  float3x3 outsetmat,
+                                  float3x3 working_to_rec2020,
+                                  float3x3 display_to_rec2020)
 {
   float3 rgb;
   rgb.x = color.x;
@@ -367,7 +369,7 @@ static float4 agx_image_formation(float4 color,
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
-    rgb = compensate_low_side(rgb, false, COLOR_SPACE_PRI[static_cast<int>(p_working_primaries)]);
+    rgb = compensate_low_side(rgb, false, working_to_rec2020);
   }
   else {
     rgb = maxf3(0, rgb);
@@ -403,7 +405,7 @@ static float4 agx_image_formation(float4 color,
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (compensate_negatives_in) {
-    img = compensate_low_side(img, true, COLOR_SPACE_PRI[static_cast<int>(p_display_primaries)]);
+    img = compensate_low_side(img, true, display_to_rec2020);
   }
   else {
     img = maxf3(0, img);
@@ -441,6 +443,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
   // ---- precompute maths that are the same for all pixels ----
   const float3x3 scene_to_xyz = IMB_colormanagement_get_scene_linear_to_xyz();
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
+
+  float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(builder.node().custom2)], REC2020_PRI);
+  float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(builder.node().custom4)], REC2020_PRI);
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(builder.node().custom2)]);
   float3x3 scene_linear_to_working_matrix = xyz_to_working * scene_to_xyz;
@@ -599,7 +604,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
+            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix, working_to_rec2020, display_to_rec2020]( 
                 const float4 &color,
                 const float log2_min_in,
                 const float log2_max_in,
@@ -632,7 +637,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 log_midgray_val,
                 midgray_val,
                 inset_matrix,
-                outset_matrix);
+                outset_matrix,
+                working_to_rec2020,
+                display_to_rec2020);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -653,7 +660,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
+            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix, working_to_rec2020, display_to_rec2020]( 
                 const float4 &color,
                 const float general_contrast_in,
                 const float toe_contrast_in,
@@ -686,7 +693,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 log_midgray_val,
                 midgray_val,
                 inset_matrix,
-                outset_matrix);
+                outset_matrix,
+                working_to_rec2020,
+                display_to_rec2020);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,
@@ -707,7 +716,7 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
     builder.construct_and_set_matching_fn_cb([&]() {
       return mf::build::detail::build_multi_function_with_n_inputs_one_output<float4>(
           "AgX View Transform",
-            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix]( 
+            [&builder, scene_linear_to_working_matrix, working_to_display_matrix, display_to_scene_linear_matrix, log_midgray_val, midgray_val, inset_matrix, outset_matrix, working_to_rec2020, display_to_rec2020]( 
                 const float4 &color,
                 const float general_contrast_in,
                 const float toe_contrast_in,
@@ -738,7 +747,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                 log_midgray_val,
                 midgray_val,
                 inset_matrix,
-                outset_matrix);
+                outset_matrix,
+                working_to_rec2020,
+                display_to_rec2020);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

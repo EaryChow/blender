@@ -149,9 +149,7 @@ void node_composite_agx_view_transform(vec4 color,
                                        float pivot_offset_in,                     
                                        float per_channel_hue_flight_in,
                                        bool compensate_negatives_in,
-                                       int p_working_primaries,
-                                       int p_working_log,
-                                       int p_display_primaries,
+                                       float p_working_log,
                                        mat4 scene_linear_to_working,
                                        mat4 working_to_display,
                                        mat4 display_to_scene_linear,
@@ -181,7 +179,7 @@ void node_composite_agx_view_transform(vec4 color,
   rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv_full);
 
   // encode to working log
-  rgb = lin2log(rgb, p_working_log, log2_min_in, log2_max_in);
+  rgb = lin2log(rgb, int(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);

@@ -23,9 +23,9 @@ vec3 lin2log(vec3 rgb, int tf, float generic_log2_min_expo, float generic_log2_m
     rgb.y = rgb.y > 0.0078125f ? (log2(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
     rgb.z = rgb.z > 0.0078125f ? (log2(rgb.z) + 9.72f) / 17.52f : 10.5402377416545f * rgb.z + 0.0729055341958355f;
   } else if (tf == 1) { // Arri LogC3 EI 800
-    rgb.x = rgb.x > 0.010591f ? 0.24719f * log10(5.555556f * rgb.x + 0.052272f) + 0.385537f : 5.367655f * rgb.x + 0.092809f;
-    rgb.y = rgb.y > 0.010591f ? 0.24719f * log10(5.555556f * rgb.y + 0.052272f) + 0.385537f : 5.367655f * rgb.y + 0.092809f;
-    rgb.z = rgb.z > 0.010591f ? 0.24719f * log10(5.555556f * rgb.z + 0.052272f) + 0.385537f : 5.367655f * rgb.z + 0.092809f;
+    rgb.x = rgb.x > 0.010591f ? 0.24719f * (log(5.555556f * rgb.x + 0.052272f) / log(10.0f)) + 0.385537f : 5.367655f * rgb.x + 0.092809f;
+    rgb.y = rgb.y > 0.010591f ? 0.24719f * (log(5.555556f * rgb.y + 0.052272f) / log(10.0f)) + 0.385537f : 5.367655f * rgb.y + 0.092809f;
+    rgb.z = rgb.z > 0.010591f ? 0.24719f * (log(5.555556f * rgb.z + 0.052272f) / log(10.0f)) + 0.385537f : 5.367655f * rgb.z + 0.092809f;
   } else if (tf == 2){  // Arri LogC 4
     const float a = (pow(2.0f, 18.0f) - 16.0f) / 117.45f;
     const float b = (1023.0f - 95.0f) / 1023.0f;
@@ -70,12 +70,12 @@ float lerp_chromaticity_angle(float h1, float h2, float t) {
     return lerped - floor(lerped);
 }
 
-vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat3 input_pri_to_rec2020_mat) {
+vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec2020_mat) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
     const vec3 luminance_coeffs = vec3(0.265818f, 0.59846986f, 0.1357121f);
 
     // Convert RGB to Rec.2020 for luminance calculation
-    vec3 rgb_rec2020 = input_pri_to_rec2020_mat * rgb;
+    vec3 rgb_rec2020 = (input_pri_to_rec2020_mat * vec4(rgb, 1.0)).rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -90,7 +90,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat3 input_pri_to_rec202
     float max_inv_rgb = max(inverse_rgb.x, max(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    vec3 inverse_rec2020 = input_pri_to_rec2020_mat * inverse_rgb;
+    vec3 inverse_rec2020 = (input_pri_to_rec2020_mat * vec4(inverse_rgb, 1.0)).rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -111,7 +111,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat3 input_pri_to_rec202
     float max_offset = max(rgb_offset.x, max(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    vec3 offset_rec2020 = input_pri_to_rec2020_mat * rgb_offset;
+    vec3 offset_rec2020 = (input_pri_to_rec2020_mat * vec4(rgb_offset, 1.0)).rgb;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
@@ -124,7 +124,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat3 input_pri_to_rec202
     // Calculate max of the inverse
     float max_inv_offset = max(inverse_offset.x, max(inverse_offset.y, inverse_offset.z));
 
-    vec3 inverse_offset_rec2020 = input_pri_to_rec2020_mat * inverse_offset;
+    vec3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * vec4(inverse_offset, 1.0)).rgb;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;
@@ -178,7 +178,7 @@ void node_composite_agx_view_transform(vec4 color,
   rgb = (insetmat * vec4(rgb, 1.0)).rgb;
   // record pre-formation chromaticity angle
   vec3 pre_curve_hsv;
-  rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv);
+  rgb_to_hsv(rgb, pre_curve_hsv);
 
   // encode to working log
   rgb = lin2log(rgb, p_working_log, log2_min_in, log2_max_in);
@@ -193,9 +193,9 @@ void node_composite_agx_view_transform(vec4 color,
 
   // lerp pre- and post-curve chromaticity angle
   vec3 post_curve_hsv;
-  rgb_to_hsv(vec4(img, 1.0), post_curve_hsv);
+  rgb_to_hsv(img, post_curve_hsv);
   post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
-  hsv_to_rgb(vec4(post_curve_hsv, 1.0), img);
+  hsv_to_rgb(post_curve_hsv, img);
 
   // apply outset matrix
   img = (outsetmat * vec4(img, 1.0)).rgb;

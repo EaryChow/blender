@@ -495,6 +495,7 @@ static int node_gpu_material(GPUMaterial *material,
                         node, 
                         "node_composite_agx_view_transform", 
                         inputs, 
+                        outputs,
                         GPU_uniform((float *)&node->custom2),
                         GPU_uniform((float *)&node->custom3),
                         GPU_uniform((float *)&node->custom4),
@@ -506,8 +507,7 @@ static int node_gpu_material(GPUMaterial *material,
                         GPU_uniform(blender::float4x4(inset_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(outset_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_rec2020).base_ptr()),
-                        GPU_uniform(blender::float4x4(display_to_rec2020).base_ptr()),
-                        outputs);
+                        GPU_uniform(blender::float4x4(display_to_rec2020).base_ptr()));
 }
 
 // Multi Function

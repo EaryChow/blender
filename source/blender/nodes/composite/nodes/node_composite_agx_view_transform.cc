@@ -437,13 +437,13 @@ static int node_gpu_material(GPUMaterial *material,
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
-  float3x3 scene_linear_to_working_matrix = xyz_to_working * scene_to_xyz;
+  const float3x3 scene_linear_to_working_matrix = xyz_to_working * scene_to_xyz;
 
-  float3x3 working_to_display_matrix = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+  const float3x3 working_to_display_matrix = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
           COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
   
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
-  float3x3 display_to_scene_linear_matrix = xyz_to_scene * display_to_xyz;
+  const float3x3 display_to_scene_linear_matrix = xyz_to_scene * display_to_xyz;
 
   // find log2 sockets
   bNodeSocket *log2_exposure_min_soc = blender::bke::node_find_socket(*node, SOCK_IN, "Log2 Minimum Exposure");
@@ -468,10 +468,10 @@ static int node_gpu_material(GPUMaterial *material,
   if (log2_exposure_max_soc) {
     log2_max_in = node_socket_get_float(ntree, node, log2_exposure_max_soc);
   }
-  float log_midgray_val = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+  const float log_midgray_val = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
   // precalculate mid gray value
   float image_native_power = 2.4f;
-  float midgray_val = pow(0.18f, 1.0f / image_native_power);
+  const float midgray_val = pow(0.18f, 1.0f / image_native_power);
 
   // precalculate inset matrix
   float3 attenuation_rates_in = float3(0.329652f, 0.280513f, 0.124754f); /* Default value. */
@@ -488,7 +488,7 @@ static int node_gpu_material(GPUMaterial *material,
     attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
-  float3x3 inset_matrix = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  const float3x3 inset_matrix = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
 
   // precalculate outset matrix
   float3 restore_purity_in = float3(0.323174f, 0.283256f, 0.037433f); /* Default value. */
@@ -512,44 +512,45 @@ static int node_gpu_material(GPUMaterial *material,
   }
 
   bool use_inverse_inset = node->custom1;
+  float3x3 outset_mat_inv_inset;
+  float3x3 outset_mat;
 
-  float3x3 outset_matrix;
-  if (use_inverse_inset) {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
-        attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
-        hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
-        tinting_hue_in + 180, tinting_scale_in);
-    float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
-    outset_matrix = outset_mat;
-  }
-  else {
-    Chromaticities outset_chromaticities = InsetPrimaries(
-        COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
-        restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
-        reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
-        tinting_hue_in + 180, tinting_scale_in);
-    float3x3 outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
-    outset_matrix = outset_mat;
-  }
+  Chromaticities outset_chromaticities = InsetPrimaries(
+      COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+      attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z, /* Uses attenuation settings */
+      hue_flights_in.x, hue_flights_in.y, hue_flights_in.z,                   /* Uses attenuation settings */
+      tinting_hue_in + 180, tinting_scale_in);
+   outset_mat_inv_inset = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
 
-  float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], REC2020_PRI);
-  float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom4)], REC2020_PRI);
+  Chromaticities outset_chromaticities = InsetPrimaries(
+      COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+      restore_purity_in.x, restore_purity_in.y, restore_purity_in.z,
+       reverse_hue_flights_in.x, reverse_hue_flights_in.y, reverse_hue_flights_in.z,
+       tinting_hue_in + 180, tinting_scale_in);
+  outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
 
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "scene_linear_to_working", scene_linear_to_working_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "working_to_display", working_to_display_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "display_to_scene_linear", display_to_scene_linear_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "insetmat", inset_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "outsetmat", outset_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "working_to_rec2020", working_to_rec2020_matrix.ptr());
-  GPU_shader_uniform_mat3_as_mat4(material->shader(), "display_to_rec2020", display_to_rec2020_matrix.ptr());
+  const float3x3 outset_matrix = use_inverse_inset ? outset_mat_inv_inset : outset_mat;
+
+  const float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], REC2020_PRI);
+  const float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom4)], REC2020_PRI);
+
   return GPU_stack_link(material, 
                         node, 
                         "node_composite_agx_view_transform", 
                         inputs, 
-                        outputs,
-                         GPU_constant(log_midgray_val),
-                         GPU_constant(midgray_val));
+                        GPU_uniform(node->custom2),
+                        GPU_uniform(node->custom3),
+                        GPU_uniform(node->custom4),
+                        GPU_uniform(blender::float4x4(scene_linear_to_working_matrix).base_ptr()),
+                        GPU_uniform(blender::float4x4(working_to_display_matrix).base_ptr()),
+                        GPU_uniform(blender::float4x4(display_to_scene_linear_matrix).base_ptr()),
+                        GPU_uniform(log_midgray_val),
+                        GPU_uniform(midgray_val),
+                        GPU_uniform(blender::float4x4(inset_matrix).base_ptr()),
+                        GPU_uniform(blender::float4x4(outset_matrix).base_ptr()),
+                        GPU_uniform(blender::float4x4(working_to_rec2020_matrix).base_ptr()),
+                        GPU_uniform(blender::float4x4(display_to_rec2020_matrix).base_ptr()),
+                        outputs);
 }
 
 // Multi Function

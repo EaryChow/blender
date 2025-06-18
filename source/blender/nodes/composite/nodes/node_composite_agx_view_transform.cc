@@ -581,7 +581,9 @@ static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &
                   log_midgray_val,
                   midgray_val,
                   inset_matrix,
-                  outset_matrix);
+                  outset_matrix,
+                  working_to_rec2020,
+                  display_to_rec2020);
                     },
           mf::build::exec_presets::SomeSpanOrSingle<0>(),
           TypeSequence<float4,

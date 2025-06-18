@@ -177,8 +177,8 @@ void node_composite_agx_view_transform(vec4 color,
   // apply inset matrix
   rgb = (insetmat * vec4(rgb, 1.0)).rgb;
   // record pre-formation chromaticity angle
-  vec3 pre_curve_hsv;
-  rgb_to_hsv(rgb, pre_curve_hsv);
+  vec4 pre_curve_hsv_full;
+  rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv_full);
 
   // encode to working log
   rgb = lin2log(rgb, p_working_log, log2_min_in, log2_max_in);
@@ -192,10 +192,12 @@ void node_composite_agx_view_transform(vec4 color,
   img = spowf3(img, 2.4f);
 
   // lerp pre- and post-curve chromaticity angle
-  vec3 post_curve_hsv;
-  rgb_to_hsv(img, post_curve_hsv);
-  post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
-  hsv_to_rgb(post_curve_hsv, img);
+  vec4 post_curve_hsv_full;
+  rgb_to_hsv(vec4(img, 1.0), post_curve_hsv_full);
+  post_curve_hsv_full[0] = lerp_chromaticity_angle(pre_curve_hsv_full[0], post_curve_hsv_full[0], per_channel_hue_flight_in);
+  vec4 img_full;
+  hsv_to_rgb(post_curve_hsv_full, img_full);
+  img = img_full.rgb;
 
   // apply outset matrix
   img = (outsetmat * vec4(img, 1.0)).rgb;

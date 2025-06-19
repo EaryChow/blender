@@ -148,7 +148,7 @@ void node_composite_agx_view_transform(vec4 color,
                                        float shoulder_contrast_in,
                                        float pivot_offset_in,                     
                                        float per_channel_hue_flight_in,
-                                       bool compensate_negatives_in,
+                                       float compensate_negatives_in,
                                        float p_working_log,
                                        mat4 scene_linear_to_working,
                                        mat4 working_to_display,
@@ -166,7 +166,7 @@ void node_composite_agx_view_transform(vec4 color,
   rgb = (scene_linear_to_working * vec4(rgb, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (compensate_negatives_in) {
+  if (bool(compensate_negatives_in)) {
     rgb = compensate_low_side(rgb, false, working_to_rec2020);
   }
   else {
@@ -204,7 +204,7 @@ void node_composite_agx_view_transform(vec4 color,
   img = (working_to_display * vec4(img, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
-  if (compensate_negatives_in) {
+  if (bool(compensate_negatives_in))  {
     img = compensate_low_side(img, true, display_to_rec2020);
   }
   else {

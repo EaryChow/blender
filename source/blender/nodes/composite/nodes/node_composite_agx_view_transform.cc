@@ -501,8 +501,8 @@ static int node_gpu_material(GPUMaterial *material,
                         GPU_uniform(&inputs[5].vec[0]), /* shoulder_contrast_in */
                         GPU_uniform(&inputs[6].vec[0]), /* pivot_offset_in */
                         GPU_uniform(&inputs[11].vec[0]), /* per_channel_hue_flight_in */
-                        GPU_uniform((float *)&inputs[14].vec[0]), /* compensate_negatives_in */
-                        GPU_uniform((float *)&node->custom3), /* p_working_log */
+                        GPU_uniform(&inputs[14].vec[0]), /* compensate_negatives_in */
+                        GPU_uniform(&node->custom3), /* p_working_log */
                         GPU_uniform(blender::float4x4(scene_linear_to_working_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_display_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(display_to_scene_linear_matrix).base_ptr()),

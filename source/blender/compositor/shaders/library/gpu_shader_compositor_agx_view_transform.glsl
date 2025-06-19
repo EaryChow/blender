@@ -5,8 +5,8 @@
 #include "gpu_shader_common_color_utils.glsl"
 #include "gpu_shader_math_vector_lib.glsl"
 
-vec3 spowf3(vec3 a, float b) {
-  return vec3(
+float3 spowf3(float3 a, float b) {
+  return float3(
     sign(a.x)*pow(abs(a.x), b),
     sign(a.y)*pow(abs(a.y), b),
     sign(a.z)*pow(abs(a.z), b)
@@ -17,7 +17,7 @@ float spowf(float a, float b) {
   return sign(a)*pow(abs(a), b);
 }
 
-vec3 lin2log(vec3 rgb, int tf, float generic_log2_min_expo, float generic_log2_max_expo) {
+float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo, float generic_log2_max_expo) {
   if (tf == 0) { // ACEScct
     rgb.x = rgb.x > 0.0078125f ? (log2(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
     rgb.y = rgb.y > 0.0078125f ? (log2(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
@@ -70,12 +70,12 @@ float lerp_chromaticity_angle(float h1, float h2, float t) {
     return lerped - floor(lerped);
 }
 
-vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
+float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
-    const vec3 luminance_coeffs = vec3(0.265818f, 0.59846986f, 0.1357121f);
+    const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
 
     // Convert RGB to Rec.2020 for luminance calculation
-    vec3 rgb_rec2020 = (input_pri_to_rec2020_mat * float4(rgb, 1.0)).rgb;
+    float3 rgb_rec2020 = (input_pri_to_rec2020_mat * float4(rgb, 1.0)).rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -84,13 +84,13 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_re
 
     // Calculate inverse RGB in working space
     float max_rgb = max(rgb.x, max(rgb.y, rgb.z));
-    vec3 inverse_rgb = vec3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
+    float3 inverse_rgb = float3(max_rgb - rgb.x, max_rgb - rgb.y, max_rgb - rgb.z);
 
     // Calculate max of the inverse
     float max_inv_rgb = max(inverse_rgb.x, max(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    vec3 inverse_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_rgb, 1.0)).rgb;
+    float3 inverse_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_rgb, 1.0)).rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -105,26 +105,26 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_re
     // Offset to avoid negatives
     float min_rgb = min(rgb.x, min(rgb.y, rgb.z));
     float offset = max(-min_rgb, 0.0f);
-    vec3 rgb_offset = vec3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
+    float3 rgb_offset = float3(rgb.x + offset, rgb.y + offset, rgb.z + offset);
 
     // Calculate max of the offseted RGB
     float max_offset = max(rgb_offset.x, max(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    vec3 offset_rec2020 = (input_pri_to_rec2020_mat * float4(rgb_offset, 1.0)).rgb;
+    float3 offset_rec2020 = (input_pri_to_rec2020_mat * float4(rgb_offset, 1.0)).rgb;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
 
     // Calculate the inverted RGB offset
-    vec3 inverse_offset = vec3(max_offset - rgb_offset.x,
+    float3 inverse_offset = float3(max_offset - rgb_offset.x,
                                        max_offset - rgb_offset.y,
                                        max_offset - rgb_offset.z);
 
     // Calculate max of the inverse
     float max_inv_offset = max(inverse_offset.x, max(inverse_offset.y, inverse_offset.z));
 
-    vec3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_offset, 1.0)).rgb;
+    float3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_offset, 1.0)).rgb;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;
@@ -137,7 +137,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_re
 
     // Adjust luminance ratio
     float ratio = (Y_new_compensate > y_compensate) ? (y_compensate / Y_new_compensate) : 1.0f;
-    return vec3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
+    return float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
 }
 
 void node_composite_agx_view_transform(float4 color,
@@ -161,7 +161,7 @@ void node_composite_agx_view_transform(float4 color,
                                        float4x4 display_to_rec2020,
                                        out float4 result)
 {
-  vec3 rgb = color.rgb;
+  float3 rgb = color.rgb;
 
   rgb = (scene_linear_to_working * float4(rgb, 1.0)).rgb;
 
@@ -170,7 +170,7 @@ void node_composite_agx_view_transform(float4 color,
     rgb = compensate_low_side(rgb, false, working_to_rec2020);
   }
   else {
-    rgb = max(vec3(0.0), rgb);
+    rgb = max(float3(0.0), rgb);
   }
   // apply inset matrix
   rgb = (insetmat * float4(rgb, 1.0)).rgb;
@@ -185,7 +185,7 @@ void node_composite_agx_view_transform(float4 color,
   rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
   rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
   rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
-  vec3 img = rgb;
+  float3 img = rgb;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
   img = spowf3(img, 2.4f);
 
@@ -208,7 +208,7 @@ void node_composite_agx_view_transform(float4 color,
     img = compensate_low_side(img, true, display_to_rec2020);
   }
   else {
-    img = max(vec3(0.0), img);
+    img = max(float3(0.0), img);
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space

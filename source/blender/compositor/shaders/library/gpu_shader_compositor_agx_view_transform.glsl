@@ -5,11 +5,12 @@
 #include "gpu_shader_common_color_utils.glsl"
 #include "gpu_shader_math_vector_lib.glsl"
 
-float3 spowf3(float3 a, float b) {
-  return float3(
+float4 spowf4(float4 a, float b) {
+  return float4(
     sign(a.x)*pow(abs(a.x), b),
     sign(a.y)*pow(abs(a.y), b),
-    sign(a.z)*pow(abs(a.z), b)
+    sign(a.z)*pow(abs(a.z), b),
+    a.w
   );
 }
 
@@ -17,7 +18,8 @@ float spowf(float a, float b) {
   return sign(a)*pow(abs(a), b);
 }
 
-float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo, float generic_log2_max_expo) {
+float4 lin2log(float4 rgba, int tf, float generic_log2_min_expo, float generic_log2_max_expo) {
+  float3 rgb = rgba.rgb;
   if (tf == 0) { // ACEScct
     rgb.x = rgb.x > 0.0078125f ? (log2(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
     rgb.y = rgb.y > 0.0078125f ? (log2(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
@@ -42,7 +44,7 @@ float3 lin2log(float3 rgb, int tf, float generic_log2_min_expo, float generic_lo
 
     rgb = (rgb + abs(generic_log2_min_expo)) / (abs(generic_log2_min_expo)+abs(generic_log2_max_expo));
   }
-  return rgb;
+  return float4(rgb, rgba.a);
 }
 
 float sigmoid(float in_val, float sp, float tp, float Pslope, float px, float py, float s0, float t0)
@@ -70,7 +72,8 @@ float lerp_chromaticity_angle(float h1, float h2, float t) {
     return lerped - floor(lerped);
 }
 
-float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
+float4 compensate_low_side(float4 rgba, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
+  float3 rgb = rgba.rgb;
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
     const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
 
@@ -137,7 +140,7 @@ float3 compensate_low_side(float3 rgb, bool use_hacky_lerp, float4x4 input_pri_t
 
     // Adjust luminance ratio
     float ratio = (Y_new_compensate > y_compensate) ? (y_compensate / Y_new_compensate) : 1.0f;
-    return float3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
+    return float4(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio, rgba.a);
 }
 
 void node_composite_agx_view_transform(float4 color,
@@ -161,59 +164,55 @@ void node_composite_agx_view_transform(float4 color,
                                        float4x4 display_to_rec2020,
                                        out float4 result)
 {
-  float3 rgb = color.rgb;
 
-  rgb = (scene_linear_to_working * float4(rgb, 1.0)).rgb;
+  color = scene_linear_to_working * color;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (bool(compensate_negatives_in)) {
-    rgb = compensate_low_side(rgb, false, working_to_rec2020);
+    color = compensate_low_side(color, false, working_to_rec2020);
   }
   else {
-    rgb = max(float3(0.0), rgb);
+    color = max(float4(0.0), color);
   }
   // apply inset matrix
-  rgb = (insetmat * float4(rgb, 1.0)).rgb;
+  color = insetmat * color;
   // record pre-formation chromaticity angle
-  float4 pre_curve_hsv_full;
-  rgb_to_hsv(float4(rgb, 1.0), pre_curve_hsv_full);
+  float4 pre_curve_hsv;
+  rgb_to_hsv(color, pre_curve_hsv);
 
   // encode to working log
-  rgb = lin2log(rgb, int(p_working_log), log2_min_in, log2_max_in);
+  color = lin2log(color, int(p_working_log), log2_min_in, log2_max_in);
 
   // apply sigmoid, the image is formed at this point
-  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
-  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
-  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
-  float3 img = rgb;
+  color.x = sigmoid(color.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  color.y = sigmoid(color.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  color.z = sigmoid(color.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  float4 img = color;
   // Linearize the formed image assuming its native transfer function is Rec.1886 curve
-  img = spowf3(img, 2.4f);
+  img = spowf4(img, 2.4f);
 
   // lerp pre- and post-curve chromaticity angle
-  float4 post_curve_hsv_full;
-  rgb_to_hsv(float4(img, 1.0), post_curve_hsv_full);
-  post_curve_hsv_full[0] = lerp_chromaticity_angle(pre_curve_hsv_full[0], post_curve_hsv_full[0], per_channel_hue_flight_in);
-  float4 img_full;
-  hsv_to_rgb(post_curve_hsv_full, img_full);
-  img = img_full.rgb;
+  float4 post_curve_hsv;
+  rgb_to_hsv(img, post_curve_hsv);
+  post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
+  hsv_to_rgb(post_curve_hsv, img);
 
   // apply outset matrix
-  img = (outsetmat * float4(img, 1.0)).rgb;
+  img = outsetmat * img;
 
   // convert from working primaries to target display primaries
-  img = (working_to_display * float4(img, 1.0)).rgb;
+  img = working_to_display * img;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (bool(compensate_negatives_in))  {
     img = compensate_low_side(img, true, display_to_rec2020);
   }
   else {
-    img = max(float3(0.0), img);
+    img = max(float4(0.0), img);
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  img = (display_to_scene_linear * float4(img, 1.0)).rgb;
+  img = display_to_scene_linear * img;
 
-  // re-combine the alpha channel
-  result = float4(img, color.a);
+  result = img;
 }

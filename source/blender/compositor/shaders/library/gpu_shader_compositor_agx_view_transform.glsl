@@ -70,12 +70,12 @@ float lerp_chromaticity_angle(float h1, float h2, float t) {
     return lerped - floor(lerped);
 }
 
-vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec2020_mat) {
+vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
     const vec3 luminance_coeffs = vec3(0.265818f, 0.59846986f, 0.1357121f);
 
     // Convert RGB to Rec.2020 for luminance calculation
-    vec3 rgb_rec2020 = (input_pri_to_rec2020_mat * vec4(rgb, 1.0)).rgb;
+    vec3 rgb_rec2020 = (input_pri_to_rec2020_mat * float4(rgb, 1.0)).rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -90,7 +90,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec202
     float max_inv_rgb = max(inverse_rgb.x, max(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    vec3 inverse_rec2020 = (input_pri_to_rec2020_mat * vec4(inverse_rgb, 1.0)).rgb;
+    vec3 inverse_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_rgb, 1.0)).rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -111,7 +111,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec202
     float max_offset = max(rgb_offset.x, max(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    vec3 offset_rec2020 = (input_pri_to_rec2020_mat * vec4(rgb_offset, 1.0)).rgb;
+    vec3 offset_rec2020 = (input_pri_to_rec2020_mat * float4(rgb_offset, 1.0)).rgb;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
@@ -124,7 +124,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec202
     // Calculate max of the inverse
     float max_inv_offset = max(inverse_offset.x, max(inverse_offset.y, inverse_offset.z));
 
-    vec3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * vec4(inverse_offset, 1.0)).rgb;
+    vec3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_offset, 1.0)).rgb;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;
@@ -140,7 +140,7 @@ vec3 compensate_low_side(vec3 rgb, bool use_hacky_lerp, mat4 input_pri_to_rec202
     return vec3(rgb_offset.x * ratio, rgb_offset.y * ratio, rgb_offset.z * ratio);
 }
 
-void node_composite_agx_view_transform(vec4 color,
+void node_composite_agx_view_transform(float4 color,
                                        float log2_min_in,
                                        float log2_max_in,
                                        float general_contrast_in,
@@ -150,20 +150,20 @@ void node_composite_agx_view_transform(vec4 color,
                                        float per_channel_hue_flight_in,
                                        float compensate_negatives_in,
                                        float p_working_log,
-                                       mat4 scene_linear_to_working,
-                                       mat4 working_to_display,
-                                       mat4 display_to_scene_linear,
+                                       float4x4 scene_linear_to_working,
+                                       float4x4 working_to_display,
+                                       float4x4 display_to_scene_linear,
                                        float log_midgray,
                                        float midgray,
-                                       mat4 insetmat,
-                                       mat4 outsetmat,
-                                       mat4 working_to_rec2020,
-                                       mat4 display_to_rec2020,
-                                       out vec4 result)
+                                       float4x4 insetmat,
+                                       float4x4 outsetmat,
+                                       float4x4 working_to_rec2020,
+                                       float4x4 display_to_rec2020,
+                                       out float4 result)
 {
   vec3 rgb = color.rgb;
 
-  rgb = (scene_linear_to_working * vec4(rgb, 1.0)).rgb;
+  rgb = (scene_linear_to_working * float4(rgb, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (bool(compensate_negatives_in)) {
@@ -173,10 +173,10 @@ void node_composite_agx_view_transform(vec4 color,
     rgb = max(vec3(0.0), rgb);
   }
   // apply inset matrix
-  rgb = (insetmat * vec4(rgb, 1.0)).rgb;
+  rgb = (insetmat * float4(rgb, 1.0)).rgb;
   // record pre-formation chromaticity angle
-  vec4 pre_curve_hsv_full;
-  rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv_full);
+  float4 pre_curve_hsv_full;
+  rgb_to_hsv(float4(rgb, 1.0), pre_curve_hsv_full);
 
   // encode to working log
   rgb = lin2log(rgb, int(p_working_log), log2_min_in, log2_max_in);
@@ -190,18 +190,18 @@ void node_composite_agx_view_transform(vec4 color,
   img = spowf3(img, 2.4f);
 
   // lerp pre- and post-curve chromaticity angle
-  vec4 post_curve_hsv_full;
-  rgb_to_hsv(vec4(img, 1.0), post_curve_hsv_full);
+  float4 post_curve_hsv_full;
+  rgb_to_hsv(float4(img, 1.0), post_curve_hsv_full);
   post_curve_hsv_full[0] = lerp_chromaticity_angle(pre_curve_hsv_full[0], post_curve_hsv_full[0], per_channel_hue_flight_in);
-  vec4 img_full;
+  float4 img_full;
   hsv_to_rgb(post_curve_hsv_full, img_full);
   img = img_full.rgb;
 
   // apply outset matrix
-  img = (outsetmat * vec4(img, 1.0)).rgb;
+  img = (outsetmat * float4(img, 1.0)).rgb;
 
   // convert from working primaries to target display primaries
-  img = (working_to_display * vec4(img, 1.0)).rgb;
+  img = (working_to_display * float4(img, 1.0)).rgb;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (bool(compensate_negatives_in))  {
@@ -212,8 +212,8 @@ void node_composite_agx_view_transform(vec4 color,
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  img = (display_to_scene_linear * vec4(img, 1.0)).rgb;
+  img = (display_to_scene_linear * float4(img, 1.0)).rgb;
 
   // re-combine the alpha channel
-  result = vec4(img, color.a);
+  result = float4(img, color.a);
 }

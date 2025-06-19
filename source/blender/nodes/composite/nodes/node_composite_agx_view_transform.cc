@@ -494,7 +494,7 @@ static int node_gpu_material(GPUMaterial *material,
   return GPU_stack_link(material, 
                         node, 
                         "node_composite_agx_view_transform", 
-                        inputs, 
+                        // inputs, 
                         outputs,
                         GPU_uniform(&inputs[1].vec[0]), /* log2_min_in */
                         GPU_uniform(&inputs[2].vec[0]), /* log2_max_in */

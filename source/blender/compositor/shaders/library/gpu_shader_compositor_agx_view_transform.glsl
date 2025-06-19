@@ -161,5 +161,59 @@ void node_composite_agx_view_transform(vec4 color,
                                        mat4 display_to_rec2020,
                                        out vec4 result)
 {
-  result = color;
+  vec3 rgb = color.rgb;
+
+  rgb = (scene_linear_to_working * vec4(rgb, 1.0)).rgb;
+
+  // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
+  if (compensate_negatives_in) {
+    rgb = compensate_low_side(rgb, false, working_to_rec2020);
+  }
+  else {
+    rgb = max(vec3(0.0), rgb);
+  }
+  // apply inset matrix
+  rgb = (insetmat * vec4(rgb, 1.0)).rgb;
+  // record pre-formation chromaticity angle
+  vec4 pre_curve_hsv_full;
+  rgb_to_hsv(vec4(rgb, 1.0), pre_curve_hsv_full);
+
+  // encode to working log
+  rgb = lin2log(rgb, int(p_working_log), log2_min_in, log2_max_in);
+
+  // apply sigmoid, the image is formed at this point
+  rgb.x = sigmoid(rgb.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  rgb.y = sigmoid(rgb.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  rgb.z = sigmoid(rgb.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  vec3 img = rgb;
+  // Linearize the formed image assuming its native transfer function is Rec.1886 curve
+  img = spowf3(img, 2.4f);
+
+  // lerp pre- and post-curve chromaticity angle
+  vec4 post_curve_hsv_full;
+  rgb_to_hsv(vec4(img, 1.0), post_curve_hsv_full);
+  post_curve_hsv_full[0] = lerp_chromaticity_angle(pre_curve_hsv_full[0], post_curve_hsv_full[0], per_channel_hue_flight_in);
+  vec4 img_full;
+  hsv_to_rgb(post_curve_hsv_full, img_full);
+  img = img_full.rgb;
+
+  // apply outset matrix
+  img = (outsetmat * vec4(img, 1.0)).rgb;
+
+  // convert from working primaries to target display primaries
+  img = (working_to_display * vec4(img, 1.0)).rgb;
+
+  // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
+  if (compensate_negatives_in) {
+    img = compensate_low_side(img, true, display_to_rec2020);
+  }
+  else {
+    img = max(vec3(0.0), img);
+  }
+
+  // convert linearized formed image back to OCIO's scene_linear role space
+  img = (display_to_scene_linear * vec4(img, 1.0)).rgb;
+
+  // re-combine the alpha channel
+  result = vec4(img, color.a);
 }

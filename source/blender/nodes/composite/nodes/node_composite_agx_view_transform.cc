@@ -450,6 +450,8 @@ static int node_gpu_material(GPUMaterial *material,
   float image_native_power = 2.4f;
   const float midgray_val = pow(0.18f, 1.0f / image_native_power);
 
+  float p_working_log_float = static_cast<float>(node->custom3);
+
   // precalculate inset matrix
   float3 attenuation_rates_in = float3(inputs[8].vec[0], inputs[8].vec[1], inputs[8].vec[2]);
   float3 hue_flights_in = float3(inputs[7].vec[0], inputs[7].vec[1], inputs[7].vec[2]);
@@ -502,7 +504,7 @@ static int node_gpu_material(GPUMaterial *material,
                         GPU_uniform(&inputs[6].vec[0]), /* pivot_offset_in */
                         GPU_uniform(&inputs[11].vec[0]), /* per_channel_hue_flight_in */
                         GPU_uniform(&inputs[14].vec[0]), /* compensate_negatives_in */
-                        GPU_uniform((float *)&node->custom3), /* p_working_log */
+                        GPU_uniform(&p_working_log_float), /* p_working_log */
                         GPU_uniform(blender::float4x4(scene_linear_to_working_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_display_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(display_to_scene_linear_matrix).base_ptr()),

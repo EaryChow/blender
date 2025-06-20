@@ -434,21 +434,21 @@ static int node_gpu_material(GPUMaterial *material,
   const float3x3 xyz_to_scene = IMB_colormanagement_get_xyz_to_scene_linear();
 
   float3x3 xyz_to_working = XYZtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
-  const float3x3 scene_linear_to_working_matrix = xyz_to_working * scene_to_xyz;
+  const float3x3 scene_linear_to_working = xyz_to_working * scene_to_xyz;
 
-  const float3x3 working_to_display_matrix = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
+  const float3x3 working_to_display = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)],
           COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
   
   float3x3 display_to_xyz = RGBtoXYZ(COLOR_SPACE_PRI[static_cast<int>(node->custom4)]);
-  const float3x3 display_to_scene_linear_matrix = xyz_to_scene * display_to_xyz;
+  const float3x3 display_to_scene_linear = xyz_to_scene * display_to_xyz;
 
   // precalculate log middle gray
   float log2_min_in = inputs[1].vec[0];
   float log2_max_in = inputs[2].vec[0];
-  const float log_midgray_val = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
+  const float log_midgray = lin2log(float3(0.18f, 0.18f, 0.18f), node->custom3, log2_min_in, log2_max_in).x;
   // precalculate mid gray value
   float image_native_power = 2.4f;
-  const float midgray_val = pow(0.18f, 1.0f / image_native_power);
+  const float midgray = pow(0.18f, 1.0f / image_native_power);
 
   // precalculate inset matrix
   float3 attenuation_rates_in = float3(inputs[8].vec[0], inputs[8].vec[1], inputs[8].vec[2]);
@@ -458,7 +458,7 @@ static int node_gpu_material(GPUMaterial *material,
     attenuation_rates_in.x, attenuation_rates_in.y, attenuation_rates_in.z,
     hue_flights_in.x, hue_flights_in.y, hue_flights_in.z);
 
-  const float3x3 inset_matrix = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
+  const float3x3 insetmat = RGBtoRGB(inset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]);
 
   // precalculate outset matrix
   float3 restore_purity_in = float3(inputs[10].vec[0], inputs[10].vec[1], inputs[10].vec[2]);
@@ -484,7 +484,7 @@ static int node_gpu_material(GPUMaterial *material,
        tinting_hue_in + 180, tinting_scale_in);
   outset_mat = blender::math::invert(RGBtoRGB(outset_chromaticities, COLOR_SPACE_PRI[static_cast<int>(node->custom2)]));
 
-  const float3x3 outset_matrix = use_inverse_inset ? outset_mat_inv_inset : outset_mat;
+  const float3x3 outsetmat = use_inverse_inset ? outset_mat_inv_inset : outset_mat;
 
   const float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], REC2020_PRI);
   const float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom4)], REC2020_PRI);
@@ -505,14 +505,14 @@ static int node_gpu_material(GPUMaterial *material,
                         "node_composite_agx_view_transform", 
                         filtered_inputs, 
                         outputs, 
-                        GPU_uniform(&node->custom3), /* p_working_log */
-                        GPU_uniform(blender::float4x4(scene_linear_to_working_matrix).base_ptr()),
-                        GPU_uniform(blender::float4x4(working_to_display_matrix).base_ptr()),
-                        GPU_uniform(blender::float4x4(display_to_scene_linear_matrix).base_ptr()),
-                        GPU_uniform(&log_midgray_val),
-                        GPU_uniform(&midgray_val),
-                        GPU_uniform(blender::float4x4(inset_matrix).base_ptr()),
-                        GPU_uniform(blender::float4x4(outset_matrix).base_ptr()),
+                        GPU_uniform((float *)&node->custom3), /* p_working_log */
+                        GPU_uniform(blender::float4x4(scene_linear_to_working).base_ptr()),
+                        GPU_uniform(blender::float4x4(working_to_display).base_ptr()),
+                        GPU_uniform(blender::float4x4(display_to_scene_linear).base_ptr()),
+                        GPU_uniform(&log_midgray),
+                        GPU_uniform(&midgray),
+                        GPU_uniform(blender::float4x4(insetmat).base_ptr()),
+                        GPU_uniform(blender::float4x4(outsetmat).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_rec2020).base_ptr()),
                         GPU_uniform(blender::float4x4(display_to_rec2020).base_ptr()));
 }

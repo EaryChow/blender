@@ -450,8 +450,6 @@ static int node_gpu_material(GPUMaterial *material,
   float image_native_power = 2.4f;
   const float midgray_val = pow(0.18f, 1.0f / image_native_power);
 
-  float p_working_log_float = static_cast<float>(node->custom3);
-
   // precalculate inset matrix
   float3 attenuation_rates_in = float3(inputs[8].vec[0], inputs[8].vec[1], inputs[8].vec[2]);
   float3 hue_flights_in = float3(inputs[7].vec[0], inputs[7].vec[1], inputs[7].vec[2]);
@@ -491,20 +489,23 @@ static int node_gpu_material(GPUMaterial *material,
   const float3x3 working_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom2)], REC2020_PRI);
   const float3x3 display_to_rec2020 = RGBtoRGB(COLOR_SPACE_PRI[static_cast<int>(node->custom4)], REC2020_PRI);
 
+  GPUNodeStack filtered_inputs[9];
+  filtered_inputs[0] = inputs[0]; /* Color */
+  filtered_inputs[1] = inputs[1]; /* Log2 Minimum Exposure */
+  filtered_inputs[2] = inputs[2]; /* Log2 Maximum Exposure */
+  filtered_inputs[3] = inputs[3]; /* General Contrast */
+  filtered_inputs[4] = inputs[4]; /* Toe Contrast */
+  filtered_inputs[5] = inputs[5]; /* Shoulder Contrast */
+  filtered_inputs[6] = inputs[6]; /* Contrast Pivot Offset */
+  filtered_inputs[7] = inputs[11]; /* Per-Channel Hue Flight */
+  filtered_inputs[8] = inputs[14]; /* Compensate for the Negatives */
+
   return GPU_stack_link(material, 
                         node, 
                         "node_composite_agx_view_transform", 
-                        inputs, 
-                        outputs,
-                        GPU_uniform(&inputs[1].vec[0]), /* log2_min_in */
-                        GPU_uniform(&inputs[2].vec[0]), /* log2_max_in */
-                        GPU_uniform(&inputs[3].vec[0]), /* general_contrast_in */
-                        GPU_uniform(&inputs[4].vec[0]), /* toe_contrast_in */
-                        GPU_uniform(&inputs[5].vec[0]), /* shoulder_contrast_in */
-                        GPU_uniform(&inputs[6].vec[0]), /* pivot_offset_in */
-                        GPU_uniform(&inputs[11].vec[0]), /* per_channel_hue_flight_in */
-                        GPU_uniform(&inputs[14].vec[0]), /* compensate_negatives_in */
-                        GPU_uniform(&p_working_log_float), /* p_working_log */
+                        filtered_inputs, 
+                        outputs, 
+                        GPU_uniform((float *)&node->custom3), /* p_working_log */
                         GPU_uniform(blender::float4x4(scene_linear_to_working_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_display_matrix).base_ptr()),
                         GPU_uniform(blender::float4x4(display_to_scene_linear_matrix).base_ptr()),

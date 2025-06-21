@@ -165,6 +165,54 @@ void node_composite_agx_view_transform(float4 color,
                                        out float4 result)
 {
 
-  color.rgb = (scene_linear_to_working * float4(color.rgb, 1.0)).rgb;
-  result = color;
+  color = scene_linear_to_working * color;
+
+  // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
+  if (bool(compensate_negatives_in)) {
+    color = compensate_low_side(color, false, working_to_rec2020);
+  }
+  else {
+    color = max(float4(0.0), color);
+  }
+  // apply inset matrix
+  color = insetmat * color;
+  // record pre-formation chromaticity angle
+  float4 pre_curve_hsv;
+  rgb_to_hsv(color, pre_curve_hsv);
+
+  // encode to working log
+  color = lin2log(color, int(p_working_log), log2_min_in, log2_max_in);
+
+  // apply sigmoid, the image is formed at this point
+  color.x = sigmoid(color.x, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  color.y = sigmoid(color.y, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  color.z = sigmoid(color.z, shoulder_contrast_in, toe_contrast_in, general_contrast_in, log_midgray + pivot_offset_in, midgray, 1.0f, 0.0f);
+  float4 img = color;
+  // Linearize the formed image assuming its native transfer function is Rec.1886 curve
+  img = spowf4(img, 2.4f);
+
+  // lerp pre- and post-curve chromaticity angle
+  float4 post_curve_hsv;
+  rgb_to_hsv(img, post_curve_hsv);
+  post_curve_hsv[0] = lerp_chromaticity_angle(pre_curve_hsv[0], post_curve_hsv[0], per_channel_hue_flight_in);
+  hsv_to_rgb(post_curve_hsv, img);
+
+  // apply outset matrix
+  img = outsetmat * img;
+
+  // convert from working primaries to target display primaries
+  img = working_to_display * img;
+
+  // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
+  if (bool(compensate_negatives_in))  {
+    img = compensate_low_side(img, true, display_to_rec2020);
+  }
+  else {
+    img = max(float4(0.0), img);
+  }
+
+  // convert linearized formed image back to OCIO's scene_linear role space
+  img = display_to_scene_linear * img;
+
+  result = img;
 }

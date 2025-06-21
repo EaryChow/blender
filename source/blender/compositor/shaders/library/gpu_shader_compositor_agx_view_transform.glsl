@@ -165,7 +165,7 @@ void node_composite_agx_view_transform(float4 color,
                                        out float4 result)
 {
 
-  color = scene_linear_to_working * color;
+  // color = scene_linear_to_working * color;
 
   // apply low-side guard rail if the UI checkbox is true, otherwise hard clamp to 0
   if (bool(compensate_negatives_in)) {
@@ -212,7 +212,7 @@ void node_composite_agx_view_transform(float4 color,
   }
 
   // convert linearized formed image back to OCIO's scene_linear role space
-  img = display_to_scene_linear * img;
+  // img = display_to_scene_linear * img;
 
   result = img;
 }

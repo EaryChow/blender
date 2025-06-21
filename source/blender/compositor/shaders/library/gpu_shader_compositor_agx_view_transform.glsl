@@ -20,7 +20,7 @@ float spowf(float a, float b) {
 }
 
 float4 lin2log(float4 rgba, int tf, float generic_log2_min_expo, float generic_log2_max_expo) {
-  float3 rgb = rgba.xyz;
+  float3 rgb = rgba.rgb;
   if (tf == 0) { // ACEScct
     rgb.x = rgb.x > 0.0078125f ? (log2(rgb.x) + 9.72f) / 17.52f : 10.5402377416545f * rgb.x + 0.0729055341958355f;
     rgb.y = rgb.y > 0.0078125f ? (log2(rgb.y) + 9.72f) / 17.52f : 10.5402377416545f * rgb.y + 0.0729055341958355f;
@@ -74,12 +74,12 @@ float lerp_chromaticity_angle(float h1, float h2, float t) {
 }
 
 float4 compensate_low_side(float4 rgba, bool use_hacky_lerp, float4x4 input_pri_to_rec2020_mat) {
-  float3 rgb = rgba.xyz;
+  float3 rgb = rgba.rgb;
     // Hardcoded Rec.2020 luminance coefficients (2015 CMFs)
     const float3 luminance_coeffs = float3(0.265818f, 0.59846986f, 0.1357121f);
 
     // Convert RGB to Rec.2020 for luminance calculation
-    float3 rgb_rec2020 = (input_pri_to_rec2020_mat * float4(rgb, 1.0)).xyz;
+    float3 rgb_rec2020 = (input_pri_to_rec2020_mat * float4(rgb, 1.0)).rgb;
 
     // Calculate original luminance Y
     float Y = rgb_rec2020.x * luminance_coeffs.x +
@@ -94,7 +94,7 @@ float4 compensate_low_side(float4 rgba, bool use_hacky_lerp, float4x4 input_pri_
     float max_inv_rgb = max(inverse_rgb.x, max(inverse_rgb.y, inverse_rgb.z));
 
     // Convert inverse RGB to Rec.2020 for Y calculation
-    float3 inverse_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_rgb, 1.0)).xyz;
+    float3 inverse_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_rgb, 1.0)).rgb;
     float Y_inverse = inverse_rec2020.x * luminance_coeffs.x +
                       inverse_rec2020.y * luminance_coeffs.y +
                       inverse_rec2020.z * luminance_coeffs.z;
@@ -115,7 +115,7 @@ float4 compensate_low_side(float4 rgba, bool use_hacky_lerp, float4x4 input_pri_
     float max_offset = max(rgb_offset.x, max(rgb_offset.y, rgb_offset.z));
 
     // Calculate new luminance after offset
-    float3 offset_rec2020 = (input_pri_to_rec2020_mat * float4(rgb_offset, 1.0)).xyz;
+    float3 offset_rec2020 = (input_pri_to_rec2020_mat * float4(rgb_offset, 1.0)).rgb;
     float Y_new = offset_rec2020.x * luminance_coeffs.x +
                   offset_rec2020.y * luminance_coeffs.y +
                   offset_rec2020.z * luminance_coeffs.z;
@@ -128,7 +128,7 @@ float4 compensate_low_side(float4 rgba, bool use_hacky_lerp, float4x4 input_pri_
     // Calculate max of the inverse
     float max_inv_offset = max(inverse_offset.x, max(inverse_offset.y, inverse_offset.z));
 
-    float3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_offset, 1.0)).xyz;
+    float3 inverse_offset_rec2020 = (input_pri_to_rec2020_mat * float4(inverse_offset, 1.0)).rgb;
     float Y_inverse_offset = inverse_offset_rec2020.x * luminance_coeffs.x +
                              inverse_offset_rec2020.y * luminance_coeffs.y +
                              inverse_offset_rec2020.z * luminance_coeffs.z;

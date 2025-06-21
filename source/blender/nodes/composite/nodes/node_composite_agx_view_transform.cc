@@ -499,21 +499,23 @@ static int node_gpu_material(GPUMaterial *material,
   filtered_inputs[6] = inputs[6]; /* Contrast Pivot Offset */
   filtered_inputs[7] = inputs[11]; /* Per-Channel Hue Flight */
   filtered_inputs[8] = inputs[14]; /* Compensate for the Negatives */
+  float p_working_log = (float)node->custom3;
 
   return GPU_stack_link(material, 
                         node, 
                         "node_composite_agx_view_transform", 
                         filtered_inputs, 
                         outputs, 
-                        GPU_uniform(blender::float4x4(scene_linear_to_working).base_ptr()),
-                        GPU_uniform(blender::float4x4(working_to_display).base_ptr()),
-                        GPU_uniform(blender::float4x4(display_to_scene_linear).base_ptr()),
-                        GPU_uniform(&log_midgray),
-                        GPU_uniform(&midgray),
-                        GPU_uniform(blender::float4x4(insetmat).base_ptr()),
-                        GPU_uniform(blender::float4x4(outsetmat).base_ptr()),
-                        GPU_uniform(blender::float4x4(working_to_rec2020).base_ptr()),
-                        GPU_uniform(blender::float4x4(display_to_rec2020).base_ptr()));
+                        GPU_uniform(p_working_log), /* p_working_log */
+                        GPU_uniform(blender::float4x4(scene_linear_to_working)),
+                        GPU_uniform(blender::float4x4(working_to_display)),
+                        GPU_uniform(blender::float4x4(display_to_scene_linear)),
+                        GPU_uniform(log_midgray),
+                        GPU_uniform(midgray),
+                        GPU_uniform(blender::float4x4(insetmat)),
+                        GPU_uniform(blender::float4x4(outsetmat)),
+                        GPU_uniform(blender::float4x4(working_to_rec2020)),
+                        GPU_uniform(blender::float4x4(display_to_rec2020)));
 }
 
 // Multi Function

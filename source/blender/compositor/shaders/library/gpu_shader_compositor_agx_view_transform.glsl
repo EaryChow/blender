@@ -165,6 +165,6 @@ void node_composite_agx_view_transform(float4 color,
                                        out float4 result)
 {
 
-  color = scene_linear_to_working * color;
+  color.rgb = (scene_linear_to_working * float4(color.rgb, 1.0)).rgb;
   result = color;
 }

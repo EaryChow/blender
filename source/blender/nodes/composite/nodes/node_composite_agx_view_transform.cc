@@ -505,7 +505,6 @@ static int node_gpu_material(GPUMaterial *material,
                         "node_composite_agx_view_transform", 
                         filtered_inputs, 
                         outputs, 
-                        GPU_uniform((float *)&node->custom3), /* p_working_log */
                         GPU_uniform(blender::float4x4(scene_linear_to_working).base_ptr()),
                         GPU_uniform(blender::float4x4(working_to_display).base_ptr()),
                         GPU_uniform(blender::float4x4(display_to_scene_linear).base_ptr()),
